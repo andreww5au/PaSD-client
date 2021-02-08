@@ -107,6 +107,8 @@ def send(sock, message):
         try:
             reply = sock.recv(2)
             replist += list(map(ord, reply))
+        except socket.timeout:
+            pass
         except:
             logger.exception('Exception in sock.recv()')
             return False
