@@ -138,11 +138,8 @@ def readReg(sock, station, regnum, rawlen=1):
     packet = [station, 0x03] + NtoBytes(regnum - 1, 2) + NtoBytes(rlen, 2)
     reply = send(sock, packet)
 
-    if not reply or len(reply) < 3:
-        time.sleep(0.05)
-        reply = send(sock, packet)
-        if not reply or len(reply) < 3:
-            return None
+    if not reply:
+        return None
     if reply[0] != station:
         errs = "Sent to station %d, but station %d responded.\n" % (station, reply[0])
         errs += "Packet: %s\n" % str(reply)
@@ -180,11 +177,8 @@ def writeReg(sock, station, regnum, value):
     """
     packet = [0x01, 0x06] + NtoBytes(regnum - 1, 2) + NtoBytes(value, 2)
     reply = send(sock, packet)
-    if not reply or len(reply) < 3:
-        time.sleep(0.05)
-        reply = send(sock, packet)
-        if not reply or len(reply) < 3:
-            return None
+    if not reply:
+        return None
     if reply[0] != station:
         errs = "Sent to station %d, but station %d responded.\n" % (station, reply[0])
         errs += "Packet: %s\n" % str(reply)
@@ -229,11 +223,8 @@ def writeMultReg(sock, station, regnum, data):
 
     packet = [station, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(rlen, 2) + NtoBytes(rlen * 2, 1) + data
     reply = send(sock, packet)
-    if not reply or len(reply) < 3:
-        time.sleep(0.05)
-        reply = send(sock, packet)
-        if not reply or len(reply) < 3:
-            return None
+    if not reply:
+        return None
     if reply[0] != station:
         errs = "Sent to station %d, but station %d responded.\n" % (station, reply[0])
         errs += "Packet: %s\n" % str(reply)
