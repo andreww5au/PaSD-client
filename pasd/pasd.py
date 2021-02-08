@@ -82,7 +82,7 @@ def getcrc(message=None):
             crc = (crc >> 1) & 0x7FFF
             if b:
                 crc = crc ^ 0xA001
-    return message + [(crc & 0x00FF), ((crc >> 8) & 0x00FF)]
+    return [(crc & 0x00FF), ((crc >> 8) & 0x00FF)]
 
 
 def send(sock, message):
