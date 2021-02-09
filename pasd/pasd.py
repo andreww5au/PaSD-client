@@ -97,7 +97,7 @@ def send(sock, message):
     """
     message += getcrc(message)
     time.sleep(PACKET_WINDOW_TIME)
-    sock.send((''.join(map(chr, message))).encode('utf-8'))
+    sock.send(bytes(message))
     time.sleep(PACKET_WINDOW_TIME)
     replist = []
 
