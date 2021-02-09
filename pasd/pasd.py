@@ -97,7 +97,7 @@ def send(sock, message):
     """
     message += getcrc(message)
     time.sleep(PACKET_WINDOW_TIME)
-    sock.send(''.join(map(chr, message)))
+    sock.send((''.join(map(chr, message))).encode('utf-8'))
     time.sleep(PACKET_WINDOW_TIME)
     replist = []
 
@@ -106,7 +106,7 @@ def send(sock, message):
     while (time.time() - stime < TIMEOUT) and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
         try:
             reply = sock.recv(2)
-            replist += list(map(ord, reply))
+            replist += list(map(int, reply))
         except socket.timeout:
             pass
         except:
