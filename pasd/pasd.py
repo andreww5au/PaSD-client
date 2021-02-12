@@ -15,7 +15,7 @@ logger.level = logging.DEBUG
 PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
 TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
 
-# Dicts with register name as key, and a tuple of (register_number, number_of_registers, name) as value, where reading = (raw * scale) + offset
+# Dicts with register name as key, and a tuple of (register_number, number_of_registers, name, scaling_function) as value
 SMARTBOX_REGISTERS_1 = {'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
                         'SYS_CPUID':   (3, 2, 'Microcontroller device ID', None),
                         'SYS_CHIPID':  (5, 8, 'Chip unique device ID', None),
@@ -23,12 +23,13 @@ SMARTBOX_REGISTERS_1 = {'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
                         'SYS_UPTIME':  (14, 1, 'Uptime in seconds', None),
                         'SYS_ADDRESS': (15, 1, 'MODBUS station ID', None),
 
-                        'SYS_48V':     (21, 1, 'Incoming 48VDC voltage', conversion.scale_48v),
-                        'SYS_PSU':     (22, 1, 'PSU output voltage', conversion.scale_5v),
-                        'SYS_PSUTEMP': (23, 1, 'PSU Temperature', conversion.scale_temp),
-                        'SYS_PCBTEMP': (24, 1, 'PCB Temperature', conversion.scale_temp),
-                        'SYS_FEMTEMP': (25, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_OUTTEMP': (26, 1, 'Outside Temperature', conversion.scale_temp)}
+                        'SYS_48V':     (16, 1, 'Incoming 48VDC voltage', conversion.scale_48v),
+                        'SYS_PSU':     (17, 1, 'PSU output voltage', conversion.scale_5v),
+                        'SYS_PSUTEMP': (18, 1, 'PSU Temperature', conversion.scale_temp),
+                        'SYS_PCBTEMP': (19, 1, 'PCB Temperature', conversion.scale_temp),
+                        'SYS_FEMTEMP': (20, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_OUTTEMP': (21, 1, 'Outside Temperature', conversion.scale_temp)
+                        }
 
 FNDH_REGISTERS_1 = {}
 
@@ -198,7 +199,6 @@ class Connection(object):
         if reply != packet:
             return False  # Value returned is not equal to value written
         return True
-
 
     def writeMultReg(self, station, regnum, data):
         """
