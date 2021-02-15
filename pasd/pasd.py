@@ -16,20 +16,64 @@ PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each pack
 TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
 
 # Dicts with register name as key, and a tuple of (register_number, number_of_registers, name, scaling_function) as value
-SMARTBOX_REGISTERS_1 = {'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
+SMARTBOX_REGISTERS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
+                        'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
                         'SYS_CPUID':   (3, 2, 'Microcontroller device ID', None),
                         'SYS_CHIPID':  (5, 8, 'Chip unique device ID', None),
                         'SYS_FIRMVER': (13, 1, 'Firmware version', None),
                         'SYS_UPTIME':  (14, 1, 'Uptime in seconds', None),
                         'SYS_ADDRESS': (15, 1, 'MODBUS station ID', None),
 
-                        'SYS_48V':     (16, 1, 'Incoming 48VDC voltage', conversion.scale_48v),
-                        'SYS_PSU':     (17, 1, 'PSU output voltage', conversion.scale_5v),
+                        # From here on can change between firmware revisions
+                        'SYS_48V_V':     (16, 1, 'Incoming 48VDC voltage', conversion.scale_48v),
+                        'SYS_PSU_V':     (17, 1, 'PSU output voltage', conversion.scale_5v),
                         'SYS_PSUTEMP': (18, 1, 'PSU Temperature', conversion.scale_temp),
                         'SYS_PCBTEMP': (19, 1, 'PCB Temperature', conversion.scale_temp),
-                        'SYS_FEMTEMP': (20, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_OUTTEMP': (21, 1, 'Outside Temperature', conversion.scale_temp)
-                        }
+                        'SYS_OUTTEMP': (20, 1, 'Outside Temperature', conversion.scale_temp),
+                        'SYS_HEALTH':  (21, 1, 'Health status bitmap', None),
+                        'SYS_LIGHTS':  (22, 1, 'LED state', None),
+
+                        # Note - only a few of these FEM enclosure temps will return valid data
+                        'SYS_FEM1TEMP': (23, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM2TEMP': (24, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM3TEMP': (25, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM4TEMP': (26, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM5TEMP': (27, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM6TEMP': (28, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM7TEMP': (29, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM8TEMP': (30, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM9TEMP': (31, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM10TEMP': (32, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM11TEMP': (33, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM12TEMP': (34, 1, 'FEM Temperature', conversion.scale_temp),
+
+                        # Per-port status variables
+                        'P01_TURNON': (35, 1, 'Port 01 Turn-on register', conversion.scale_temp),
+                        'P01_HEALTH': (36, 1, 'Port 01 Health bitmap', conversion.scale_temp),
+                        'P02_TURNON': (37, 1, 'Port 02 Turn-on register', conversion.scale_temp),
+                        'P02_HEALTH': (38, 1, 'Port 02 Health bitmap', conversion.scale_temp),
+                        'P03_TURNON': (39, 1, 'Port 03 Turn-on register', conversion.scale_temp),
+                        'P03_HEALTH': (40, 1, 'Port 03 Health bitmap', conversion.scale_temp),
+                        'P04_TURNON': (41, 1, 'Port 04 Turn-on register', conversion.scale_temp),
+                        'P04_HEALTH': (42, 1, 'Port 04 Health bitmap', conversion.scale_temp),
+                        'P05_TURNON': (43, 1, 'Port 05 Turn-on register', conversion.scale_temp),
+                        'P05_HEALTH': (44, 1, 'Port 05 Health bitmap', conversion.scale_temp),
+                        'P06_TURNON': (45, 1, 'Port 06 Turn-on register', conversion.scale_temp),
+                        'P06_HEALTH': (46, 1, 'Port 06 Health bitmap', conversion.scale_temp),
+                        'P07_TURNON': (47, 1, 'Port 07 Turn-on register', conversion.scale_temp),
+                        'P07_HEALTH': (48, 1, 'Port 07 Health bitmap', conversion.scale_temp),
+                        'P08_TURNON': (49, 1, 'Port 08 Turn-on register', conversion.scale_temp),
+                        'P08_HEALTH': (50, 1, 'Port 08 Health bitmap', conversion.scale_temp),
+                        'P09_TURNON': (51, 1, 'Port 09 Turn-on register', conversion.scale_temp),
+                        'P09_HEALTH': (52, 1, 'Port 09 Health bitmap', conversion.scale_temp),
+                        'P10_TURNON': (53, 1, 'Port 10 Turn-on register', conversion.scale_temp),
+                        'P10_HEALTH': (54, 1, 'Port 10 Health bitmap', conversion.scale_temp),
+                        'P11_TURNON': (55, 1, 'Port 11 Turn-on register', conversion.scale_temp),
+                        'P11_HEALTH': (56, 1, 'Port 11 Health bitmap', conversion.scale_temp),
+                        'P12_TURNON': (57, 1, 'Port 12 Turn-on register', conversion.scale_temp),
+                        'P12_HEALTH': (58, 1, 'Port 12 Health bitmap', conversion.scale_temp),
+
+}
 
 FNDH_REGISTERS_1 = {}
 
