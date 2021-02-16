@@ -5,8 +5,6 @@ import time
 import socket
 import threading
 
-import conversion
-
 logging.basicConfig()
 logger = logging.getLogger()
 logger.level = logging.DEBUG
@@ -14,73 +12,6 @@ logger.level = logging.DEBUG
 
 PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
 TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
-
-# Dicts with register name as key, and a tuple of (register_number, number_of_registers, name, scaling_function) as value
-SMARTBOX_REGISTERS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
-                        'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
-                        'SYS_CPUID':   (3, 2, 'Microcontroller device ID', None),
-                        'SYS_CHIPID':  (5, 8, 'Chip unique device ID', None),
-                        'SYS_FIRMVER': (13, 1, 'Firmware version', None),
-                        'SYS_UPTIME':  (14, 1, 'Uptime in seconds', None),
-                        'SYS_ADDRESS': (15, 1, 'MODBUS station ID', None),
-
-                        # From here on can change between firmware revisions
-                        'SYS_48V_V':     (16, 1, 'Incoming 48VDC voltage', conversion.scale_48v),
-                        'SYS_PSU_V':     (17, 1, 'PSU output voltage', conversion.scale_5v),
-                        'SYS_PSUTEMP': (18, 1, 'PSU Temperature', conversion.scale_temp),
-                        'SYS_PCBTEMP': (19, 1, 'PCB Temperature', conversion.scale_temp),
-                        'SYS_OUTTEMP': (20, 1, 'Outside Temperature', conversion.scale_temp),
-                        'SYS_HEALTH':  (21, 1, 'Health status bitmap', None),
-                        'SYS_LIGHTS':  (22, 1, 'LED state', None),
-
-                        # Note - only a few of these FEM enclosure temps will return valid data
-                        'SYS_FEM1TEMP': (23, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM2TEMP': (24, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM3TEMP': (25, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM4TEMP': (26, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM5TEMP': (27, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM6TEMP': (28, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM7TEMP': (29, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM8TEMP': (30, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM9TEMP': (31, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM10TEMP': (32, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM11TEMP': (33, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM12TEMP': (34, 1, 'FEM Temperature', conversion.scale_temp),
-
-                        # Per-port status variables
-                        'P01_TURNON': (35, 1, 'Port 01 Turn-on register', conversion.scale_temp),
-                        'P01_HEALTH': (36, 1, 'Port 01 Health bitmap', conversion.scale_temp),
-                        'P02_TURNON': (37, 1, 'Port 02 Turn-on register', conversion.scale_temp),
-                        'P02_HEALTH': (38, 1, 'Port 02 Health bitmap', conversion.scale_temp),
-                        'P03_TURNON': (39, 1, 'Port 03 Turn-on register', conversion.scale_temp),
-                        'P03_HEALTH': (40, 1, 'Port 03 Health bitmap', conversion.scale_temp),
-                        'P04_TURNON': (41, 1, 'Port 04 Turn-on register', conversion.scale_temp),
-                        'P04_HEALTH': (42, 1, 'Port 04 Health bitmap', conversion.scale_temp),
-                        'P05_TURNON': (43, 1, 'Port 05 Turn-on register', conversion.scale_temp),
-                        'P05_HEALTH': (44, 1, 'Port 05 Health bitmap', conversion.scale_temp),
-                        'P06_TURNON': (45, 1, 'Port 06 Turn-on register', conversion.scale_temp),
-                        'P06_HEALTH': (46, 1, 'Port 06 Health bitmap', conversion.scale_temp),
-                        'P07_TURNON': (47, 1, 'Port 07 Turn-on register', conversion.scale_temp),
-                        'P07_HEALTH': (48, 1, 'Port 07 Health bitmap', conversion.scale_temp),
-                        'P08_TURNON': (49, 1, 'Port 08 Turn-on register', conversion.scale_temp),
-                        'P08_HEALTH': (50, 1, 'Port 08 Health bitmap', conversion.scale_temp),
-                        'P09_TURNON': (51, 1, 'Port 09 Turn-on register', conversion.scale_temp),
-                        'P09_HEALTH': (52, 1, 'Port 09 Health bitmap', conversion.scale_temp),
-                        'P10_TURNON': (53, 1, 'Port 10 Turn-on register', conversion.scale_temp),
-                        'P10_HEALTH': (54, 1, 'Port 10 Health bitmap', conversion.scale_temp),
-                        'P11_TURNON': (55, 1, 'Port 11 Turn-on register', conversion.scale_temp),
-                        'P11_HEALTH': (56, 1, 'Port 11 Health bitmap', conversion.scale_temp),
-                        'P12_TURNON': (57, 1, 'Port 12 Turn-on register', conversion.scale_temp),
-                        'P12_HEALTH': (58, 1, 'Port 12 Health bitmap', conversion.scale_temp),
-
-}
-
-FNDH_REGISTERS_1 = {}
-
-
-# Dicts with register version number as key, and a dict of registers (defined above) as value
-SMARTBOX_REGISTERS = {1: SMARTBOX_REGISTERS_1}
-FNDH_REGISTERS = {1: FNDH_REGISTERS_1}
 
 
 class ModbusSlave(object):
@@ -96,27 +27,11 @@ class ModbusSlave(object):
         self.register_map = {}
 
 
-class SMARTbox(ModbusSlave):
-    def __init__(self, conn=None):
-        ModbusSlave.__init__(self, conn=conn, station=None)
-
-    def get_register_map(self):
-        """Get the contents of register 1 from the device (the register map revision number), and use it
-           to look up the relevant register map
-        """
-        reslist = self.conn.readReg(sock=self.conn, station=self.station, regnum=1)
-        if reslist:
-            self.reg_version = reslist[0] * 256 + reslist[1]
-        else:
-            return
-
-        self.register_map = SMARTBOX_REGISTERS[self.reg_version]
-
-
 class Connection(object):
     def __init__(self, hostname, port=5000):
         self.sock = None
         self.open_socket(hostname=hostname, port=port)
+        self.lock = threading.RLock()
 
     def open_socket(self, hostname, port=1234):
         """
@@ -126,14 +41,14 @@ class Connection(object):
         :param port: port number
         """
         try:
-            # Open TCP connect to port 1234 of GPIB-ETHERNET
+            # Open TCP connect to specified port on the specified WIZNet board in the FNDH
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
             self.sock.settimeout(0.1)
             self.sock.connect((hostname, port))
         except socket.error:
             logging.exception('Error opening socket to %s' % hostname)
 
-    def send(self, message):
+    def send_as_master(self, message):
         """
         Calculate the CRC and send it and the message (a list of bytes) to the socket 'sock'.
         Return a bytelist containing any valid reply (without the CRC), or 'False' if there was no
@@ -142,30 +57,31 @@ class Connection(object):
         :param message: A list of bytes, each in the range 0-255
         :return: A list of bytes, each in the range 0-255, or False if no valid reply was received
         """
-        message += getcrc(message)
-        time.sleep(PACKET_WINDOW_TIME)
-        self.sock.send(bytes(message))
-        time.sleep(PACKET_WINDOW_TIME)
-        replist = []
+        with self.lock:
+            message += getcrc(message)
+            time.sleep(PACKET_WINDOW_TIME)
+            self.sock.send(bytes(message))
+            time.sleep(PACKET_WINDOW_TIME)
+            replist = []
 
-        stime = time.time()
-        # Wait until the timeout trips, or until we have a packet with a valid CRC checksum
-        while (time.time() - stime < TIMEOUT) and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
-            try:
-                reply = self.sock.recv(2)
-                replist += list(map(int, reply))
-            except socket.timeout:
-                pass
-            except:
-                logger.exception('Exception in sock.recv()')
+            stime = time.time()
+            # Wait until the timeout trips, or until we have a packet with a valid CRC checksum
+            while (time.time() - stime < TIMEOUT) and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
+                try:
+                    reply = self.sock.recv(2)
+                    replist += list(map(int, reply))
+                except socket.timeout:
+                    pass
+                except:
+                    logger.exception('Exception in sock.recv()')
+                    return False
+
+            logger.debug("Recvd: %s" % str(replist))
+            if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
+                return replist[:-2]
+            else:
+                logger.error('No valid reply - raw data received: %s' % str(replist))
                 return False
-
-        logger.debug("Recvd: %s" % str(replist))
-        if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
-            return replist[:-2]
-        else:
-            logger.error('No valid reply - raw data received: %s' % str(replist))
-            return False
 
     def readReg(self, station, regnum, numreg=1):
         """
@@ -178,7 +94,7 @@ class Connection(object):
         """
 
         packet = [station, 0x03] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
-        reply = self.send(packet)
+        reply = self.send_as_master(packet)
 
         if not reply:
             return None
@@ -202,22 +118,33 @@ class Connection(object):
             errs += "Packet: %s\n" % str(reply)
             logger.error(errs)
             return None
-        return reply[3:]
+        blist = reply[3:]
+        return [(blist[i], blist[i+1]) for i in range(0, len(blist), 2)]
 
     def writeReg(self, station, regnum, value):
         """
-        Given a register number and a value (passed as an integer), write the data to the given register
+        Given a register number and a value, write the data to the given register
         in the given modbus station. Return True if the write succeeded, return False if the
         final register contents are not equal to the value written, and return None if there is any other error.
 
-        :param sock: A socket.socket object
+        If value is an integer, assume it's a 16-bit value and pass it as two bytes, MSB first (network byte order)
+        If value is a list of two integers, assume they are 8-bit bytes and pass them in the given order.
+
         :param station: MODBUS station number, 0-255
         :param regnum: Register number to read
-        :param value: An integer value to write to the (2-byte) register
+        :param value: An integer value to write to the (2-byte) register, or a list of two (8 bit) integers
         :return: True for success, False if there is an unexpected value in the reply, or None for any other error
         """
-        packet = [0x01, 0x06] + NtoBytes(regnum - 1, 2) + NtoBytes(value, 2)
-        reply = self.send(packet)
+        if type(value) == int:
+            valuelist = NtoBytes(value, 2)
+        elif (type(value) == list) and (len(value) == 2):
+            valuelist = value
+        else:
+            logger.error('Unexpected register value: %s' % value)
+            return False
+
+        packet = [0x01, 0x06] + NtoBytes(regnum - 1, 2) + valuelist
+        reply = self.send_as_master(packet)
         if not reply:
             return None
         if reply[0] != station:
@@ -244,26 +171,32 @@ class Connection(object):
             return False  # Value returned is not equal to value written
         return True
 
-    def writeMultReg(self, station, regnum, data):
+    def writeMultReg(self, station, regnum, valuelist):
         """
         Given a starting register number and a list of bytes, write the data to the given register
         in the given modbus station. Return True if the write succeeded, return False if the
         reply doesn't match the data written, and return None if there is any other error.
 
-        :param sock: A socket.socket object
         :param station: MODBUS station number, 0-255
         :param regnum: Register number to read
-        :param data: A list integer values (0-255) to write. To write to multiple consecutive registers, pass a list with more than 2 values
+        :param valuelist: A list of register values to write. To write to multiple consecutive registers, pass a list with
+                          more than 1 value. Each value can be a single integer (passed as a 16-bit value, MSB first), or
+                          a tuple of two integers (each 0-255).
         :return: True for success, False if there is an unexpected value in the reply, or None for any other error
         """
+        data = []
+        for value in valuelist:
+            if type(value) == int:
+                data += NtoBytes(value, 2)
+            elif (type(value) == list) and (len(value) == 2):
+                data += value
+            else:
+                logger.error('Unexpected register value: %s' % value)
+                return None
 
         rlen = len(data) // 2
-        if 2 * rlen != len(data):    # Not an even number of bytes to send (each register is 2 bytes)
-            logger.error('Must be an even number of bytes of data to write, not %d' % len(data))
-            return None
-
         packet = [station, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(rlen, 2) + NtoBytes(rlen * 2, 1) + data
-        reply = self.send(packet)
+        reply = self.send_as_master(packet)
         if not reply:
             return None
         if reply[0] != station:
@@ -311,7 +244,33 @@ def NtoBytes(value, nbytes=2):
     elif nbytes == 4:
         assert 0 <= value < 4294967296
         hw, lw = divmod(value, 65536)
-        return NtoBytes(hw, 2) + NtoBytes(lw, 2)
+        return list(divmod(hw, 256)) + list(divmod(lw, 256))
+
+
+def bytestoN(valuelist):
+    """
+    Given a list or tuple of integers, or a list of tuples, in network order (MSB first), convert to an integer.
+
+    :param valuelist: A list of integers, or tuple of two integers, or a list of tuples of two integers
+    :return: An integer
+    """
+    data = []
+    for value in valuelist:
+        if type(value) == int:
+            data.append(value)
+        elif (type(value) == list) and (len(value) == 2):
+            data += value
+        else:
+            logger.error('Unexpected value: %s' % value)
+            return None
+
+    nbytes = len(data)
+    if nbytes != 2 * (nbytes // 2):
+        logger.error('Odd number of bytes to convert: %s' % valuelist)
+        return None
+
+    return sum([data[i] * (256 ** (nbytes - i - 1)) for i in range(nbytes)])
+
 
 
 def getcrc(message=None):
@@ -333,3 +292,25 @@ def getcrc(message=None):
             if b:
                 crc = crc ^ 0xA001
     return [(crc & 0x00FF), ((crc >> 8) & 0x00FF)]
+
+"""
+        self.mbrv = transport.bytestoN(bytelist[0])
+        self.pcbrv = transport.bytestoN(bytelist[1])
+        self.register_map = SMARTBOX_REGISTERS[self.mbrv]
+        self.codes = SMARTBOX_CODES[self.mbrv]
+        self.cpuid = ''
+        self.chipid = []
+        self.firmware_version = 0
+        self.uptime = 0
+        self.station_value = 0
+        self.incoming_voltage = 0.0
+        self.psu_voltage = 0.0
+        self.psu_temp = 0.0
+        self.pcb_temp = 0.0
+        self.outside_temp = 0.0
+        self.statuscode = 0
+        self.status = ''
+        self.service_led = None
+        self.indicator_code = None
+        self.indicator_state = ''
+"""
