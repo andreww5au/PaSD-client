@@ -93,21 +93,20 @@ SMARTBox at address: %(station)s:
     CPU ID: %(cpuid)s
     CHIP ID: %(chipid)s
     Firmware revision: %(firmware_version)s
-    Uptime: %(uptime)s
+    Uptime: %(uptime)s seconds
     R.Address: %(station_value)s
-(incoming_voltage)
-(psu_voltage)
-(psu_temp)
-(pcb_temp)
-(outside_temp)
-(statuscode)
-(status)
-(service_led)
-(indicator_code)
-(indicator_state)
+    48V In: %(incoming_voltage)s V
+    5V out: %(psu_voltage)s V
+    PSU Temp: %(psu_temp)s deg C
+    PCB Temp: %(pcb_temp)s deg C
+    Outside Temp: %(outside_temp)s deg C
+    Status: %(statuscode)s (%(status)s)
+    Service LED ON: %(service_led)s
+    Indicator %(indicator_code)s (%(indicator_state)s)
 """
 
-class Port_Status(object):
+
+class PortStatus(object):
     def __init__(self, port_number, status_bitmap, current, read_timestamp):
         """
         Given a 16 bit integer bitwise state (from a PNN_STATE register), instantiate a port status instance
@@ -272,10 +271,10 @@ class SMARTbox(transport.ModbusSlave):
 
         self.ports = {}
         for pnum in range(1, 12):
-            self.ports[pnum] = Port_Status(port_number=pnum, status_bitmap=0, current=0, read_timestamp=None)
+            self.ports[pnum] = PortStatus(port_number=pnum, status_bitmap=0, current=0, read_timestamp=None)
 
     def __str__(self):
-
+        return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)]))
 
     def get_data(self):
         """
