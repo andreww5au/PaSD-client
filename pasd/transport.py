@@ -258,8 +258,8 @@ def bytestoN(valuelist):
     for value in valuelist:
         if type(value) == int:
             data.append(value)
-        elif (type(value) == list) and (len(value) == 2):
-            data += value
+        elif (type(value) == tuple) and (len(value) == 2):
+            data += list(value)
         else:
             logger.error('Unexpected value: %s' % value)
             return None
