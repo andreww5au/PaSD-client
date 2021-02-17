@@ -241,8 +241,8 @@ class PortStatus(object):
 
 
 class SMARTbox(transport.ModbusSlave):
-    def __init__(self, conn=None):
-        transport.ModbusSlave.__init__(self, conn=conn, station=None)
+    def __init__(self, conn=None, station=None):
+        transport.ModbusSlave.__init__(self, conn=conn, station=station)
 
         self.mbrv = None
         self.pcbrv = None
