@@ -165,7 +165,7 @@ class PortStatus(object):
 
     def set_status_data(self, status_bitmap, read_timestamp):
         self.status_timestamp = read_timestamp
-        bitstring = bin(status_bitmap)[2:]
+        bitstring = "{:016b}".format(status_bitmap)
         self.system_level_enabled = (bitstring[0] == '1')   # read only
         self.system_online = (bitstring[1] == '1')   # read only
 
