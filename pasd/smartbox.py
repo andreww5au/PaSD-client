@@ -301,7 +301,7 @@ class SMARTbox(transport.ModbusSlave):
                 raw_int = transport.bytestoN(raw_value)
             if scalefunc:
                 scaled_float = scalefunc(raw_int, self.pcbrv)
-
+            print(regname, raw_value, raw_int, scaled_float)
             # Go through all the registers and update the instance data.
             if regname == 'SYS_CPUID':
                 self.cpuid = hex(raw_int)
