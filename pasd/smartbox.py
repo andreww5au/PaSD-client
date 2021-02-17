@@ -270,7 +270,7 @@ class SMARTbox(transport.ModbusSlave):
         self.indicator_state = ''
 
         self.ports = {}
-        for pnum in range(1, 12):
+        for pnum in range(1, 13):
             self.ports[pnum] = PortStatus(port_number=pnum, status_bitmap=0, current=0, read_timestamp=None)
 
     def __str__(self):
@@ -297,7 +297,7 @@ class SMARTbox(transport.ModbusSlave):
             raw_value = bytelist[regnum - 1:regnum + numreg - 2]
             raw_int = None
             scaled_float = None
-            if regnum <= 2:
+            if numreg <= 2:
                 raw_int = transport.bytestoN(raw_value)
             if scalefunc:
                 scaled_float = scalefunc(raw_int, self.pcbrv)
