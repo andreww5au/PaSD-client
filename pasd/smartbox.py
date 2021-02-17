@@ -331,7 +331,7 @@ class SMARTbox(transport.ModbusSlave):
                 self.indicator_code = raw_value[1]
                 self.indicator_state = self.codes['leds']['fromid'][self.indicator_code]
             elif (len(regname) >= 12) and ((regname[:7] + regname[-4:]) == 'SYS_FEMTEMP'):
-                fem_num = int(regname[7:9])
+                fem_num = int(regname[7:-4])
                 self.fem_temps[fem_num] = scaled_float
             elif (len(regname) >= 8) and ((regname[0] + regname[-6:]) == 'P_STATE'):
                 pnum = int(regname[1:-6])
