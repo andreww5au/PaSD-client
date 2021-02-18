@@ -4,6 +4,7 @@
    up an SKA-Low station.
 """
 
+import json
 import logging
 import time
 
@@ -35,15 +36,15 @@ SMARTBOX_REGISTERS_1 = {  # These initial registers will be assumed to be fixed,
                         'SYS_LIGHTS':  (23, 1, 'LED state codes', None),
 
                         # Note - only a few of these FEM enclosure temps will return valid data
-                        'SYS_FEM1TEMP': (24, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM2TEMP': (25, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM3TEMP': (26, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM4TEMP': (27, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM5TEMP': (28, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM6TEMP': (29, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM7TEMP': (30, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM8TEMP': (31, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM9TEMP': (32, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM01TEMP': (24, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM02TEMP': (25, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM03TEMP': (26, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM04TEMP': (27, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM05TEMP': (28, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM06TEMP': (29, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM07TEMP': (30, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM08TEMP': (31, 1, 'FEM Temperature', conversion.scale_temp),
+                        'SYS_FEM09TEMP': (32, 1, 'FEM Temperature', conversion.scale_temp),
                         'SYS_FEM10TEMP': (33, 1, 'FEM Temperature', conversion.scale_temp),
                         'SYS_FEM11TEMP': (34, 1, 'FEM Temperature', conversion.scale_temp),
                         'SYS_FEM12TEMP': (35, 1, 'FEM Temperature', conversion.scale_temp),
@@ -75,20 +76,22 @@ SMARTBOX_REGISTERS_1 = {  # These initial registers will be assumed to be fixed,
                         'P12_CURRENT': (59, 1, 'Port 12 current', conversion.scale_current),
 
                         # System threshold configuration registers (not polled)
+                        # Note that SYS_48V_V_TH must always be in the first register of the configuration block,
+                        #      because it's used to set the starting register for the block-write.
                         'SYS_48V_V_TH': (1001, 4, 'Incoming 48VDC voltage CH, CL, WH, WL', conversion.scale_48v),
                         'SYS_PSU_V_TH': (1005, 4, 'PSU output voltage CH, CL, WH, WL', conversion.scale_5v),
                         'SYS_PSUTEMP_TH': (1009, 4, 'PSU temperature CH, CL, WH, WL', conversion.scale_temp),
                         'SYS_PCBTEMP_TH': (1013, 4, 'PCB temperature CH, CL, WH, WL', conversion.scale_temp),
                         'SYS_OUTTEMP_TH': (1017, 4, 'Outside temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM1TEMP_TH': (1021, 4, 'FEM 1 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM2TEMP_TH': (1025, 4, 'FEM 2 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM3TEMP_TH': (1029, 4, 'FEM 3 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM4TEMP_TH': (1033, 4, 'FEM 4 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM5TEMP_TH': (1037, 4, 'FEM 5 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM6TEMP_TH': (1041, 4, 'FEM 6 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM7TEMP_TH': (1045, 4, 'FEM 7 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM8TEMP_TH': (1049, 4, 'FEM 8 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM9TEMP_TH': (1053, 4, 'FEM 9 temperature CH, CL, WH, WL', conversion.scale_temp),
+                        'SYS_FEM01TEMP_TH': (1021, 4, 'FEM 1 temperature CH, CL, WH, WL', conversion.scale_temp),
+                        'SYS_FEM02TEMP_TH': (1025, 4, 'FEM 2 temperature CH, CL, WH, WL', conversion.scale_temp),
+                        'SYS_FEM03TEMP_TH': (1029, 4, 'FEM 3 temperature CH, CL, WH, WL', conversion.scale_temp),
+                        'SYS_FEM04TEMP_TH': (1033, 4, 'FEM 4 temperature CH, CL, WH, WL', conversion.scale_temp),
+                        'SYS_FEM05TEMP_TH': (1037, 4, 'FEM 5 temperature CH, CL, WH, WL', conversion.scale_temp),
+                        'SYS_FEM06TEMP_TH': (1041, 4, 'FEM 6 temperature CH, CL, WH, WL', conversion.scale_temp),
+                        'SYS_FEM07TEMP_TH': (1045, 4, 'FEM 7 temperature CH, CL, WH, WL', conversion.scale_temp),
+                        'SYS_FEM08TEMP_TH': (1049, 4, 'FEM 8 temperature CH, CL, WH, WL', conversion.scale_temp),
+                        'SYS_FEM09TEMP_TH': (1053, 4, 'FEM 9 temperature CH, CL, WH, WL', conversion.scale_temp),
                         'SYS_FEM10TEMP_TH': (1057, 4, 'FEM 10 temperature CH, CL, WH, WL', conversion.scale_temp),
                         'SYS_FEM11TEMP_TH': (1061, 4, 'FEM 11 temperature CH, CL, WH, WL', conversion.scale_temp),
                         'SYS_FEM12TEMP_TH': (1065, 4, 'FEM 12 temperature CH, CL, WH, WL', conversion.scale_temp),
@@ -107,6 +110,8 @@ SMARTBOX_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOV
 SMARTBOX_REGISTERS = {1: SMARTBOX_REGISTERS_1}
 SMARTBOX_CODES = {1: SMARTBOX_CODES_1}
 
+THRESHOLD_FILENAME = 'smartbox_thresholds.json'
+PORTCONFIG_FILENAME = 'smartbox_ports.json'
 
 STATUS_STRING = """\
 SMARTBox at address: %(station)s:
@@ -233,23 +238,37 @@ class PortStatus(object):
         # Power state - read only
         self.power_state = (bitstring[9] == '1')
 
-    def status_to_integer(self):
+    def status_to_integer(self, write_state=False, write_to=False, write_breaker=False):
         """Return a 16 bit integer corresponding to the instance data.
+
+           If 'write_state' is True, then the 'desired_state_online' and 'desired_state_offline' will have bitfields
+           corresponding to the current instance data, otherwise they will contain '00' (meaning 'do not overwrite').
+
+           If 'write_to' is True, then the 'technicians override' bits will have bitfields corresponding to the
+           current instance data (locally_forced_on and locally_forced_off), otherwise they will contain '00'
+
+           If 'write_breaker' is True, then the bit corresponding to the 'reset breaker' action will be 1, otherwise
+           it will contain 0 (do not reset the breaker).
+
+           :param write_state: boolean - overwrite current desired_state_online and desired_state_offline fields
+           :param write_to: boolean - overwrite 'technicians local override' field
+           :param write_breaker - send a 1 in the 'reset breaker' field, otherwise send 0. Local instance data is
+                                  ignored for this field.
         """
         b = {True:'1', False:'0'}
         bitstring = b[self.system_level_enabled] + b[self.system_online]
 
-        if self.desire_enabled_online is None:
+        if (self.desire_enabled_online is None) or (not write_state):
             bitstring += '00'
         else:
             bitstring += '1' + b[self.desire_enabled_online]
 
-        if self.desire_enabled_offline is None:
+        if (self.desire_enabled_offline is None) or (not write_state):
             bitstring += '00'
         else:
             bitstring += '1' + b[self.desire_enabled_offline]
 
-        if (self.locally_forced_on is None) or (self.locally_forced_off is None):
+        if (self.locally_forced_on is None) or (self.locally_forced_off is None) or (not write_to):
             bitstring += '00'
         elif self.locally_forced_off:
             bitstring += '10'
@@ -258,7 +277,12 @@ class PortStatus(object):
         else:
             bitstring += '01'
 
-        bitstring += b[self.breaker_tripped] + b[self.power_state]
+        if write_breaker:   # If we're told to write the 'breaker reset' bit, ignore the local value
+            bitstring += '1'
+        else:
+            bitstring += '0'
+
+        bitstring += b[self.power_state]
         return int(bitstring, 2)
 
 
@@ -290,6 +314,15 @@ class SMARTbox(transport.ModbusSlave):
         self.service_led = None
         self.indicator_code = None
         self.indicator_state = ''
+        try:
+            self.thresholds = json.load(open(THRESHOLD_FILENAME, 'r'))
+        except Exception:
+            self.thresholds = None
+        try:
+            allports = json.load(open(PORTCONFIG_FILENAME, 'r'))
+            self.portconfig = allports[self.station]
+        except Exception:
+            self.portconfig = None
 
         self.ports = {}
         for pnum in range(1, 13):
@@ -361,3 +394,64 @@ class SMARTbox(transport.ModbusSlave):
             elif (len(regname) >= 10) and ((regname[0] + regname[-8:]) == 'P_CURRENT'):
                 pnum = int(regname[1:-8])
                 self.ports[pnum].set_current(current=scaled_float, read_timestamp=read_timestamp)
+
+    def write_thresholds(self):
+        """
+        Write the ADC threshold data (loaded on init from a JSON file into self.thresholds) to the SMARTbox.
+
+        :return: True if successful, False on failure, None if self.thresholds is empty
+        """
+        if self.thresholds is None:
+            return None
+
+        # Count how many system threshold registers there are, and create an empty list of register values
+        th_reglist = [regname for regname in self.register_map.keys() if regname.endswith('_TH')]
+        vlist = [0] * len(th_reglist) * 4
+
+        startreg = self.register_map['SYS_48V_V_TH'][0]  # This is guaranteed to be the first register in the polling block
+        for regname in th_reglist:
+            regnum, numreg, regdesc, scalefunc = self.register_map[regname]
+            values = self.thresholds[regname]
+            vlist[(regnum - startreg) * 4:(regnum - startreg) * 4 + 4] = values
+
+        res = self.conn.writeMultReg(station=self.station, regnum=startreg, valuelist=vlist)
+        if res:
+            return True
+        else:
+            return False
+
+    def write_portconfig(self):
+        """
+        Write the 'desired port state online' and 'desired port state offline' data (loaded from a JSON file into
+        self.portconfig) to the SMARTbox.
+
+        :return: True if successful, False on failure, None if self.portconfig is empty
+        """
+        if self.portconfig is None:
+            return None
+
+        vlist = [0] * 24
+        startreg = self.register_map['P01_STATE'][0]
+        for portnum in range(1, 13):
+            self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
+            self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
+            vlist[(portnum - 1) * 2] = self.ports[portnum].status_to_integer(write_state=True)
+
+        res = self.conn.writeMultReg(station=self.station, regnum=startreg, valuelist=vlist)
+        if res:
+            return True
+        else:
+            return False
+
+    def configure(self):
+        """
+        Write the threshold data, then if that succeeds, write a '1' to the status register to tell the micontroller to
+        transistion out of the 'UNINITIALISED' state.
+        :return: True for sucess
+        """
+        ok = self.write_thresholds()
+        stillok = self.write_portconfig()
+        if ok and stillok:
+            return self.conn.writeReg(station=self.station, regnum=self.register_map['SYS_STATUS'][0], value=1)
+        else:
+            return False
