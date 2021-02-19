@@ -337,7 +337,7 @@ class SMARTbox(transport.ModbusSlave):
 
         :return:
         """
-        bytelist = self.conn.readReg(station=self.station, regnum=1, numreg=58)
+        bytelist = self.conn.readReg(station=self.station, regnum=1, numreg=59)   # TODO - calculate this value
         read_timestamp = time.time()
         if not bytelist:
             return False
@@ -350,13 +350,14 @@ class SMARTbox(transport.ModbusSlave):
         for regname in self.register_map.keys():  # Iterate over all the register names in the current register map
             regnum, numreg, regdesc, scalefunc = self.register_map[regname]
             raw_value = bytelist[regnum - 1:regnum + numreg - 1]
+            print('%s: %s' % (regname, raw_value))
             raw_int = None
             scaled_float = None
             if numreg <= 2:
                 raw_int = transport.bytestoN(raw_value)
             if scalefunc:
                 scaled_float = scalefunc(raw_int, self.pcbrv)
-            print(regname, raw_value, raw_int, scaled_float)
+            print("    int=%d, float=%f"  % (raw_int, scaled_float))
             # Go through all the registers and update the instance data.
             if regname == 'SYS_CPUID':
                 self.cpuid = hex(raw_int)
