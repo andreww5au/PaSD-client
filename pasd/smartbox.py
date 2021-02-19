@@ -349,6 +349,8 @@ class SMARTbox(transport.ModbusSlave):
         self.fem_temps = {}  # Dictionary with FEM number (1-12) as key, and temperature as value
         for regname in self.register_map.keys():  # Iterate over all the register names in the current register map
             regnum, numreg, regdesc, scalefunc = self.register_map[regname]
+            if regnum > 59:    # TODO - calculate this value
+                continue    # Skip the configuration registers, as they aren't in polled data.
             raw_value = bytelist[regnum - 1:regnum + numreg - 1]
             print('%s: %s' % (regname, raw_value))
             raw_int = None
