@@ -128,8 +128,8 @@ SMARTBox at address: %(station)s:
     PCB Temp: %(pcb_temp)s deg C
     Outside Temp: %(outside_temp)s deg C
     Status: %(statuscode)s (%(status)s)
-    Service LED ON: %(service_led)s
-    Indicator %(indicator_code)s (%(indicator_state)s)
+    Service LED: %(service_led)s
+    Indicator: %(indicator_code)s (%(indicator_state)s)
 """
 
 
@@ -282,6 +282,7 @@ class PortStatus(object):
         else:
             bitstring += '0'
 
+        bitstring += '000000'  # pad to 16 bits
         bitstring += b[self.power_state]
         return int(bitstring, 2)
 
@@ -352,14 +353,14 @@ class SMARTbox(transport.ModbusSlave):
             if regnum > 59:    # TODO - calculate this value
                 continue    # Skip the configuration registers, as they aren't in polled data.
             raw_value = bytelist[regnum - 1:regnum + numreg - 1]
-            print('%s: %s' % (regname, raw_value))
+            # print('%s: %s' % (regname, raw_value))
             raw_int = None
             scaled_float = None
             if numreg <= 2:
                 raw_int = transport.bytestoN(raw_value)
             if scalefunc:
                 scaled_float = scalefunc(raw_int, self.pcbrv)
-            print("    int=%s, float=%s"  % (raw_int, scaled_float))
+            # print("    int=%s, float=%s"  % (raw_int, scaled_float))
             # Go through all the registers and update the instance data.
             if regname == 'SYS_CPUID':
                 self.cpuid = hex(raw_int)
