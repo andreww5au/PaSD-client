@@ -134,7 +134,7 @@ SMARTBox at address: %(station)s:
 
 
 class PortStatus(object):
-    def __init__(self, port_number, status_bitmap, current, read_timestamp):
+    def __init__(self, port_number, status_bitmap, current_raw, current, read_timestamp):
         """
         Given a 16 bit integer bitwise state (from a PNN_STATE register), instantiate a port status instance
 
@@ -144,6 +144,7 @@ class PortStatus(object):
         self.port_number = port_number
         self.status_timestamp = None
         self.current_timestamp = None
+        self.current_raw = 0
         self.current = 0.0
         self.status_timestamp = read_timestamp
         self.system_level_enabled = None
@@ -155,7 +156,7 @@ class PortStatus(object):
         self.breaker_tripped = None
         self.power_state = None
 
-        self.set_current(current, read_timestamp=read_timestamp)
+        self.set_current(current_raw, current, read_timestamp=read_timestamp)
         self.set_status_data(status_bitmap, read_timestamp=read_timestamp)
 
     def __str__(self):
@@ -186,8 +187,9 @@ class PortStatus(object):
 
         return "P%02d: %s %s" % (self.port_number, current_string, status_string)
 
-    def set_current(self, current, read_timestamp):
+    def set_current(self, current_raw, current, read_timestamp):
         self.current_timestamp = read_timestamp
+        self.current_raw = current_raw
         self.current = current
 
     def set_status_data(self, status_bitmap, read_timestamp):
@@ -327,7 +329,7 @@ class SMARTbox(transport.ModbusSlave):
 
         self.ports = {}
         for pnum in range(1, 13):
-            self.ports[pnum] = PortStatus(port_number=pnum, status_bitmap=0, current=0, read_timestamp=None)
+            self.ports[pnum] = PortStatus(port_number=pnum, status_bitmap=0, current_raw=0, current=0, read_timestamp=None)
 
     def __str__(self):
         return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)]))
@@ -397,7 +399,7 @@ class SMARTbox(transport.ModbusSlave):
                 self.ports[pnum].set_status_data(status_bitmap=raw_int, read_timestamp=read_timestamp)
             elif (len(regname) >= 10) and ((regname[0] + regname[-8:]) == 'P_CURRENT'):
                 pnum = int(regname[1:-8])
-                self.ports[pnum].set_current(current=scaled_float, read_timestamp=read_timestamp)
+                self.ports[pnum].set_current(current_raw=raw_int, current=scaled_float, read_timestamp=read_timestamp)
 
     def write_thresholds(self):
         """
@@ -435,6 +437,7 @@ class SMARTbox(transport.ModbusSlave):
         startreg = self.register_map['P01_STATE'][0]
         for portnum in range(1, 13):
             vlist[(portnum - 1) * 2] = self.ports[portnum].status_to_integer(write_state=True)
+            vlist[(portnum - 1) * 2 + 1] = self.ports[portnum].current_raw
 
         res = self.conn.writeMultReg(station=self.station, regnum=startreg, valuelist=vlist)
         if res:
