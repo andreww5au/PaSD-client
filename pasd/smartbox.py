@@ -431,14 +431,9 @@ class SMARTbox(transport.ModbusSlave):
 
         :return: True if successful, False on failure, None if self.portconfig is empty
         """
-        if self.portconfig is None:
-            return None
-
         vlist = [0] * 24
         startreg = self.register_map['P01_STATE'][0]
         for portnum in range(1, 13):
-            self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
-            self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
             vlist[(portnum - 1) * 2] = self.ports[portnum].status_to_integer(write_state=True)
 
         res = self.conn.writeMultReg(station=self.station, regnum=startreg, valuelist=vlist)
@@ -449,13 +444,27 @@ class SMARTbox(transport.ModbusSlave):
 
     def configure(self):
         """
-        Write the threshold data, then if that succeeds, write a '1' to the status register to tell the micontroller to
+        Write the threshold data from the config file, and write it to the SMARTbox.
+
+        Then if that succeeds, read the port configuration (desired state online, desired state offline) from the config
+        file, and write it to the SMARTbox.
+
+        Then, if that succeeds, write a '1' to the status register to tell the micontroller to
         transistion out of the 'UNINITIALISED' state.
+
         :return: True for sucess
         """
         ok = self.write_thresholds()
-        stillok = self.write_portconfig()
-        if ok and stillok:
-            return self.conn.writeReg(station=self.station, regnum=self.register_map['SYS_STATUS'][0], value=1)
+
+        if ok:
+            for portnum in range(1, 13):
+                self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
+                self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
+            ok = self.write_portconfig()
+            if ok:
+                return self.conn.writeReg(station=self.station, regnum=self.register_map['SYS_STATUS'][0], value=1)
+            else:
+                logger.error('Could not load and write port state configuration.')
         else:
-            return False
+            logger.error('Could not laod and write threshold data.')
+        return False
