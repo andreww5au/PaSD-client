@@ -13,7 +13,7 @@ logger.level = logging.DEBUG
 PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
 TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
 
-SLAVE_STATION_ADDRESS = 63   # Address that technician's SID devices use to reach the MCCS as a slave device
+SLAVE_MODBUS_ADDRESS = 63   # Address that technician's SID devices use to reach the MCCS as a slave device
 
 
 class ModbusSlave(object):
@@ -22,9 +22,9 @@ class ModbusSlave(object):
 
     Child objects will be SMARTbox units themselves, and the FNDH controller.
     """
-    def __init__(self, conn=None, station=None):
+    def __init__(self, conn=None, modbus_address=None):
         self.conn = conn
-        self.station = station
+        self.modbus_address = modbus_address
         self.reg_version = None
         self.register_map = {}
 
@@ -52,7 +52,7 @@ class Connection(object):
 
     def send_as_master(self, message):
         """
-        Calculate the CRC and send it and the message (a list of bytes) to the socket 'sock'.
+        Calculate the CRC and send it and the message (a list of bytes) to the socket 'self.sock'.
         Return a bytelist containing any valid reply (without the CRC), or 'False' if there was no
         reply within TIMEOUT seconds, or if the reply had an invalid CRC.
 
@@ -85,6 +85,20 @@ class Connection(object):
                 logger.error('No valid reply - raw data received: %s' % str(replist))
                 return False
 
+    def send_reply(self, message):
+        """
+        Calculate the CRC and send it and the message (a list of bytes) to the socket 'self.sock'.
+        Do not wait for a reply, because this _is_ a reply.
+
+        :param message: A list of bytes, each in the range 0-255
+        :return: None
+        """
+        with self.lock:
+            message += getcrc(message)
+            time.sleep(PACKET_WINDOW_TIME)
+            self.sock.send(bytes(message))
+            time.sleep(PACKET_WINDOW_TIME)
+
     def listen(self, slave_registers, maxtime=10.0):
         """
         Listen on the socket for incoming read/write register packets sent by an external bus master (eg, a technician
@@ -94,50 +108,103 @@ class Connection(object):
         :param slave_registers: A dictionary with register number (1-9999) as the key, and an integer (0-65535) as the
                                 value.
         :param maxtime: Maximum time to listen for, in seconds.
-        :return:
+        :return: A set containing all the register numbers that were written to during this call to listen().
         """
         start_time = time.time()
+        written_set = set()   # A set containing all the register numbers that were written to during this call
         with self.lock:
             while (time.time() - start_time) < maxtime:  # Get another packet, if we haven't run out of time
                 msglist = []  # Start a new packet
+                packet_start_time = start_time + maxtime - TIMEOUT  # Don't wait after 'maxtime' for a new packet
                 # Wait until the timeout trips, or until we have a full packet with a valid CRC checksum
-                while (time.time() - start_time < maxtime) and ((len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
+                while (time.time() - packet_start_time) < TIMEOUT and ((len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
                     try:
                         data = self.sock.recv(2)
                         msglist += list(map(int, data))
+                        if len(msglist) == 2:
+                            packet_start_time = time.time()
                     except socket.timeout:
                         pass
                     except:
                         logger.exception('Exception in sock.recv()')
                         return False
 
-                    # Handle the packet contents here
-                    if msglist[0] != SLAVE_STATION_ADDRESS:
-                        logger.info('Packet received addressed to station %d' % msglist[0])
-                        continue
+                if ((len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
+                    logger.warning('Packet fragment received: %s' % msglist)
+                    continue    # Discard this packet fragment, keep waiting for a new valid packet
 
-                    if msglist[1] == 0x03:   # Reading a register
-                        regnum = msglist[2] * 256 + msglist[3]
-                        numreg = msglist[4] * 256 + msglist[5]
+                # Handle the packet contents here
+                if msglist[0] != SLAVE_MODBUS_ADDRESS:
+                    logger.info('Packet received, but it was addressed to station %d' % msglist[0])
+                    continue
 
+                if msglist[1] == 0x03:   # Reading a register
+                    regnum = msglist[2] * 256 + msglist[3]
+                    numreg = msglist[4] * 256 + msglist[5]
+                    replylist = [SLAVE_MODBUS_ADDRESS, 0x03]
+                    for r in range(regnum, regnum + numreg):   # Iterate over all requested registers
+                        if r not in slave_registers:
+                            replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x02]  # 0x02 is 'Illegal Data Address'
+                            self.send_reply(replylist)
+                            logger.error('Reading register %d not allowed, returned exception packet %s' % (r, replylist))
+                            continue
+                        else:
+                            replylist.append(NtoBytes(slave_registers[r], 2))
+                    self.send_reply(replylist)
+                elif msglist[1] == 0x06:  # Writing a single register
+                    regnum = msglist[2] * 256 + msglist[3]
+                    value = msglist[4] * 256 + msglist[5]
+                    if regnum in slave_registers:
+                        slave_registers[regnum] = value
+                        replylist = msglist[:-2]   # For success, reply with the same packet: CRC re-added in send_reply()
+                        written_set.add(regnum)
+                    else:
+                        replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x02]   # 0x02 is 'Illegal Data Address'
+                        logger.error('Writing register %d not allowed, returned exception packet %s.' % (r, replylist))
+                    self.send_reply(replylist)
+                elif msglist[1] == 0x10:  # Writing multiple registers
+                    regnum = msglist[2] * 256 + msglist[3]
+                    numreg = msglist[4] * 256 + msglist[5]
+                    numbytes = msglist[6]
+                    bytelist = msglist[7:-2]
 
-    def readReg(self, station, regnum, numreg=1):
+                    assert len(bytelist) == numbytes == (numreg // 2)
+                    for r in range(regnum, regnum + numreg):
+                        if r not in slave_registers:
+                            replylist = [SLAVE_MODBUS_ADDRESS, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
+                            self.send_reply(replylist)
+                            logger.error('Writing register %d not allowed, returned exception packet %s.' % (r, replylist))
+                            continue
+                        else:
+                            value = bytelist[0] * 256 + bytelist[1]
+                            bytelist = bytelist[2:]   # Use, then pop off, the first two bytes
+                            slave_registers[r] = value
+                            written_set.add(r)
+                    replylist = [SLAVE_MODBUS_ADDRESS, 0x10] + NtoBytes(regnum, 2) + NtoBytes(numreg, 2)
+                    self.send_reply(replylist)
+                else:
+                    logger.error('Received modbus packet for function %d - not supported.' % msglist[1])
+                    replylist = [SLAVE_MODBUS_ADDRESS, msglist[1] + 0x80, 0x01]
+                    self.send_reply(replylist)
+        return written_set
+
+    def readReg(self, modbus_address, regnum, numreg=1):
         """
         Given a register number, return the raw register contents as a list of bytes.
 
-        :param station: MODBUS station number, 0-255
+        :param modbus_address: MODBUS station number, 0-255
         :param regnum: Register number to read
         :param numreg: Number of registers to read (default 1)
         :return: A list of integers, each 0-255
         """
 
-        packet = [station, 0x03] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
+        packet = [modbus_address, 0x03] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
         reply = self.send_as_master(packet)
 
         if not reply:
             return None
-        if reply[0] != station:
-            errs = "Sent to station %d, but station %d responded.\n" % (station, reply[0])
+        if reply[0] != modbus_address:
+            errs = "Sent to station %d, but station %d responded.\n" % (modbus_address, reply[0])
             errs += "Packet: %s\n" % str(reply)
             logger.error(errs)
             return None
@@ -159,7 +226,7 @@ class Connection(object):
         blist = reply[3:]
         return [(blist[i], blist[i+1]) for i in range(0, len(blist), 2)]
 
-    def writeReg(self, station, regnum, value):
+    def writeReg(self, modbus_address, regnum, value):
         """
         Given a register number and a value, write the data to the given register
         in the given modbus station. Return True if the write succeeded, return False if the
@@ -168,7 +235,7 @@ class Connection(object):
         If value is an integer, assume it's a 16-bit value and pass it as two bytes, MSB first (network byte order)
         If value is a list of two integers, assume they are 8-bit bytes and pass them in the given order.
 
-        :param station: MODBUS station number, 0-255
+        :param modbus_address: MODBUS station number, 0-255
         :param regnum: Register number to read
         :param value: An integer value to write to the (2-byte) register, or a list of two (8 bit) integers
         :return: True for success, False if there is an unexpected value in the reply, or None for any other error
@@ -185,8 +252,8 @@ class Connection(object):
         reply = self.send_as_master(packet)
         if not reply:
             return None
-        if reply[0] != station:
-            errs = "Sent to station %d, but station %d responded.\n" % (station, reply[0])
+        if reply[0] != modbus_address:
+            errs = "Sent to station %d, but station %d responded.\n" % (modbus_address, reply[0])
             errs += "Packet: %s\n" % str(reply)
             logger.error(errs)
             return None
@@ -209,13 +276,13 @@ class Connection(object):
             return False  # Value returned is not equal to value written
         return True
 
-    def writeMultReg(self, station, regnum, valuelist):
+    def writeMultReg(self, modbus_address, regnum, valuelist):
         """
         Given a starting register number and a list of bytes, write the data to the given register
         in the given modbus station. Return True if the write succeeded, return False if the
         reply doesn't match the data written, and return None if there is any other error.
 
-        :param station: MODBUS station number, 0-255
+        :param modbus_address: MODBUS station number, 0-255
         :param regnum: Register number to read
         :param valuelist: A list of register values to write. To write to multiple consecutive registers, pass a list with
                           more than 1 value. Each value can be a single integer (passed as a 16-bit value, MSB first), or
@@ -233,12 +300,12 @@ class Connection(object):
                 return None
 
         rlen = len(data) // 2
-        packet = [station, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(rlen, 2) + NtoBytes(rlen * 2, 1) + data
+        packet = [modbus_address, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(rlen, 2) + NtoBytes(rlen * 2, 1) + data
         reply = self.send_as_master(packet)
         if not reply:
             return None
-        if reply[0] != station:
-            errs = "Sent to station %d, but station %d responded.\n" % (station, reply[0])
+        if reply[0] != modbus_address:
+            errs = "Sent to station %d, but station %d responded.\n" % (modbus_address, reply[0])
             errs += "Packet: %s\n" % str(reply)
             logger.error(errs)
             return None
@@ -310,7 +377,6 @@ def bytestoN(valuelist):
     return sum([data[i] * (256 ** (nbytes - i - 1)) for i in range(nbytes)])
 
 
-
 def getcrc(message=None):
     """
     Calculate and returns the CRC bytes required for 'message' (a list of bytes).
@@ -330,25 +396,3 @@ def getcrc(message=None):
             if b:
                 crc = crc ^ 0xA001
     return [(crc & 0x00FF), ((crc >> 8) & 0x00FF)]
-
-"""
-        self.mbrv = transport.bytestoN(bytelist[0])
-        self.pcbrv = transport.bytestoN(bytelist[1])
-        self.register_map = SMARTBOX_REGISTERS[self.mbrv]
-        self.codes = SMARTBOX_CODES[self.mbrv]
-        self.cpuid = ''
-        self.chipid = []
-        self.firmware_version = 0
-        self.uptime = 0
-        self.station_value = 0
-        self.incoming_voltage = 0.0
-        self.psu_voltage = 0.0
-        self.psu_temp = 0.0
-        self.pcb_temp = 0.0
-        self.outside_temp = 0.0
-        self.statuscode = 0
-        self.status = ''
-        self.service_led = None
-        self.indicator_code = None
-        self.indicator_state = ''
-"""

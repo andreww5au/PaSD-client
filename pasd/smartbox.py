@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-"""Classes to handle communications with SKA-Low PaSD 'SMARTbox' elements, 24 of which make
+"""Classes to handle communications with an SKA-Low PaSD 'SMARTbox', 24 of which make
    up an SKA-Low station.
 """
 
@@ -291,8 +291,8 @@ class PortStatus(object):
 
 
 class SMARTbox(transport.ModbusSlave):
-    def __init__(self, conn=None, station=None):
-        transport.ModbusSlave.__init__(self, conn=conn, station=station)
+    def __init__(self, conn=None, modbus_address=None):
+        transport.ModbusSlave.__init__(self, conn=conn, modbus_address=modbus_address)
 
         self.mbrv = None
         self.pcbrv = None
@@ -324,7 +324,7 @@ class SMARTbox(transport.ModbusSlave):
             self.thresholds = None
         try:
             allports = json.load(open(PORTCONFIG_FILENAME, 'r'))
-            self.portconfig = allports[self.station]
+            self.portconfig = allports[self.modbus_address]
         except Exception:
             self.portconfig = None
 
@@ -346,7 +346,7 @@ class SMARTbox(transport.ModbusSlave):
         poll_blocksize = maxregnum + (self.register_map['POLL'][maxregname][1] - 1)  # number of registers to read
 
         # Get a list of tuples, where each tuple is a two-byte register value, eg (0,255)
-        valuelist = self.conn.readReg(station=self.station, regnum=1, numreg=poll_blocksize)
+        valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=poll_blocksize)
         read_timestamp = time.time()
         if not valuelist:
             return False
@@ -427,7 +427,7 @@ class SMARTbox(transport.ModbusSlave):
             values = self.thresholds[regname]
             vlist[(regnum - startreg) * 4:(regnum - startreg) * 4 + 4] = values
 
-        res = self.conn.writeMultReg(station=self.station, regnum=startreg, valuelist=vlist)
+        res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         if res:
             return True
         else:
@@ -446,7 +446,7 @@ class SMARTbox(transport.ModbusSlave):
             vlist[(portnum - 1) * 2] = self.ports[portnum].status_to_integer(write_state=True)
             vlist[(portnum - 1) * 2 + 1] = self.ports[portnum].current_raw
 
-        res = self.conn.writeMultReg(station=self.station, regnum=startreg, valuelist=vlist)
+        res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         if res:
             return True
         else:
@@ -482,7 +482,7 @@ class SMARTbox(transport.ModbusSlave):
                 self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
             ok = self.write_portconfig()
             if ok:
-                return self.conn.writeReg(station=self.station, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
+                return self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
             else:
                 logger.error('Could not load and write port state configuration.')
         else:

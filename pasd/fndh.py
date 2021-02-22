@@ -72,5 +72,5 @@ FNDH_CODES = {1: FNDH_CODES_1}
 
 
 class FNDH(transport.ModbusSlave):
-    def __init__(self, conn=None):
-        transport.ModbusSlave.__init__(self, conn=conn, station=None)
+    def __init__(self, conn=None, modbus_address=None):
+        transport.ModbusSlave.__init__(self, conn=conn, modbus_address=modbus_address)
