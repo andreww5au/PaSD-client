@@ -13,6 +13,8 @@ logger.level = logging.DEBUG
 PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
 TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
 
+SLAVE_STATION_ADDRESS = 63   # Address that technician's SID devices use to reach the MCCS as a slave device
+
 
 class ModbusSlave(object):
     """
@@ -82,6 +84,42 @@ class Connection(object):
             else:
                 logger.error('No valid reply - raw data received: %s' % str(replist))
                 return False
+
+    def listen(self, slave_registers, maxtime=10.0):
+        """
+        Listen on the socket for incoming read/write register packets sent by an external bus master (eg, a technician
+        in the field). Handle any read/write register calls by sending or modifying the contents of the registers passed
+        in the 'slave_registers' dictionary. Exit after 'maxtime' seconds.
+
+        :param slave_registers: A dictionary with register number (1-9999) as the key, and an integer (0-65535) as the
+                                value.
+        :param maxtime: Maximum time to listen for, in seconds.
+        :return:
+        """
+        start_time = time.time()
+        with self.lock:
+            while (time.time() - start_time) < maxtime:  # Get another packet, if we haven't run out of time
+                msglist = []  # Start a new packet
+                # Wait until the timeout trips, or until we have a full packet with a valid CRC checksum
+                while (time.time() - start_time < maxtime) and ((len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
+                    try:
+                        data = self.sock.recv(2)
+                        msglist += list(map(int, data))
+                    except socket.timeout:
+                        pass
+                    except:
+                        logger.exception('Exception in sock.recv()')
+                        return False
+
+                    # Handle the packet contents here
+                    if msglist[0] != SLAVE_STATION_ADDRESS:
+                        logger.info('Packet received addressed to station %d' % msglist[0])
+                        continue
+
+                    if msglist[1] == 0x03:   # Reading a register
+                        regnum = msglist[2] * 256 + msglist[3]
+                        numreg = msglist[4] * 256 + msglist[5]
+
 
     def readReg(self, station, regnum, numreg=1):
         """

@@ -17,7 +17,7 @@ import transport
 
 
 # Dicts with register name as key, and a tuple of (register_number, number_of_registers, name, scaling_function) as value
-SMARTBOX_REGISTERS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
+SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
                         'SYS_MBRV':    (1, 1, 'Modbus register map revision', None),
                         'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
                         'SYS_CPUID':   (3, 2, 'Microcontroller device ID', None),
@@ -74,10 +74,10 @@ SMARTBOX_REGISTERS_1 = {  # These initial registers will be assumed to be fixed,
                         'P11_CURRENT': (57, 1, 'Port 11 current', conversion.scale_current),
                         'P12_STATE': (58, 1, 'Port 12 state bitmap', None),
                         'P12_CURRENT': (59, 1, 'Port 12 current', conversion.scale_current),
+}
 
-                        # System threshold configuration registers (not polled)
-                        # Note that SYS_48V_V_TH must always be in the first register of the configuration block,
-                        #      because it's used to set the starting register for the block-write.
+# System threshold configuration registers (not polled)
+SMARTBOX_CONF_REGS_1 = {
                         'SYS_48V_V_TH': (101, 4, 'Incoming 48VDC voltage CH, CL, WH, WL', conversion.scale_48v),
                         'SYS_PSU_V_TH': (105, 4, 'PSU output voltage CH, CL, WH, WL', conversion.scale_5v),
                         'SYS_PSUTEMP_TH': (109, 4, 'PSU temperature CH, CL, WH, WL', conversion.scale_temp),
@@ -95,9 +95,7 @@ SMARTBOX_REGISTERS_1 = {  # These initial registers will be assumed to be fixed,
                         'SYS_FEM10TEMP_TH': (157, 4, 'FEM 10 temperature CH, CL, WH, WL', conversion.scale_temp),
                         'SYS_FEM11TEMP_TH': (161, 4, 'FEM 11 temperature CH, CL, WH, WL', conversion.scale_temp),
                         'SYS_FEM12TEMP_TH': (165, 4, 'FEM 12 temperature CH, CL, WH, WL', conversion.scale_temp),
-
-                        # Port current threshold configuration registers (not polled)
-
+                        # TODO - add port current threshold configuration registers (not polled)
 }
 
 SMARTBOX_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED'},
@@ -107,7 +105,7 @@ SMARTBOX_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOV
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
-SMARTBOX_REGISTERS = {1: SMARTBOX_REGISTERS_1}
+SMARTBOX_REGISTERS = {1: {'POLL':SMARTBOX_POLL_REGS_1, 'CONF':SMARTBOX_CONF_REGS_1}}
 SMARTBOX_CODES = {1: SMARTBOX_CODES_1}
 
 THRESHOLD_FILENAME = 'smartbox_thresholds.json'
@@ -186,6 +184,9 @@ class PortStatus(object):
             status_string = ' '.join(status_items)
 
         return "P%02d: %s %s" % (self.port_number, current_string, status_string)
+
+    def __repr__(self):
+        return str(self)
 
     def set_current(self, current_raw, current, read_timestamp):
         self.current_timestamp = read_timestamp
@@ -340,21 +341,24 @@ class SMARTbox(transport.ModbusSlave):
 
         :return:
         """
-        bytelist = self.conn.readReg(station=self.station, regnum=1, numreg=59)   # TODO - calculate this value
+        maxregnum = max([data[0] for data in self.register_map['POLL'].values()])
+        maxregname = [name for (name, data) in self.register_map['POLL'].items() if data[0] == maxregnum]
+        poll_blocksize = maxregnum + (self.register_map['POLL'][maxregname][1] - 1)  # number of registers to read
+
+        # Get a list of tuples, where each tuple is a two-byte register value, eg (0,255)
+        valuelist = self.conn.readReg(station=self.station, regnum=1, numreg=poll_blocksize)
         read_timestamp = time.time()
-        if not bytelist:
+        if not valuelist:
             return False
-        self.mbrv = transport.bytestoN(bytelist[0])
-        self.pcbrv = transport.bytestoN(bytelist[1])
+        self.mbrv = transport.bytestoN(valuelist[0])
+        self.pcbrv = transport.bytestoN(valuelist[1])
         self.register_map = SMARTBOX_REGISTERS[self.mbrv]
         self.codes = SMARTBOX_CODES[self.mbrv]
 
         self.fem_temps = {}  # Dictionary with FEM number (1-12) as key, and temperature as value
-        for regname in self.register_map.keys():  # Iterate over all the register names in the current register map
-            regnum, numreg, regdesc, scalefunc = self.register_map[regname]
-            if regnum > 59:    # TODO - calculate this value
-                continue    # Skip the configuration registers, as they aren't in polled data.
-            raw_value = bytelist[regnum - 1:regnum + numreg - 1]
+        for regname in self.register_map['POLL'].keys():  # Iterate over all the register names in the current register map
+            regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
+            raw_value = valuelist[regnum - 1:regnum + numreg - 1]
             # print('%s: %s' % (regname, raw_value))
             raw_int = None
             scaled_float = None
@@ -367,7 +371,10 @@ class SMARTbox(transport.ModbusSlave):
             if regname == 'SYS_CPUID':
                 self.cpuid = hex(raw_int)
             elif regname == 'SYS_CHIPID':
-                self.chipid = raw_value   # TODO - is it a string? a hex value?
+                bytelist = []
+                for byte_tuple in bytelist:
+                    bytelist += list(byte_tuple)
+                self.chipid = bytes(bytelist).decode('utf8')  # Convert the 16 bytes into a string
             elif regname == 'SYS_FIRMVER':
                 self.firmware_version = raw_int
             elif regname == 'SYS_UPTIME':
@@ -411,12 +418,12 @@ class SMARTbox(transport.ModbusSlave):
             return None
 
         # Count how many system threshold registers there are, and create an empty list of register values
-        th_reglist = [regname for regname in self.register_map.keys() if regname.endswith('_TH')]
-        vlist = [0] * len(th_reglist) * 4
+        conf_reglist = self.register_map['CONF'].keys()
+        vlist = [0] * len(conf_reglist) * 4
 
-        startreg = self.register_map['SYS_48V_V_TH'][0]  # This is guaranteed to be the first register in the polling block
-        for regname in th_reglist:
-            regnum, numreg, regdesc, scalefunc = self.register_map[regname]
+        startreg = self.register_map['CONF']['SYS_48V_V_TH'][0]  # This is guaranteed to be the first register in the polling block
+        for regname in conf_reglist:
+            regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
             values = self.thresholds[regname]
             vlist[(regnum - startreg) * 4:(regnum - startreg) * 4 + 4] = values
 
@@ -434,7 +441,7 @@ class SMARTbox(transport.ModbusSlave):
         :return: True if successful, False on failure, None if self.portconfig is empty
         """
         vlist = [0] * 24
-        startreg = self.register_map['P01_STATE'][0]
+        startreg = self.register_map['POLL']['P01_STATE'][0]
         for portnum in range(1, 13):
             vlist[(portnum - 1) * 2] = self.ports[portnum].status_to_integer(write_state=True)
             vlist[(portnum - 1) * 2 + 1] = self.ports[portnum].current_raw
@@ -445,7 +452,7 @@ class SMARTbox(transport.ModbusSlave):
         else:
             return False
 
-    def configure(self):
+    def configure(self, thresholds=None, portconfig=None):
         """
         Write the threshold data from the config file, and write it to the SMARTbox.
 
@@ -453,10 +460,20 @@ class SMARTbox(transport.ModbusSlave):
         file, and write it to the SMARTbox.
 
         Then, if that succeeds, write a '1' to the status register to tell the micontroller to
-        transistion out of the 'UNINITIALISED' state.
+        transition out of the 'UNINITIALISED' state.
 
+        :param thresholds: A dictionary containing the ADC thresholds to write to the SMARTbox. If none, use defaults
+                           from the JSON file specified in THRESHOLD_FILENAME
+        :param portconfig: A dictionary containing the port configuration data to write to the SMARTbox. If none, use
+                           defaults from the JSON file specified in PORTCONFIG_FILENAME
         :return: True for sucess
         """
+        if thresholds:
+            self.thresholds = thresholds
+
+        if portconfig:
+            self.portconfig = portconfig
+
         ok = self.write_thresholds()
 
         if ok:
@@ -465,7 +482,7 @@ class SMARTbox(transport.ModbusSlave):
                 self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
             ok = self.write_portconfig()
             if ok:
-                return self.conn.writeReg(station=self.station, regnum=self.register_map['SYS_STATUS'][0], value=1)
+                return self.conn.writeReg(station=self.station, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
             else:
                 logger.error('Could not load and write port state configuration.')
         else:
