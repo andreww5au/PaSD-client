@@ -15,7 +15,7 @@ import transport
 
 
 # Dicts with register name as key, and a tuple of (register_number, number_of_registers, name, scaling_function) as value
-FNDH_REGISTERS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
+FNDH_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
                         'SYS_MBRV':    (1, 1, 'Modbus register map revision', None),
                         'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
                         'SYS_CPUID':   (3, 2, 'Microcontroller device ID', None),
@@ -60,6 +60,10 @@ FNDH_REGISTERS_1 = {  # These initial registers will be assumed to be fixed, bet
                         'P12_HEALTH': (58, 1, 'Port 12 Health bitmap', conversion.scale_temp),
 }
 
+FNDH_CONF_REGS_1 = {
+
+}
+
 FNDH_CODES_1 = {'status':{'fromid':{0:'UNINITIALISED', 1:'OK', 2:'ALARM', 3:'WARNING', 4:'RECOVERY'},
                           'fromname':{'UNINITIALISED':0, 'OK':1, 'ALARM':2, 'WARNING':3, 'RECOVERY':4}},
                 'leds':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW'},
@@ -67,7 +71,7 @@ FNDH_CODES_1 = {'status':{'fromid':{0:'UNINITIALISED', 1:'OK', 2:'ALARM', 3:'WAR
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
-FNDH_REGISTERS = {1: FNDH_REGISTERS_1}
+FNDH_REGISTERS = {1: {'POLL':FNDH_POLL_REGS_1, 'CONF':FNDH_CONF_REGS_1}}
 FNDH_CODES = {1: FNDH_CODES_1}
 
 
