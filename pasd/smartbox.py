@@ -132,14 +132,20 @@ SMARTBox at address: %(station)s:
 
 
 class PortStatus(object):
-    def __init__(self, port_number, status_bitmap, current_raw, current, read_timestamp):
+    def __init__(self, port_number, modbus_address, status_bitmap, current_raw, current, read_timestamp):
         """
         Given a 16 bit integer bitwise state (from a PNN_STATE register), instantiate a port status instance
 
         :param port_number: integer, 1-12
+        :param modbus_address: Integers - the modbus station address of the SMARTbox that this port is in.
         :param status_bitmap: integer, 0-65535
+        :param current_raw: Integer, 0-65535 - raw ADC value for the port current
+        :param current: Float - port current in mA
+        :param read_timestamp - Float - unix timetamp when the data was pulled from the SMARTbox
         """
         self.port_number = port_number
+        self.modbus_address = modbus_address
+        self.status_bitmap = status_bitmap
         self.status_timestamp = None
         self.current_timestamp = None
         self.current_raw = 0
@@ -153,6 +159,7 @@ class PortStatus(object):
         self.locally_forced_off = None
         self.breaker_tripped = None
         self.power_state = None
+        self.antenna_number = None   # Only set externally, at the station level
 
         self.set_current(current_raw, current, read_timestamp=read_timestamp)
         self.set_status_data(status_bitmap, read_timestamp=read_timestamp)
@@ -172,7 +179,7 @@ class PortStatus(object):
                 lfstring = 'Forced:OFF'
             else:
                 lfstring = 'NotForced'
-            status_items = ['Status(%1.1f s):' % (time.time() - self.current_timestamp),
+            status_items = ['Status(%1.1f s) on SMARTbox %s:' % (time.time() - self.current_timestamp, self.modbus_address),
                             {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled],
                             {False:'Offline', True:'Online', None:'??line?'}[self.system_online],
                             'DesEnableOnline=%s' % self.desire_enabled_online,
@@ -299,10 +306,6 @@ class SMARTbox(transport.ModbusSlave):
         self.register_map = {}
         self.codes = {}
         self.fem_temps = {}  # Dictionary with FEM number (1-12) as key, and temperature as value
-        self.mbrv = None
-        self.pcbrv = None
-        self.register_map = {}
-        self.codes = {}
         self.cpuid = ''
         self.chipid = []
         self.firmware_version = 0
@@ -318,6 +321,7 @@ class SMARTbox(transport.ModbusSlave):
         self.service_led = None
         self.indicator_code = None
         self.indicator_state = ''
+        self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
         try:
             self.thresholds = json.load(open(THRESHOLD_FILENAME, 'r'))
         except Exception:
@@ -330,7 +334,12 @@ class SMARTbox(transport.ModbusSlave):
 
         self.ports = {}
         for pnum in range(1, 13):
-            self.ports[pnum] = PortStatus(port_number=pnum, status_bitmap=0, current_raw=0, current=0, read_timestamp=None)
+            self.ports[pnum] = PortStatus(port_number=pnum,
+                                          modbus_address=modbus_address,
+                                          status_bitmap=0,
+                                          current_raw=0,
+                                          current=0,
+                                          read_timestamp=None)
 
     def __str__(self):
         return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)]))
@@ -346,10 +355,22 @@ class SMARTbox(transport.ModbusSlave):
         poll_blocksize = maxregnum + (self.register_map['POLL'][maxregname][1] - 1)  # number of registers to read
 
         # Get a list of tuples, where each tuple is a two-byte register value, eg (0,255)
-        valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=poll_blocksize)
+        try:
+            valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=poll_blocksize)
+        except Exception:
+            logger.exception('Exception in readReg in poll_data for SMARTbox %d' % self.modbus_address)
+            return None
+
         read_timestamp = time.time()
-        if not valuelist:
-            return False
+        if valuelist is None:
+            logger.error('Error in readReg in poll_data for SMARTbox %d, no data' % self.modbus_address)
+            return None
+
+        if len(valuelist) != poll_blocksize:
+            logger.warning('Only %d registers returned from SMARTbox %d by readReg in poll_data, expected %d' % (len(valuelist),
+                                                                                                                 self.modbus_address,
+                                                                                                                 poll_blocksize))
+
         self.mbrv = transport.bytestoN(valuelist[0])
         self.pcbrv = transport.bytestoN(valuelist[1])
         self.register_map = SMARTBOX_REGISTERS[self.mbrv]
@@ -408,6 +429,8 @@ class SMARTbox(transport.ModbusSlave):
                 pnum = int(regname[1:-8])
                 self.ports[pnum].set_current(current_raw=raw_int, current=scaled_float, read_timestamp=read_timestamp)
 
+        self.readtime = read_timestamp
+
     def write_thresholds(self):
         """
         Write the ADC threshold data (loaded on init from a JSON file into self.thresholds) to the SMARTbox.
@@ -454,10 +477,10 @@ class SMARTbox(transport.ModbusSlave):
 
     def configure(self, thresholds=None, portconfig=None):
         """
-        Write the threshold data from the config file, and write it to the SMARTbox.
+        Get the threshold data (as given, or from the config file), and write it to the SMARTbox.
 
-        Then if that succeeds, read the port configuration (desired state online, desired state offline) from the config
-        file, and write it to the SMARTbox.
+        If that succeeds, read the port configuration (desired state online, desired state offline) from the config
+        file (if it's not supplied), and write it to the SMARTbox.
 
         Then, if that succeeds, write a '1' to the status register to tell the micontroller to
         transition out of the 'UNINITIALISED' state.

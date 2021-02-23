@@ -4,7 +4,9 @@
    up an SKA-Low station.
 """
 
+import json
 import logging
+import time
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -74,7 +76,96 @@ FNDH_CODES_1 = {'status':{'fromid':{0:'UNINITIALISED', 1:'OK', 2:'ALARM', 3:'WAR
 FNDH_REGISTERS = {1: {'POLL':FNDH_POLL_REGS_1, 'CONF':FNDH_CONF_REGS_1}}
 FNDH_CODES = {1: FNDH_CODES_1}
 
+THRESHOLD_FILENAME = 'fndh_thresholds.json'
+PORTCONFIG_FILENAME = 'fndh_ports.json'
+
 
 class FNDH(transport.ModbusSlave):
     def __init__(self, conn=None, modbus_address=None):
         transport.ModbusSlave.__init__(self, conn=conn, modbus_address=modbus_address)
+
+        self.mbrv = None
+        self.pcbrv = None
+        self.register_map = {}
+        self.codes = {}
+        self.cpuid = ''
+        self.chipid = []
+        self.firmware_version = 0
+        self.uptime = 0
+        self.station_value = 0
+        self.psu_voltage = 0.0
+        self.psu_temp = 0.0
+        self.pcb_temp = 0.0
+        self.outside_temp = 0.0
+        self.statuscode = 0
+        self.status = ''
+        self.service_led = None
+        self.indicator_code = None
+        self.indicator_state = ''
+        self.readtime = 0    # Unix timestamp for the last successful polled data from this FNDH
+        try:
+            self.thresholds = json.load(open(THRESHOLD_FILENAME, 'r'))
+        except Exception:
+            self.thresholds = None
+        try:
+            allports = json.load(open(PORTCONFIG_FILENAME, 'r'))
+            self.portconfig = allports[self.modbus_address]
+        except Exception:
+            self.portconfig = None
+
+    def poll_data(self):
+        """
+        Get all the polled registers from the device, and use the contents to fill in the instance data for this station
+
+        :return:
+        """
+        maxregnum = max([data[0] for data in self.register_map['POLL'].values()])
+        maxregname = [name for (name, data) in self.register_map['POLL'].items() if data[0] == maxregnum]
+        poll_blocksize = maxregnum + (self.register_map['POLL'][maxregname][1] - 1)  # number of registers to read
+
+        # Get a list of tuples, where each tuple is a two-byte register value, eg (0,255)
+        try:
+            valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=poll_blocksize)
+        except Exception:
+            logger.exception('Exception in readReg in poll_data for FNDH')
+            return None
+
+        read_timestamp = time.time()
+        if valuelist is None:
+            logger.error('Error in readReg in poll_data for FNDH, no data')
+            return None
+
+        if len(valuelist) != poll_blocksize:
+            logger.warning(
+                'Only %d registers returned from FNSH by readReg in poll_data, expected %d' % (len(valuelist), poll_blocksize))
+
+        self.mbrv = transport.bytestoN(valuelist[0])
+        self.pcbrv = transport.bytestoN(valuelist[1])
+        self.register_map = FNDH_REGISTERS[self.mbrv]
+        self.codes = FNDH_CODES[self.mbrv]
+
+        # TODO - Parse all the registers here
+
+        self.readtime = read_timestamp
+
+    def configure(self, thresholds=None, portconfig=None):
+        """
+         Get the threshold data (as given, or from the config file), and write it to the SMARTbox.
+
+         If that succeeds, read the port configuration (desired state online, desired state offline) from the config
+         file (if it's not supplied), and write it to the SMARTbox.
+
+         Then, if that succeeds, write a '1' to the status register to tell the micontroller to
+         transition out of the 'UNINITIALISED' state.
+
+         :param thresholds: A dictionary containing the ADC thresholds to write to the SMARTbox. If none, use defaults
+                            from the JSON file specified in THRESHOLD_FILENAME
+         :param portconfig: A dictionary containing the port configuration data to write to the SMARTbox. If none, use
+                            defaults from the JSON file specified in PORTCONFIG_FILENAME
+         :return: True for sucess
+         """
+        if thresholds:
+            self.thresholds = thresholds
+
+        if portconfig:
+            self.portconfig = portconfig
