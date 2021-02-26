@@ -335,16 +335,39 @@ class FNDH(transport.ModbusSlave):
             self.portconfig = portconfig
 
         ok = self.write_thresholds()
-
-        if ok:
-            for portnum in range(1, 13):
-                self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
-                self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
-            ok = self.write_portconfig()
-            if ok:
-                return self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
-            else:
-                logger.error('Could not load and write port state configuration.')
-        else:
+        if not ok:
             logger.error('Could not load and write threshold data.')
-        return False
+            return False
+
+        # Make sure all the ports are off, both online and offline
+        for portnum in range(1, 29):
+            self.ports[portnum].desire_enabled_online = False
+            self.ports[portnum].desire_enabled_offline = False
+        ok = self.write_portconfig()
+        if not ok:
+            logger.error('Could not write port configuration to the FNDH.')
+            return False
+
+        # Write state register so the FNDH will transition to 'online'
+        self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
+        time.sleep(1)   # Wait for the FNDH state to settle
+
+        port_on_times = {}
+        for portnum in range(1, 29):
+            self.ports[portnum].desire_enabled_online = True
+            ok = self.write_portconfig()
+            port_on_times[portnum] = int(time.time())
+            if not ok:
+                logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
+                return False
+            time.sleep(10)
+
+        # TODO - loop over all possible SMARTbox addresses, and read uptimes
+        # TODO - use uptimes and port_on_times to work out which portnum belongs to which SMARTbox address.
+
+        # Startup finished, now set all the port states as per the saved port configuration:
+        for portnum in range(1, 29):
+            self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
+            self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
+        ok = self.write_portconfig()
+        return ok

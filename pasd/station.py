@@ -47,11 +47,16 @@ ANTENNA_MAP = {
  28: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None}
 }
 
-ANTNUM = 1001
-CHIPID = 1002
-LOGNUM = 1010
-MESSAGE = 1011
+# Register numbers for log message requests
+ANTNUM = 1001   # Antenna number for service log, R/W.
+CHIPID = 1002   # Chip ID for service log, R/W.
+LOGNUM = 1010   # Log number (0 is most recent) for service log, R/W.
+MESSAGE = 1011   # Log message text, up to 245 characters (including a null terminator) in up to 123 registers, R/W.
+
+# Number of registers of log message block (max of 125 due to Modbus packet length limit),
+# where the last two registers are the 4-byte unix timestamp for when the message was logged.
 MESSAGE_LEN = 125
+
 
 class Station(object):
     def __init__(self, hostname, port):
@@ -122,12 +127,28 @@ class Station(object):
         """
         start_time = time.time()
         end_time = start_time + maxtime
-        log_message = get_log_entry(desired_antenna=self.desired_antenna, desired_chipid=self.desired_chipid, desired_lognum=self.desired_lognum)
-        log_registers = {ANTNUM:self.desired_antenna, LOGNUM:self.desired_lognum}   # Initialise log entry registers
-        for i in range(MESSAGE_LEN * 2):  # Iterate over all possible characters in the log message
-
         while (time.time() < end_time):  # Process packets until we run out of time
             slave_registers = {port.antenna_number:(port.modbus_address * 256 + port.port_number) for port in self.antennae}
+
+            # Set up the registers for reading/writing log messages
+            log_message, timestamp = get_log_entry(station=self.hostname,
+                                                   desired_antenna=self.desired_antenna,
+                                                   desired_chipid=self.desired_chipid,
+                                                   desired_lognum=self.desired_lognum)
+            # Make sure it's not too long, is null terminated, and an even length, to pad out to a whole number of registers
+            log_message = log_message[:(MESSAGE_LEN - 2) * 2 - 1]  # Truncate to one fewer character than the limit, to make room for a null
+            if divmod(len(log_message), 2)[1] == 0:
+                log_message += chr(0) + chr(0)
+            else:
+                log_message += chr(0)
+            log_registers = {ANTNUM:self.desired_antenna, LOGNUM:self.desired_lognum}  # Initialise log entry registers
+            for i in range(MESSAGE_LEN - 2):  # Iterate over registers in the log message block
+                if (i * 2) < len(log_message):
+                    log_registers[MESSAGE + i] = [ord(log_message[i * 2]), ord(log_message[i * 2 + 1])]
+                else:
+                    log_registers[MESSAGE + i] = 0
+            log_registers[MESSAGE + MESSAGE_LEN + 1], log_registers[MESSAGE + MESSAGE_LEN + 2] = divmod(timestamp, 65536)
+
             slave_registers.update(log_registers)    # log entry read/write registers
             read_set, written_set = self.conn.listen_for_packet(slave_registers=slave_registers,
                                                                 maxtime=(end_time - time.time()),
@@ -139,14 +160,28 @@ class Station(object):
                     self.antennae[regnum] = self.smartboxes[sadd].ports[portnum]
                     self.antennae[regnum].antenna_number = regnum
 
-            if (ANTNUM in written_set):
+            if (ANTNUM in written_set) and (self.desired_antenna != slave_registers[ANTNUM]):
                 self.desired_antenna = slave_registers[ANTNUM]
-                self.desired_lognum = 0
-            if (CHIPID in written_set):
+                self.desired_lognum = 0   # New desired antenna, so reset the log message counter
+            if (CHIPID in written_set) and (self.desired_chipid != slave_registers[CHIPID:CHIPID + 8]):
                 self.desired_chipid = slave_registers[CHIPID:CHIPID + 8]
-                self.desired_lognum = 0
-            if (LOGNUM in written_set):
-                self.desired_lognum = slave_registers[LOGNUM]
+                self.desired_lognum = 0   # New desired chipid, so reset the log message counter
+            if (LOGNUM in written_set) and (self.desired_lognum != slave_registers[LOGNUM]):
+                self.desired_lognum = slave_registers[LOGNUM]   # New log message counter
+
+            if MESSAGE in read_set:
+                self.desired_lognum += 1   # We've read a log message, so next time use the next message
+
+            if MESSAGE in written_set:
+                messagelist = []
+                for value in slave_registers[MESSAGE:MESSAGE + MESSAGE_LEN - 2]:  # Last two registers are timestamp
+                    messagelist += list(divmod(value, 256))
+                save_log_entry(station=self.hostname,
+                               desired_antenna=self.desired_antenna,
+                               desired_chipid=self.desired_chipid,
+                               message=bytes(messagelist).decode('utf8'),
+                               message_timestamp=time.time())
+
 
 def validate_mapping(slave_registers=None):
     """Return True if the physical antenna mapping in registers 1-256 is valid, or False if the same
@@ -161,3 +196,19 @@ def validate_mapping(slave_registers=None):
                 else:
                     seen.add(slave_registers[regnum])
     return True
+
+
+def get_log_entry(station=None, desired_antenna=None, desired_chipid=None, desired_lognum=0):
+    logger.info('Log entry #%d requested for station:%s, Ant#:%s, chipid=%s' % (desired_lognum,
+                                                                                station,
+                                                                                desired_antenna,
+                                                                                desired_chipid))
+    return "Insert a real service log database here.", 1614319283
+
+
+def save_log_entry(station=None, desired_antenna=None, desired_chipid=None, message=None, message_timestamp=None):
+    logger.info('Log entry received at %s for station:%s, Ant#:%s, chipid=%s: %s' % (message_timestamp,
+                                                                                     station,
+                                                                                     desired_antenna,
+                                                                                     desired_chipid,
+                                                                                     message))
