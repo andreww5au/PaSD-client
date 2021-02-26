@@ -78,28 +78,28 @@ SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed,
 
 # System threshold configuration registers (not polled)
 SMARTBOX_CONF_REGS_1 = {
-                        'SYS_48V_V_TH': (101, 4, 'Incoming 48VDC voltage CH, CL, WH, WL', conversion.scale_48v),
-                        'SYS_PSU_V_TH': (105, 4, 'PSU output voltage CH, CL, WH, WL', conversion.scale_5v),
-                        'SYS_PSUTEMP_TH': (109, 4, 'PSU temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_PCBTEMP_TH': (113, 4, 'PCB temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_OUTTEMP_TH': (117, 4, 'Outside temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM01TEMP_TH': (121, 4, 'FEM 1 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM02TEMP_TH': (125, 4, 'FEM 2 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM03TEMP_TH': (129, 4, 'FEM 3 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM04TEMP_TH': (133, 4, 'FEM 4 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM05TEMP_TH': (137, 4, 'FEM 5 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM06TEMP_TH': (141, 4, 'FEM 6 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM07TEMP_TH': (145, 4, 'FEM 7 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM08TEMP_TH': (149, 4, 'FEM 8 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM09TEMP_TH': (153, 4, 'FEM 9 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM10TEMP_TH': (157, 4, 'FEM 10 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM11TEMP_TH': (161, 4, 'FEM 11 temperature CH, CL, WH, WL', conversion.scale_temp),
-                        'SYS_FEM12TEMP_TH': (165, 4, 'FEM 12 temperature CH, CL, WH, WL', conversion.scale_temp),
+                        'SYS_48V_V_TH': (1001, 4, 'Incoming 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),
+                        'SYS_PSU_V_TH': (1005, 4, 'PSU output voltage AH, WH, WL, AL', conversion.scale_5v),
+                        'SYS_PSUTEMP_TH': (1009, 4, 'PSU temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_PCBTEMP_TH': (1013, 4, 'PCB temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_OUTTEMP_TH': (1017, 4, 'Outside temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM01TEMP_TH': (1021, 4, 'FEM 1 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM02TEMP_TH': (1025, 4, 'FEM 2 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM03TEMP_TH': (1029, 4, 'FEM 3 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM04TEMP_TH': (1033, 4, 'FEM 4 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM05TEMP_TH': (1037, 4, 'FEM 5 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM06TEMP_TH': (1041, 4, 'FEM 6 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM07TEMP_TH': (1045, 4, 'FEM 7 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM08TEMP_TH': (1049, 4, 'FEM 8 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM09TEMP_TH': (1053, 4, 'FEM 9 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM10TEMP_TH': (1057, 4, 'FEM 10 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM11TEMP_TH': (1061, 4, 'FEM 11 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_FEM12TEMP_TH': (1065, 4, 'FEM 12 temperature AH, WH, WL, AL', conversion.scale_temp),
                         # TODO - add port current threshold configuration registers (not polled)
 }
 
 SMARTBOX_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED'},
-                              'fromname':{'UNINITIALISED':0, 'OK':1, 'ALARM':2, 'WARNING':3, 'RECOVERY':4}},
+                              'fromname':{'OK':0, 'WARNING':1, 'ALARM':2, 'RECOVERY':3, 'UNINITIALISED':4}},
                     'leds':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW'},
                             'fromname':{'OFF':0, 'GREEN':1, 'RED':2, 'YELLOW':3}}}
 
@@ -444,7 +444,7 @@ class SMARTbox(transport.ModbusSlave):
         conf_reglist = self.register_map['CONF'].keys()
         vlist = [0] * len(conf_reglist) * 4
 
-        startreg = self.register_map['CONF']['SYS_48V_V_TH'][0]  # This is guaranteed to be the first register in the polling block
+        startreg = min([data[0] for data in self.register_map['CONF'].values()])
         for regname in conf_reglist:
             regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
             values = self.thresholds[regname]
@@ -509,5 +509,5 @@ class SMARTbox(transport.ModbusSlave):
             else:
                 logger.error('Could not load and write port state configuration.')
         else:
-            logger.error('Could not laod and write threshold data.')
+            logger.error('Could not load and write threshold data.')
         return False
