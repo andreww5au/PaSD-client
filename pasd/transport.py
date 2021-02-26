@@ -16,6 +16,11 @@ TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
 SLAVE_MODBUS_ADDRESS = 63   # Address that technician's SID devices use to reach the MCCS as a slave device
 
 
+# noinspection PyUnusedLocal
+def dummy_validate(slave_registers=None):
+    return True
+
+
 class ModbusSlave(object):
     """
     Generic parent class for all modbus slaves that the MCCS can communicate with.
@@ -50,6 +55,14 @@ class Connection(object):
         except socket.error:
             logging.exception('Error opening socket to %s' % hostname)
 
+    def flush(self):
+        """
+        Flush the input buffer by calling self.sock.recv() until no data is returned.
+        """
+        with self.lock:
+            while self.sock.recv(1000):
+                pass
+
     def send_as_master(self, message):
         """
         Calculate the CRC and send it and the message (a list of bytes) to the socket 'self.sock'.
@@ -60,9 +73,10 @@ class Connection(object):
         :return: A list of bytes, each in the range 0-255, or False if no valid reply was received
         """
         with self.lock:
+            self.flush()   # Get rid of any old data in the input queue
             message += getcrc(message)
             time.sleep(PACKET_WINDOW_TIME)
-            self.sock.send(bytes(message))
+            self.sock.send(bytes(message))  # TODO - This will return the number of bytes sent, which might not be all of them. Use sendall() instead?
             time.sleep(PACKET_WINDOW_TIME)
             replist = []
 
@@ -94,27 +108,30 @@ class Connection(object):
         :return: None
         """
         with self.lock:
+            self.flush()  # Get rid of any old data in the input queue
             message += getcrc(message)
             time.sleep(PACKET_WINDOW_TIME)
-            self.sock.send(bytes(message))
+            self.sock.send(bytes(message))  # TODO - This will return the number of bytes sent, which might not be all of them. Use sendall() instead?
             time.sleep(PACKET_WINDOW_TIME)
 
-    def listen(self, slave_registers, maxtime=10.0):
+    def listen_for_packet(self, slave_registers, maxtime=10.0, validation_function=dummy_validate):
         """
-        Listen on the socket for incoming read/write register packets sent by an external bus master (eg, a technician
-        in the field). Handle any read/write register calls by sending or modifying the contents of the registers passed
-        in the 'slave_registers' dictionary. Exit after 'maxtime' seconds.
+        Listen on the socket for an incoming read/write register packet sent by an external bus master (eg, a technician
+        in the field). Handle one read/write register call by sending or modifying the contents of the registers passed
+        in the 'slave_registers' dictionary. Exit after 'maxtime' seconds, or after processing one packet, whichever
+        comes first.
 
         :param slave_registers: A dictionary with register number (1-9999) as the key, and an integer (0-65535) as the
                                 value.
         :param maxtime: Maximum time to listen for, in seconds.
-        :return: A set containing all the register numbers that were written to during this call to listen().
+        :param validation_function: Function to call to validate slave_registers contents. If this validation_function
+                                    returns false, reply to the sender with an 'Illegal Data Value' exception.
+        :return: A tuple of two sets containing all the register numbers that were read-from/written-to during this call.
         """
         start_time = time.time()
-        written_set = set()   # A set containing all the register numbers that were written to during this call
         with self.lock:
-            while (time.time() - start_time) < maxtime:  # Get another packet, if we haven't run out of time
-                msglist = []  # Start a new packet
+            while (time.time() - start_time) < maxtime:  # Wait for a good packet until we run out of time
+                msglist = []  # Start assembling a new packet
                 packet_start_time = start_time + maxtime - TIMEOUT  # Don't wait after 'maxtime' for a new packet
                 # Wait until the timeout trips, or until we have a full packet with a valid CRC checksum
                 while (time.time() - packet_start_time) < TIMEOUT and ((len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
@@ -127,10 +144,11 @@ class Connection(object):
                         pass
                     except:
                         logger.exception('Exception in sock.recv()')
-                        return False
+                        return set(), set()
 
                 if ((len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
                     logger.warning('Packet fragment received: %s' % msglist)
+                    self.flush()  # Get rid of any old data in the input queue
                     continue    # Discard this packet fragment, keep waiting for a new valid packet
 
                 # Handle the packet contents here
@@ -142,6 +160,7 @@ class Connection(object):
                     regnum = msglist[2] * 256 + msglist[3]
                     numreg = msglist[4] * 256 + msglist[5]
                     replylist = [SLAVE_MODBUS_ADDRESS, 0x03]
+                    read_set = set()
                     for r in range(regnum, regnum + numreg):   # Iterate over all requested registers
                         if r not in slave_registers:
                             replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x02]  # 0x02 is 'Illegal Data Address'
@@ -150,18 +169,24 @@ class Connection(object):
                             continue
                         else:
                             replylist.append(NtoBytes(slave_registers[r], 2))
+                            read_set.add(r)
                     self.send_reply(replylist)
+                    return read_set, set()
                 elif msglist[1] == 0x06:  # Writing a single register
                     regnum = msglist[2] * 256 + msglist[3]
                     value = msglist[4] * 256 + msglist[5]
                     if regnum in slave_registers:
                         slave_registers[regnum] = value
                         replylist = msglist[:-2]   # For success, reply with the same packet: CRC re-added in send_reply()
-                        written_set.add(regnum)
                     else:
                         replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x02]   # 0x02 is 'Illegal Data Address'
-                        logger.error('Writing register %d not allowed, returned exception packet %s.' % (r, replylist))
-                    self.send_reply(replylist)
+                        logger.error('Writing register %d not allowed, returned exception packet %s.' % (regnum, replylist))
+                    if not validation_function(slave_registers=slave_registers):
+                        replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
+                        logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
+                    else:
+                        self.send_reply(replylist)
+                        return set(), {regnum}
                 elif msglist[1] == 0x10:  # Writing multiple registers
                     regnum = msglist[2] * 256 + msglist[3]
                     numreg = msglist[4] * 256 + msglist[5]
@@ -169,6 +194,7 @@ class Connection(object):
                     bytelist = msglist[7:-2]
 
                     assert len(bytelist) == numbytes == (numreg // 2)
+                    written_set = set()
                     for r in range(regnum, regnum + numreg):
                         if r not in slave_registers:
                             replylist = [SLAVE_MODBUS_ADDRESS, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
@@ -180,13 +206,19 @@ class Connection(object):
                             bytelist = bytelist[2:]   # Use, then pop off, the first two bytes
                             slave_registers[r] = value
                             written_set.add(r)
-                    replylist = [SLAVE_MODBUS_ADDRESS, 0x10] + NtoBytes(regnum, 2) + NtoBytes(numreg, 2)
-                    self.send_reply(replylist)
+                    if not validation_function(slave_registers=slave_registers):
+                        replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
+                        logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
+                    else:
+                        replylist = [SLAVE_MODBUS_ADDRESS, 0x10] + NtoBytes(regnum, 2) + NtoBytes(numreg, 2)
+                        self.send_reply(replylist)
+                        return set(), written_set
                 else:
                     logger.error('Received modbus packet for function %d - not supported.' % msglist[1])
                     replylist = [SLAVE_MODBUS_ADDRESS, msglist[1] + 0x80, 0x01]
                     self.send_reply(replylist)
-        return written_set
+
+        return set(), set()
 
     def readReg(self, modbus_address, regnum, numreg=1):
         """

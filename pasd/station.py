@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging
+import time
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -46,6 +47,11 @@ ANTENNA_MAP = {
  28: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None}
 }
 
+ANTNUM = 1001
+CHIPID = 1002
+LOGNUM = 1010
+MESSAGE = 1011
+MESSAGE_LEN = 125
 
 class Station(object):
     def __init__(self, hostname, port):
@@ -54,6 +60,9 @@ class Station(object):
         self.conn = transport.Connection(hostname=self.hostname, port=self.port)
         self.antennae = {}  # A dict with physical antenna number as key, and smartbox.PortStatus() instances as value
         self.smartboxes = {}  # A dict with smartbox number as key, and smartbox.SMARTbox() instances as value
+        self.desired_antenna = None
+        self.desired_chipid = None
+        self.desired_lognum = 0
 
         # Initialise self.antennae, and self.smartboxes[N].ports instances, with the physical antenna mapping from
         # the ANTENNA_MAP dictionary. In a real system, this would be replaced with code to instantiate them from
@@ -102,3 +111,53 @@ class Station(object):
                 logger.info('FNDH configured, it is now online')
             else:
                 logger.error('Error configuring FNDH')
+
+    def listen(self, maxtime=10.0):
+        """
+        Listen on the socket for any incoming read/write register packets sent by an external bus master (eg, a technician
+        in the field). Handle read/write register calls. Exit after 'maxtime' seconds.
+
+        :param maxtime: Maximum time to listen for, in seconds.
+        :return:
+        """
+        start_time = time.time()
+        end_time = start_time + maxtime
+        log_message = get_log_entry(desired_antenna=self.desired_antenna, desired_chipid=self.desired_chipid, desired_lognum=self.desired_lognum)
+        log_registers = {ANTNUM:self.desired_antenna, LOGNUM:self.desired_lognum}   # Initialise log entry registers
+        for i in range(MESSAGE_LEN * 2):  # Iterate over all possible characters in the log message
+
+        while (time.time() < end_time):  # Process packets until we run out of time
+            slave_registers = {port.antenna_number:(port.modbus_address * 256 + port.port_number) for port in self.antennae}
+            slave_registers.update(log_registers)    # log entry read/write registers
+            read_set, written_set = self.conn.listen_for_packet(slave_registers=slave_registers,
+                                                                maxtime=(end_time - time.time()),
+                                                                validation_function=validate_mapping)
+            for regnum in written_set:
+                if 1 <= regnum <= 256:
+                    sadd, portnum = divmod(slave_registers[regnum], 256)
+                    self.antennae[regnum].antenna_number = None
+                    self.antennae[regnum] = self.smartboxes[sadd].ports[portnum]
+                    self.antennae[regnum].antenna_number = regnum
+
+            if (ANTNUM in written_set):
+                self.desired_antenna = slave_registers[ANTNUM]
+                self.desired_lognum = 0
+            if (CHIPID in written_set):
+                self.desired_chipid = slave_registers[CHIPID:CHIPID + 8]
+                self.desired_lognum = 0
+            if (LOGNUM in written_set):
+                self.desired_lognum = slave_registers[LOGNUM]
+
+def validate_mapping(slave_registers=None):
+    """Return True if the physical antenna mapping in registers 1-256 is valid, or False if the same
+       SMARTbox and port number is in more than one physical antenna register.
+    """
+    seen = set()
+    for regnum in slave_registers.keys():
+        if 1 <= regnum <= 256:
+            if slave_registers[regnum] != 0:
+                if slave_registers[regnum] in seen:
+                    return False
+                else:
+                    seen.add(slave_registers[regnum])
+    return True
