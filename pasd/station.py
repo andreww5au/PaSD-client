@@ -82,6 +82,58 @@ class Station(object):
 
         self.fndh = fndh.FNDH(conn=self.conn, modbus_address=FNDH_ADDRESS)
 
+    def startup(self):
+        """Find out which SMARTboxes are connected to which PDoC ports.
+        """
+        ok = self.fndh.configure_all_off()   # Transition the FNDH to online, but with all PDoC ports turned off
+        if not ok:
+            logger.error('Could not configure FNDH - aborting station startup.')
+            return False
+        time.sleep(5)
+
+        # Turn on all the ports, one by one, with a 10 second interval between each port
+        port_on_times = {}   # Unix timestamp at which each port number was turned on
+        for portnum in range(1, 29):
+            self.fndh.ports[portnum].desire_enabled_online = True
+            ok = self.fndh.write_portconfig()
+            port_on_times[portnum] = int(time.time())
+            if not ok:
+                logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
+                return False
+            time.sleep(10)
+
+        # Read the uptimes for all possible SMARTbox addresses, to work out when they were turned on
+        address_on_times = {}   # Unix timestamp at which each SMARTbox booted, according to the uptime
+        for sadd in range(1, 30):   # All possible SMARTbox addresses
+            if sadd in self.smartboxes:
+                smb = self.smartboxes[sadd]
+            else:   # If this address isn't in the saved antenna map, create a temporary SMARTbox instance.
+                smb = smartbox.SMARTbox(conn=self.conn, modbus_address=sadd)
+            uptime = smb.read_uptime()
+            if uptime is None:
+                continue
+            address_on_times[sadd] = time.time() - uptime
+            if sadd not in self.smartboxes:  # If this SMARTbox isn't in the antenna map, save it in the the smartbox dictionary
+                self.smartboxes[sadd] = smb
+
+        for portnum in range(1, 29):
+            ontime = port_on_times[portnum]
+            # Get a list of (address, difftime) tuples where address is modbus address, and difftime is how long it took to
+            # boot the smartbox at that address after this port was turned on (skipping boxes that we heard from before the port
+            # was turned on).
+            diffs = [(anum, (address_on_times[anum] - ontime)) for anum in address_on_times.keys() if address_on_times[anum] > ontime]
+            diffs.sort(key=lambda x: x[1])   # sort by time difference
+            if (diffs is not None) and (diffs[0][1] < 10.0):
+                sadd = diffs[0][0]   # Modbus address of the SMARTbox on this PDoC port number
+                self.smartboxes[sadd].pdoc_number = portnum
+                self.fndh.ports[portnum].smartbox_address = sadd
+
+        # Finish FNDH configuration, setting the default desired_state_online/offline flags (typically turning on all ports)
+        ok = self.fndh.configure_final()
+        if not ok:
+            logger.error('Could not do final configuration of FNDH during startup.')
+        return ok
+
     def poll_data(self):
         """
         Grab status data from all of the SMARTboxes
@@ -89,10 +141,21 @@ class Station(object):
         """
         boxlist = list(self.smartboxes.keys())
         boxlist.sort()
-        # First, grab all the data from all the boxes, to keep comms restricted to a short time window
+
+        # First, check the FNDH, and go through the full startup procedure if it's been power cycled since the last poll
+        self.fndh.poll_data()
+        if self.fndh.statuscode > 0:
+            logger.warning('FNDH has status %d (%s)' % (self.fndh.statuscode, self.fndh.status))
+        if self.fndh.statuscode == 4:  # UNINITIALISED
+            ok = self.startup()     # In a real setting, pass in static configuration data from config file or database
+            if ok:
+                logger.info('FNDH configured, it is now online with all PDoC ports mapped.')
+            else:
+                logger.error('Error starting up FNDH')
+
+        # Next, grab all the data from all the SMARTboxes, to keep comms restricted to a short time window
         for sadd in boxlist:
             self.smartboxes[sadd].poll_data()
-        self.fndh.poll_data()
 
         # Now configure and activate any UNINITIALISED boxes, and log any error/warning states
         for sadd in boxlist:
@@ -106,16 +169,6 @@ class Station(object):
                     logger.info('SMARTbox %d configured, it is now online' % sadd)
                 else:
                     logger.error('Error configuring SMARTbox %d' % sadd)
-
-        if self.fndh.statuscode > 0:
-            logger.warning('FNDH has status %d (%s)' % (self.fndh.statuscode, self.fndh.status))
-
-        if self.fndh.statuscode == 4:  # UNINITIALISED
-            ok = self.fndh.configure()     # In a real setting, pass in static configuration data from config file or database
-            if ok:
-                logger.info('FNDH configured, it is now online')
-            else:
-                logger.error('Error configuring FNDH')
 
     def listen(self, maxtime=10.0):
         """

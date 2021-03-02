@@ -35,35 +35,61 @@ class ModbusSlave(object):
 
 
 class Connection(object):
-    def __init__(self, hostname, port=5000):
-        self.sock = None
-        self.open_socket(hostname=hostname, port=port)
-        self.lock = threading.RLock()
+    """
+    Class to handle Modbus communications between the MCCS and Modbus-RTU devices connected via an ethernet to serial
+    bridge. One instance of this class handles all communications for an entire station.
 
-    def open_socket(self, hostname, port=1234):
+    It has public methods for acting as a Modbus master, and reading/writing registers on remote devices:
+        readReg()
+        writeReg()
+        writeMultReg()
+    And for acting as a Modbus slave, and listening for commands from a bus master device (the Technician's SID):
+        listen_for_packet
+
+    """
+    def __init__(self, hostname, port=5000):
         """
-        Given a hostname, open a TCP socket to port 'port'
+        Create a new connection instance to the given hostname and port.
 
         :param hostname: DNS name (or IP address as a string) to connect to
         :param port: port number
         """
+        self.sock = None
+        self.hostname = hostname
+        self.port = port
+        self._open_socket()
+        self.lock = threading.RLock()
+
+    def _open_socket(self):
+        """
+        Open a TCP socket to port 'port'
+        """
+        if self.sock is not None:
+            try:
+                self.sock.close()  # Close any existing socket, ignoring any errors (it might already be closed, or dead)
+            except socket.error:
+                pass
+
         try:
-            # Open TCP connect to specified port on the specified WIZNet board in the FNDH
+            # Open TCP connect to specified port on the specified IP address for the WIZNet board in the FNDH
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
             self.sock.settimeout(0.1)
-            self.sock.connect((hostname, port))
+            self.sock.connect((self.hostname, self.port))
         except socket.error:
-            logging.exception('Error opening socket to %s' % hostname)
+            logging.exception('Error opening socket to %s' % self.hostname)
 
-    def flush(self):
+    def _flush(self):
         """
         Flush the input buffer by calling self.sock.recv() until no data is returned.
         """
         with self.lock:
-            while self.sock.recv(1000):
-                pass
+            try:
+                while self.sock.recv(1000):
+                    pass
+            except socket.error:
+                self._open_socket()
 
-    def send_as_master(self, message):
+    def _send_as_master(self, message):
         """
         Calculate the CRC and send it and the message (a list of bytes) to the socket 'self.sock'.
         Return a bytelist containing any valid reply (without the CRC), or 'False' if there was no
@@ -73,7 +99,7 @@ class Connection(object):
         :return: A list of bytes, each in the range 0-255, or False if no valid reply was received
         """
         with self.lock:
-            self.flush()   # Get rid of any old data in the input queue
+            self._flush()   # Get rid of any old data in the input queue
             message += getcrc(message)
             time.sleep(PACKET_WINDOW_TIME)
             self.sock.send(bytes(message))  # TODO - This will return the number of bytes sent, which might not be all of them. Use sendall() instead?
@@ -99,7 +125,7 @@ class Connection(object):
                 logger.error('No valid reply - raw data received: %s' % str(replist))
                 return False
 
-    def send_reply(self, message):
+    def _send_reply(self, message):
         """
         Calculate the CRC and send it and the message (a list of bytes) to the socket 'self.sock'.
         Do not wait for a reply, because this _is_ a reply.
@@ -108,7 +134,7 @@ class Connection(object):
         :return: None
         """
         with self.lock:
-            self.flush()  # Get rid of any old data in the input queue
+            self._flush()  # Get rid of any old data in the input queue
             message += getcrc(message)
             time.sleep(PACKET_WINDOW_TIME)
             self.sock.send(bytes(message))  # TODO - This will return the number of bytes sent, which might not be all of them. Use sendall() instead?
@@ -148,7 +174,7 @@ class Connection(object):
 
                 if ((len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
                     logger.warning('Packet fragment received: %s' % msglist)
-                    self.flush()  # Get rid of any old data in the input queue
+                    self._flush()  # Get rid of any old data in the input queue
                     continue    # Discard this packet fragment, keep waiting for a new valid packet
 
                 # Handle the packet contents here
@@ -164,13 +190,13 @@ class Connection(object):
                     for r in range(regnum, regnum + numreg):   # Iterate over all requested registers
                         if r not in slave_registers:
                             replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x02]  # 0x02 is 'Illegal Data Address'
-                            self.send_reply(replylist)
+                            self._send_reply(replylist)
                             logger.error('Reading register %d not allowed, returned exception packet %s' % (r, replylist))
                             continue
                         else:
                             replylist.append(NtoBytes(slave_registers[r], 2))
                             read_set.add(r)
-                    self.send_reply(replylist)
+                    self._send_reply(replylist)
                     return read_set, set()
                 elif msglist[1] == 0x06:  # Writing a single register
                     regnum = msglist[2] * 256 + msglist[3]
@@ -185,7 +211,7 @@ class Connection(object):
                         replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
                         logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
                     else:
-                        self.send_reply(replylist)
+                        self._send_reply(replylist)
                         return set(), {regnum}
                 elif msglist[1] == 0x10:  # Writing multiple registers
                     regnum = msglist[2] * 256 + msglist[3]
@@ -198,7 +224,7 @@ class Connection(object):
                     for r in range(regnum, regnum + numreg):
                         if r not in slave_registers:
                             replylist = [SLAVE_MODBUS_ADDRESS, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
-                            self.send_reply(replylist)
+                            self._send_reply(replylist)
                             logger.error('Writing register %d not allowed, returned exception packet %s.' % (r, replylist))
                             continue
                         else:
@@ -211,12 +237,12 @@ class Connection(object):
                         logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
                     else:
                         replylist = [SLAVE_MODBUS_ADDRESS, 0x10] + NtoBytes(regnum, 2) + NtoBytes(numreg, 2)
-                        self.send_reply(replylist)
+                        self._send_reply(replylist)
                         return set(), written_set
                 else:
                     logger.error('Received modbus packet for function %d - not supported.' % msglist[1])
                     replylist = [SLAVE_MODBUS_ADDRESS, msglist[1] + 0x80, 0x01]
-                    self.send_reply(replylist)
+                    self._send_reply(replylist)
 
         return set(), set()
 
@@ -231,7 +257,7 @@ class Connection(object):
         """
 
         packet = [modbus_address, 0x03] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
-        reply = self.send_as_master(packet)
+        reply = self._send_as_master(packet)
 
         if not reply:
             return None
@@ -281,7 +307,7 @@ class Connection(object):
             return False
 
         packet = [0x01, 0x06] + NtoBytes(regnum - 1, 2) + valuelist
-        reply = self.send_as_master(packet)
+        reply = self._send_as_master(packet)
         if not reply:
             return None
         if reply[0] != modbus_address:
@@ -333,7 +359,7 @@ class Connection(object):
 
         rlen = len(data) // 2
         packet = [modbus_address, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(rlen, 2) + NtoBytes(rlen * 2, 1) + data
-        reply = self.send_as_master(packet)
+        reply = self._send_as_master(packet)
         if not reply:
             return None
         if reply[0] != modbus_address:

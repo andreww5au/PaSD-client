@@ -100,6 +100,7 @@ class PdocStatus(smartbox.PortStatus):
     def __init__(self, port_number, modbus_address, status_bitmap, read_timestamp):
         smartbox.PortStatus.__init__(self, port_number, modbus_address, status_bitmap, 0, 0.0, read_timestamp)
 
+        self.smartbox_address = None   # populated by the station initialisation code on powerup
         self.power_sense = None
 
     def set_status_data(self, status_bitmap, read_timestamp):
@@ -125,7 +126,7 @@ class PdocStatus(smartbox.PortStatus):
                 lfstring = 'Forced:OFF'
             else:
                 lfstring = 'NotForced'
-            status_items = ['Status(%1.1f s) on SMARTbox %s:' % (time.time() - self.current_timestamp, self.modbus_address),
+            status_items = ['Status(%1.1f s) on FNDH %s:' % (time.time() - self.current_timestamp, self.modbus_address),
                             {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled],
                             {False:'Offline', True:'Online', None:'??line?'}[self.system_online],
                             'DesEnableOnline=%s' % self.desire_enabled_online,
@@ -312,19 +313,20 @@ class FNDH(transport.ModbusSlave):
         else:
             return False
 
-    def configure(self, thresholds=None, portconfig=None):
+    def configure_all_off(self, thresholds=None, portconfig=None):
         """
          Get the threshold data (as given, or from the config file), and write it to the FNDH.
 
          If that succeeds, read the port configuration (desired state online, desired state offline) from the config
-         file (if it's not supplied), and write it to the FNDH.
+         file (if it's not supplied) and save it in self.portconfig, but do NOT write it to the FNDH. Instead,
+         configure all outputs as 'off' in both online and offline states.
 
-         Then, if that succeeds, write a '1' to the status register to tell the micontroller to
+         Then write a '1' to the status register to tell the micontroller to
          transition out of the 'UNINITIALISED' state.
 
          :param thresholds: A dictionary containing the ADC thresholds to write to the FNDH. If none, use defaults
                             from the JSON file specified in THRESHOLD_FILENAME
-         :param portconfig: A dictionary containing the port configuration data to write to the FNDH. If none, use
+         :param portconfig: A dictionary containing the port configuration data. If none, use
                             defaults from the JSON file specified in PORTCONFIG_FILENAME
          :return: True for sucess
          """
@@ -350,24 +352,20 @@ class FNDH(transport.ModbusSlave):
 
         # Write state register so the FNDH will transition to 'online'
         self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
-        time.sleep(1)   # Wait for the FNDH state to settle
+        return True
 
-        port_on_times = {}
-        for portnum in range(1, 29):
-            self.ports[portnum].desire_enabled_online = True
-            ok = self.write_portconfig()
-            port_on_times[portnum] = int(time.time())
-            if not ok:
-                logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
-                return False
-            time.sleep(10)
+    def configure_final(self):
+        """
+        Use the self.portconfig data to set all the desired_state_online and desired_state_offline
+        flags, and write the full set of port data to the FNDH, to turn on all desired ports.
 
-        # TODO - loop over all possible SMARTbox addresses, and read uptimes
-        # TODO - use uptimes and port_on_times to work out which portnum belongs to which SMARTbox address.
-
+        This is called after the power-on procedure, which turns on all of the ports, one by one, to determine
+        which SMARTbox is connected to which PDoC port.
+        """
         # Startup finished, now set all the port states as per the saved port configuration:
         for portnum in range(1, 29):
             self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
             self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
         ok = self.write_portconfig()
         return ok
+

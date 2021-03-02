@@ -322,6 +322,7 @@ class SMARTbox(transport.ModbusSlave):
         self.indicator_code = None
         self.indicator_state = ''
         self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
+        self.pdoc_number = None   # populated by the station initialisation code on powerup
         try:
             self.thresholds = json.load(open(THRESHOLD_FILENAME, 'r'))
         except Exception:
@@ -430,6 +431,33 @@ class SMARTbox(transport.ModbusSlave):
                 self.ports[pnum].set_current(current_raw=raw_int, current=scaled_float, read_timestamp=read_timestamp)
 
         self.readtime = read_timestamp
+
+    def read_uptime(self):
+        """
+        Read enough registers to get the register revision number, and the system uptime.
+        Returns the uptime in seconds.
+        """
+        try:
+            valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=16)
+        except Exception:
+            logger.exception('Exception in readReg in poll_data for SMARTbox %d' % self.modbus_address)
+            return None
+
+        if valuelist is None:
+            logger.error('Error in readReg in poll_data for SMARTbox %d, no data' % self.modbus_address)
+            return None
+
+        if len(valuelist) != 16:
+            logger.warning('Only %d registers returned from SMARTbox %d by readReg in poll_data, expected %d' % (len(valuelist),
+                                                                                                                 self.modbus_address,
+                                                                                                                 16))
+
+        self.mbrv = transport.bytestoN(valuelist[0])
+        self.pcbrv = transport.bytestoN(valuelist[1])
+        self.register_map = SMARTBOX_REGISTERS[self.mbrv]
+        self.codes = SMARTBOX_CODES[self.mbrv]
+        self.uptime = valuelist[self.register_map['UPTIME'][0] - 1][0] * 256 + valuelist[self.register_map['UPTIME'][0] - 1][1]
+        return self.uptime
 
     def write_thresholds(self):
         """
