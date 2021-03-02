@@ -62,7 +62,7 @@ class Connection(object):
 
     def _open_socket(self):
         """
-        Open a TCP socket to port 'port'
+        Open a TCP socket to 'self.hostname' on port 'self.port'
         """
         if self.sock is not None:
             try:
@@ -80,7 +80,8 @@ class Connection(object):
 
     def _flush(self):
         """
-        Flush the input buffer by calling self.sock.recv() until no data is returned.
+        Flush the input buffer by calling self.sock.recv() until no data is returned. If there's a socket error,
+        then close and re-open the socket.
         """
         with self.lock:
             try:
@@ -99,7 +100,7 @@ class Connection(object):
         :return: A list of bytes, each in the range 0-255, or False if no valid reply was received
         """
         with self.lock:
-            self._flush()   # Get rid of any old data in the input queue
+            self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
             message += getcrc(message)
             time.sleep(PACKET_WINDOW_TIME)
             self.sock.send(bytes(message))  # TODO - This will return the number of bytes sent, which might not be all of them. Use sendall() instead?
@@ -128,13 +129,13 @@ class Connection(object):
     def _send_reply(self, message):
         """
         Calculate the CRC and send it and the message (a list of bytes) to the socket 'self.sock'.
-        Do not wait for a reply, because this _is_ a reply.
+        Do not wait for a reply, because this _is_ a reply (we're acting as a Modbus slave).
 
         :param message: A list of bytes, each in the range 0-255
         :return: None
         """
         with self.lock:
-            self._flush()  # Get rid of any old data in the input queue
+            self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
             message += getcrc(message)
             time.sleep(PACKET_WINDOW_TIME)
             self.sock.send(bytes(message))  # TODO - This will return the number of bytes sent, which might not be all of them. Use sendall() instead?
@@ -174,7 +175,7 @@ class Connection(object):
 
                 if ((len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
                     logger.warning('Packet fragment received: %s' % msglist)
-                    self._flush()  # Get rid of any old data in the input queue
+                    self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                     continue    # Discard this packet fragment, keep waiting for a new valid packet
 
                 # Handle the packet contents here
@@ -248,12 +249,13 @@ class Connection(object):
 
     def readReg(self, modbus_address, regnum, numreg=1):
         """
-        Given a register number, return the raw register contents as a list of bytes.
+        Given a register number and the number of registers to read, return the raw register contents
+        of the desired register/s.
 
         :param modbus_address: MODBUS station number, 0-255
         :param regnum: Register number to read
         :param numreg: Number of registers to read (default 1)
-        :return: A list of integers, each 0-255
+        :return: A list of register values, each a tuple of (MSB, LSB), where MSB and LSB are integers, 0-255
         """
 
         packet = [modbus_address, 0x03] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
@@ -295,7 +297,7 @@ class Connection(object):
 
         :param modbus_address: MODBUS station number, 0-255
         :param regnum: Register number to read
-        :param value: An integer value to write to the (2-byte) register, or a list of two (8 bit) integers
+        :param value: An integer value to write to the (2-byte) register, or a list of two (0-255) integers
         :return: True for success, False if there is an unexpected value in the reply, or None for any other error
         """
         if type(value) == int:
@@ -344,7 +346,7 @@ class Connection(object):
         :param regnum: Register number to read
         :param valuelist: A list of register values to write. To write to multiple consecutive registers, pass a list with
                           more than 1 value. Each value can be a single integer (passed as a 16-bit value, MSB first), or
-                          a tuple of two integers (each 0-255).
+                          a tuple of (MSB, LSB), where MSB and LSB are integers (each 0-255).
         :return: True for success, False if there is an unexpected value in the reply, or None for any other error
         """
         data = []
