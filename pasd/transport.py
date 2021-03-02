@@ -21,19 +21,6 @@ def dummy_validate(slave_registers=None):
     return True
 
 
-class ModbusSlave(object):
-    """
-    Generic parent class for all modbus slaves that the MCCS can communicate with.
-
-    Child objects will be SMARTbox units themselves, and the FNDH controller.
-    """
-    def __init__(self, conn=None, modbus_address=None):
-        self.conn = conn
-        self.modbus_address = modbus_address
-        self.reg_version = None
-        self.register_map = {}
-
-
 class Connection(object):
     """
     Class to handle Modbus communications between the MCCS and Modbus-RTU devices connected via an ethernet to serial
@@ -62,7 +49,7 @@ class Connection(object):
 
     def _open_socket(self):
         """
-        Open a TCP socket to 'self.hostname' on port 'self.port'
+        Try closing self.socket (if it exists), then open a TCP socket to 'self.hostname' on port 'self.port'
         """
         if self.sock is not None:
             try:
@@ -145,16 +132,23 @@ class Connection(object):
         """
         Listen on the socket for an incoming read/write register packet sent by an external bus master (eg, a technician
         in the field). Handle one read/write register call by sending or modifying the contents of the registers passed
-        in the 'slave_registers' dictionary. Exit after 'maxtime' seconds, or after processing one packet, whichever
-        comes first.
+        in the 'slave_registers' dictionary. Exit after 'maxtime' seconds, or after processing one valid packet, whichever
+        comes first. Note that if a packet results in an exception reply (invalid register number, invlaid data, etc),
+        then it will continue waiting for a valid packet until the maxtime elapses.
+
+        NOTE - the slave_registers dictionary will be modified in place with the results of any packet that results
+               in a valid register write. If a register write fails, because of an invalid register number, or because
+               the validation function returns False, then the slave_registers dict is left unchanged.
 
         :param slave_registers: A dictionary with register number (1-9999) as the key, and an integer (0-65535) as the
-                                value.
+                                value. Modified in-place by packets that write registers (0x06 or 0x10).
         :param maxtime: Maximum time to listen for, in seconds.
         :param validation_function: Function to call to validate slave_registers contents. If this validation_function
-                                    returns false, reply to the sender with an 'Illegal Data Value' exception.
-        :return: A tuple of two sets containing all the register numbers that were read-from/written-to during this call.
+                                    returns false, reply to the sender with an 'Illegal Data Value' exception. .
+        :return: A tuple (read_set, written_set) - two sets containing all the register numbers that were read-from or
+                 written-to by the packet processed in this call to listen_for_packet().
         """
+        registers_backup = slave_registers.copy()   # store a copy of all the slave registers passed in on entry
         start_time = time.time()
         with self.lock:
             while (time.time() - start_time) < maxtime:  # Wait for a good packet until we run out of time
@@ -209,6 +203,7 @@ class Connection(object):
                         replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x02]   # 0x02 is 'Illegal Data Address'
                         logger.error('Writing register %d not allowed, returned exception packet %s.' % (regnum, replylist))
                     if not validation_function(slave_registers=slave_registers):
+                        slave_registers[regnum] = registers_backup[regnum]   # Put back the original contents of that register
                         replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
                         logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
                     else:
@@ -224,6 +219,9 @@ class Connection(object):
                     written_set = set()
                     for r in range(regnum, regnum + numreg):
                         if r not in slave_registers:
+                            for r2 in range(regnum, r):
+                                if r2 in slave_registers:
+                                    slave_registers[r2] = registers_backup[r2]
                             replylist = [SLAVE_MODBUS_ADDRESS, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
                             self._send_reply(replylist)
                             logger.error('Writing register %d not allowed, returned exception packet %s.' % (r, replylist))
@@ -234,7 +232,10 @@ class Connection(object):
                             slave_registers[r] = value
                             written_set.add(r)
                     if not validation_function(slave_registers=slave_registers):
+                        for r in range(regnum, regnum + numreg):
+                            slave_registers[r] = registers_backup[r]
                         replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
+                        self._send_reply(replylist)
                         logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
                     else:
                         replylist = [SLAVE_MODBUS_ADDRESS, 0x10] + NtoBytes(regnum, 2) + NtoBytes(numreg, 2)
@@ -389,6 +390,23 @@ class Connection(object):
         return True
 
 
+class ModbusSlave(object):
+    """
+    Generic parent class for all modbus slaves that the MCCS can communicate with.
+
+    Child objects will be SMARTbox units themselves, and the FNDH controller.
+    """
+    def __init__(self, conn=None, modbus_address=None):
+        self.conn = conn
+        self.modbus_address = modbus_address
+        self.reg_version = None
+        self.register_map = {}
+
+
+###################################
+# Utility functions
+#
+
 def NtoBytes(value, nbytes=2):
     """
     Given an integer value 'value' and a word length 'nbytes',
@@ -456,3 +474,4 @@ def getcrc(message=None):
             if b:
                 crc = crc ^ 0xA001
     return [(crc & 0x00FF), ((crc >> 8) & 0x00FF)]
+

@@ -97,13 +97,57 @@ PORTCONFIG_FILENAME = 'fndh_ports.json'
 
 
 class PdocStatus(smartbox.PortStatus):
+    """
+        FNDH PDoC port status instance, representing one of the 28 FEM PDoC ports that supply 48VDC and
+        serial comms to SMARTboxes in the field, making up a station.
+
+        Some of the attributes inherited from the smartbox.PortStatus class are unused here, for PDoC port status
+        instances.
+
+        Attributes are:
+        port_number: Which PDoC port this is (1-28)
+        modbus_address: Modbus address of the FNDH microcontroller (should always be 31)
+        smartbox_address: Modbus address of the SMARTbox connected to this PDoC port (1-30) (populated externally by the station startup code)
+        status_bitmap: Raw contents of the P<NN>_STATE register for this port (0-65535)
+        current_timestamp: Unused
+        current_raw: Unused
+        current: Unused
+        status_timestamp: Unix epoch at the time the P<NN>_STATE register was last read (integer)
+        system_level_enabled: Has the FNDH decided that it's in a safe state (not overheated, etc) (Boolean)
+        system_online: Has the FNDH decided that it's heard from the MCCS recently enough to go online (Boolean)
+        desire_enabled_online: Does the MCCS want this PDoC port enabled when the device is online (Boolean)
+        desire_enabled_offline:Does the MCCS want this PDoC port enabled when the device is offline (Boolean)
+        locally_forced_on: Has this PDoC port been locally forced ON by a technician overide (Boolean)
+        locally_forced_off: Has this PDoC port been locally forced OFF by a technician overide (Boolean)
+        breaker_tripped: Unused
+        power_state: Is this port switched ON (Boolean)
+        power_sense: True if 48V power is detected on the output of this port
+        antenna_number: Unused
+
+        Note that modbus_address, system_level_enabled and system_online have the the same values for all ports.
+    """
     def __init__(self, port_number, modbus_address, status_bitmap, read_timestamp):
+        """
+        Instantiate an instance of a PdocStatus() object.
+
+        :param port_number: Which PDoC port this is (1-28)
+        :param modbus_address: Modbus address of the FNDH microcontroller (should always be 31)
+        :param status_bitmap: Raw contents of the P<NN>_STATE register for this port (0-65535)
+        :param read_timestamp: Unix epoch at the time the P<NN>_STATE register was last read (integer)
+        """
         smartbox.PortStatus.__init__(self, port_number, modbus_address, status_bitmap, 0, 0.0, read_timestamp)
 
         self.smartbox_address = None   # populated by the station initialisation code on powerup
-        self.power_sense = None
+        self.power_sense = None  # True if 48V power is detected on the output of this port
 
     def set_status_data(self, status_bitmap, read_timestamp):
+        """
+        Given a status bitmap (from one of the P<NN>_STATE registers), update the instance with the new data.
+
+        :param status_bitmap:  integer, 0-65535 - state bitmap from P<NN>_STATE register
+        :param read_timestamp:  float - unix timetamp when the data was pulled from the SMARTbox
+        :return: None
+        """
         smartbox.PortStatus.set_status_data(self, status_bitmap, read_timestamp)
 
         # In an FNDH, there is no breaker - instead there's a 'Power Sense' bit. It's RO, so use desired_enabled_* to
@@ -141,43 +185,87 @@ class PdocStatus(smartbox.PortStatus):
 
 
 class FNDH(transport.ModbusSlave):
+    """
+    FNDH class, an instance of which represents the microcontroller inside the FNDH in an SKA-Low station, sitting
+    (virtually) on the same shared low-speed serial bus used to communicate with the SMARTboxes.
+
+    Attributes are:
+    modbus_address: Modbus address of the FNDH (usually 31)
+    mbrv: Modbus register-map revision number for this physical FNDH
+    pcbrv: PCB revision number for this physical FNDH
+    register_map: A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
+    codes: A dictionary mapping status code integer (eg 0) to status code string (eg 'OK'), and LED codes to LED flash states
+    cpuid: CPU identifier (integer)
+    chipid: Unique ID number (16 bytes), different for every physical FNDH
+    firmware_version: Firmware revision mumber for this physical FNDH
+    uptime: Time in seconds since this FNDH was powered up
+    station_value: Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
+    psu48v1_voltage: Voltage measured on the output of the first 48VDC power supply (Volts)
+    psu48v2_voltage: Voltage measured on the output of the second 48VDC power supply (Volts)
+    psu5v_voltage: Voltage measured on the output of the 5VDC power supply (Volts)
+    psu48v_current: Total current on the 48VDC bus (Amps)
+    psu48v_temp: Common temperature for both 48VDC power supplies (deg C)
+    psu5v_temp: Temperature of the 5VDC power supply (Volts)
+    pcb_temp: Temperature on the internal PCB (deg C)
+    outside_temp: Outside temperature (deg C)
+    statuscode: Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
+    status: Status string, obtained from self.codes['status'] (eg 'OK')
+    service_led: True if the blue service indicator LED is switched ON.
+    indicator_code: LED status value, used as a key for self.codes['led']
+    indicator_state: LED status, obtained from self.codes['led']
+    readtime: Unix timestamp for the last successful polled data from this FNDH
+    thresholds: JSON structure containing the analog threshold values for each analogue sensor on this FNDH
+    portconfig: JSON structure containing the port configuration (desired online and offline power state) for each port
+
+    ports: A dictionary with port number (1-28) as the key, and instances of PdocStatus() as values.
+    """
+
     def __init__(self, conn=None, modbus_address=None):
+        """
+        Instantiate an instance of FNDH() using a connection object, and the modbus address for the FNDH
+        (usually 31).
+
+        :param conn: An instance of transport.Connection() defining a connection to an FNDH
+        :param modbus_address: Modbus address of the FNDH (usually 31)
+        """
         transport.ModbusSlave.__init__(self, conn=conn, modbus_address=modbus_address)
 
-        self.mbrv = None
-        self.pcbrv = None
-        self.register_map = {}
-        self.codes = {}
-        self.cpuid = ''
-        self.chipid = []
-        self.firmware_version = 0
-        self.uptime = 0
-        self.station_value = 0
-        self.psu48v1_voltage = 0.0
-        self.psu48v2_voltage = 0.0
-        self.psu5v_voltage = 0.0
-        self.psu48v_current = 0.0
-        self.psu48v_temp = 0.0
-        self.psu5v_temp = 0.0
-        self.pcb_temp = 0.0
-        self.outside_temp = 0.0
-        self.statuscode = 0
-        self.status = ''
-        self.service_led = None
-        self.indicator_code = None
-        self.indicator_state = ''
+        self.mbrv = None   # Modbus register-map revision number for this physical FNDH
+        self.pcbrv = None  # PCB revision number for this physical FNDH
+        self.register_map = {}  # A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
+        self.codes = {}  # A dictionary mapping status code integer (eg 0) to status code string (eg 'OK'), and LED codes to LED flash states
+        self.cpuid = ''  # CPU identifier (integer)
+        self.chipid = []  # Unique ID number (16 bytes), different for every physical FNDH
+        self.firmware_version = 0  # Firmware revision mumber for this physical FNDH
+        self.uptime = 0  # Time in seconds since this FNDH was powered up
+        self.station_value = 0  # Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
+        self.psu48v1_voltage = 0.0  # Voltage measured on the output of the first 48VDC power supply (Volts)
+        self.psu48v2_voltage = 0.0  # Voltage measured on the output of the second 48VDC power supply (Volts)
+        self.psu5v_voltage = 0.0  # Voltage measured on the output of the 5VDC power supply (Volts)
+        self.psu48v_current = 0.0  # Total current on the 48VDC bus (Amps)
+        self.psu48v_temp = 0.0  # Common temperature for both 48VDC power supplies (deg C)
+        self.psu5v_temp = 0.0  # Temperature of the 5VDC power supply (Volts)
+        self.pcb_temp = 0.0  # Temperature on the internal PCB (deg C)
+        self.outside_temp = 0.0  # Outside temperature (deg C)
+        self.statuscode = 0  # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
+        self.status = ''  # Status string, obtained from self.codes['status'] (eg 'OK')
+        self.service_led = None  # True if the blue service indicator LED is switched ON.
+        self.indicator_code = None  # LED status value, used as a key for self.codes['led']
+        self.indicator_state = ''  # LED status, obtained from self.codes['led']
         self.readtime = 0    # Unix timestamp for the last successful polled data from this FNDH
         try:
+            # JSON structure containing the analog threshold values for each analogue sensor on this FNDH
             self.thresholds = json.load(open(THRESHOLD_FILENAME, 'r'))
         except Exception:
             self.thresholds = None
         try:
+            # JSON structure containing the port configuration (desired online and offline power state) for each port
             allports = json.load(open(PORTCONFIG_FILENAME, 'r'))
             self.portconfig = allports[self.modbus_address]
         except Exception:
             self.portconfig = None
 
-        self.ports = {}
+        self.ports = {}  # A dictionary with port number (1-28) as the key, and instances of PdocStatus() as values.
         for pnum in range(1, 29):
             self.ports[pnum] = PdocStatus(port_number=pnum,
                                           modbus_address=modbus_address,
@@ -186,9 +274,9 @@ class FNDH(transport.ModbusSlave):
 
     def poll_data(self):
         """
-        Get all the polled registers from the device, and use the contents to fill in the instance data for this station
+        Get all the polled registers from the device, and use the contents to fill in the instance data for this instance.
 
-        :return:
+        :return:True for success, None if there were any errors.
         """
         maxregnum = max([data[0] for data in self.register_map['POLL'].values()])
         maxregname = [name for (name, data) in self.register_map['POLL'].items() if data[0] == maxregnum]
@@ -296,10 +384,10 @@ class FNDH(transport.ModbusSlave):
 
     def write_portconfig(self):
         """
-        Write the 'desired port state online' and 'desired port state offline' data (loaded from a JSON file into
-        self.portconfig) to the FNDH.
+        Write the current instance data for 'desired port state online' and 'desired port state offline' in each of
+        the port status objects, to the FNDH.
 
-        :return: True if successful, False on failure, None if self.portconfig is empty
+        :return: True if successful, False on failure
         """
         vlist = [0] * 24
         startreg = self.register_map['POLL']['P01_STATE'][0]

@@ -16,7 +16,7 @@ import conversion
 import transport
 
 
-# Dicts with register name as key, and a tuple of (register_number, number_of_registers, name, scaling_function) as value
+# Dicts with register name as key, and a tuple of (register_number, number_of_registers, description, scaling_function) as value
 SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
                         'SYS_MBRV':    (1, 1, 'Modbus register map revision', None),
                         'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
@@ -100,8 +100,8 @@ SMARTBOX_CONF_REGS_1 = {
 
 SMARTBOX_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED'},
                               'fromname':{'OK':0, 'WARNING':1, 'ALARM':2, 'RECOVERY':3, 'UNINITIALISED':4}},
-                    'leds':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW'},
-                            'fromname':{'OFF':0, 'GREEN':1, 'RED':2, 'YELLOW':3}}}
+                    'led':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW'},
+                           'fromname':{'OFF':0, 'GREEN':1, 'RED':2, 'YELLOW':3}}}
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
@@ -132,34 +132,60 @@ SMARTBox at address: %(station)s:
 
 
 class PortStatus(object):
+    """
+        SMARTbox port status instance, representing one of the 12 FEM modules and antenna ports in a
+        single SMARTbox.
+
+        Attributes are:
+        port_number: Which FEM port this is (1-12)
+        modbus_address: Modbus address of the SMARTbox that this port is inside (1-30)
+        status_bitmap: Raw contents of the P<NN>_STATE register for this port (0-65535)
+        current_timestamp: Unix epoch at the time the port current was last read (integer)
+        current_raw: Raw ADC value for the port current (0-65535)
+        current: Port current in mA (float)
+        status_timestamp: Unix epoch at the time the P<NN>_STATE register was last read (integer)
+        system_level_enabled: Has the SMARTbox decided that it's in a safe state (not overheated, etc) (Boolean)
+        system_online: Has the SMARTbox decided that it's heard from the MCCS recently enough to go online (Boolean)
+        desire_enabled_online: Does the MCCS want this port enabled when the device is online (Boolean)
+        desire_enabled_offline:Does the MCCS want this port enabled when the device is offline (Boolean)
+        locally_forced_on: Has this port been locally forced ON by a technician overide (Boolean)
+        locally_forced_off: Has this port been locally forced OFF by a technician overide (Boolean)
+        breaker_tripped: Has the over-current breaker tripped on this port (Boolean)
+        power_state: Is this port switched ON (Boolean)
+        antenna_number: Physical station antenna number. Only set externally, at the station level. (1-256)
+
+        Note that modbus_address, system_level_enabled and system_online have the the same values for all ports.
+    """
     def __init__(self, port_number, modbus_address, status_bitmap, current_raw, current, read_timestamp):
         """
-        Given a 16 bit integer bitwise state (from a PNN_STATE register), instantiate a port status instance
+        Instantiate a SMARTbox port status instance, given a 16 bit integer bitwise state (from a PNN_STATE register),
+        a raw (ADC) current value, a scaled (float) current reading, and a timestamp at which that data was read.
 
-        :param port_number: integer, 1-12
-        :param modbus_address: Integers - the modbus station address of the SMARTbox that this port is in.
+        Parameters:
+        :param port_number: integer, 1-12 - physical FEM port number inside the SMARTbox
+        :param modbus_address: integer - the modbus station address of the SMARTbox that this port is in.
         :param status_bitmap: integer, 0-65535
-        :param current_raw: Integer, 0-65535 - raw ADC value for the port current
-        :param current: Float - port current in mA
-        :param read_timestamp - Float - unix timetamp when the data was pulled from the SMARTbox
+        :param current_raw: integer, 0-65535 - raw ADC value for the port current
+        :param current: float - port current in mA
+        :param read_timestamp - float - unix timetamp when the data was pulled from the SMARTbox
+        :return: None
         """
-        self.port_number = port_number
-        self.modbus_address = modbus_address
-        self.status_bitmap = status_bitmap
-        self.status_timestamp = None
-        self.current_timestamp = None
-        self.current_raw = 0
-        self.current = 0.0
-        self.status_timestamp = read_timestamp
-        self.system_level_enabled = None
-        self.system_online = None
+        self.port_number = port_number        # Which FEM port this is (1-12)
+        self.modbus_address = modbus_address  # Modbus address of the SMARTbox that this port is inside
+        self.status_bitmap = status_bitmap    # Raw contents of the P<NN>_STATE register for this port
+        self.current_timestamp = read_timestamp  # Unix epoch at the time the port current was last read
+        self.current_raw = current_raw           # Raw ADC value for the port current
+        self.current = current                   # Port current in mA
+        self.status_timestamp = read_timestamp   # Unix epoch at the time the P<NN>_STATE register was last read
+        self.system_level_enabled = None   # Has the SMARTbox decided that it's in a safe state (not overheated, etc)
+        self.system_online = None   # Has the SMARTbox decided that it's heard from the MCCS recently enough to go online
         self.desire_enabled_online = None   # Does the MCCS want this port enabled when the device is online
         self.desire_enabled_offline = None   # Does the MCCS want this port enabled when the device is offline
-        self.locally_forced_on = None
-        self.locally_forced_off = None
-        self.breaker_tripped = None
-        self.power_state = None
-        self.antenna_number = None   # Only set externally, at the station level
+        self.locally_forced_on = None     # Has this port been locally forced ON by a technician overide
+        self.locally_forced_off = None    # Has this port been locally forced OFF by a technician overide
+        self.breaker_tripped = None    # Has the over-current breaker tripped on this port
+        self.power_state = None    # Is this port switched ON
+        self.antenna_number = None   # Physical station antenna number (1-256). Only set externally, at the station level.
 
         self.set_current(current_raw, current, read_timestamp=read_timestamp)
         self.set_status_data(status_bitmap, read_timestamp=read_timestamp)
@@ -196,11 +222,26 @@ class PortStatus(object):
         return str(self)
 
     def set_current(self, current_raw, current, read_timestamp):
+        """
+        Given a current reading (raw and scaled) and a read timestamp, update the instance with the new current data.
+
+        :param current_raw: integer - raw ADC value
+        :param current: flaot - current in mA
+        :param read_timestamp: float - unix timetamp when the data was pulled from the SMARTbox
+        :return: None
+        """
         self.current_timestamp = read_timestamp
         self.current_raw = current_raw
         self.current = current
 
     def set_status_data(self, status_bitmap, read_timestamp):
+        """
+        Given a status bitmap (from one of the P<NN>_STATE registers), update the instance with the new data.
+
+        :param status_bitmap:  integer, 0-65535 - state bitmap from P<NN>_STATE register
+        :param read_timestamp:  float - unix timetamp when the data was pulled from the SMARTbox
+        :return: None
+        """
         self.status_timestamp = read_timestamp
         bitstring = "{:016b}".format(status_bitmap)
         self.system_level_enabled = (bitstring[0] == '1')   # read only
@@ -249,21 +290,22 @@ class PortStatus(object):
         self.power_state = (bitstring[9] == '1')
 
     def status_to_integer(self, write_state=False, write_to=False, write_breaker=False):
-        """Return a 16 bit integer corresponding to the instance data.
+        """
+        Return a 16 bit integer state bitmap corresponding to the instance data.
 
-           If 'write_state' is True, then the 'desired_state_online' and 'desired_state_offline' will have bitfields
-           corresponding to the current instance data, otherwise they will contain '00' (meaning 'do not overwrite').
+        If 'write_state' is True, then the 'desired_state_online' and 'desired_state_offline' will have bitfields
+        corresponding to the current instance data, otherwise they will contain '00' (meaning 'do not overwrite').
 
-           If 'write_to' is True, then the 'technicians override' bits will have bitfields corresponding to the
-           current instance data (locally_forced_on and locally_forced_off), otherwise they will contain '00'
+        If 'write_to' is True, then the 'technicians override' bits will have bitfields corresponding to the
+        current instance data (locally_forced_on and locally_forced_off), otherwise they will contain '00'
 
-           If 'write_breaker' is True, then the bit corresponding to the 'reset breaker' action will be 1, otherwise
-           it will contain 0 (do not reset the breaker).
+        If 'write_breaker' is True, then the bit corresponding to the 'reset breaker' action will be 1, otherwise
+        it will contain 0 (do not reset the breaker).
 
-           :param write_state: boolean - overwrite current desired_state_online and desired_state_offline fields
-           :param write_to: boolean - overwrite 'technicians local override' field
-           :param write_breaker - send a 1 in the 'reset breaker' field, otherwise send 0. Local instance data is
-                                  ignored for this field.
+        :param write_state: boolean - overwrite current desired_state_online and desired_state_offline fields
+        :param write_to: boolean - overwrite 'technicians local override' field
+        :param write_breaker - send a 1 in the 'reset breaker' field, otherwise send 0. Local instance data is
+                               ignored for this field.
         """
         b = {True:'1', False:'0'}
         bitstring = b[self.system_level_enabled] + b[self.system_online]
@@ -298,42 +340,85 @@ class PortStatus(object):
 
 
 class SMARTbox(transport.ModbusSlave):
+    """
+    SMARTbox class, instances of which represent each of the ~24 SMARTboxes inside an SKA-Low station, connected to an
+    FNDH via a shared low-speed serial bus.
+
+    Attributes are:
+    modbus_address: Modbus address of this SMARTbox (1-30)
+    mbrv: Modbus register-map revision number for this physical SMARTbox
+    pcbrv: PCB revision number for this physical SMARTbox
+    register_map: A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
+    codes: A dictionary mapping status code integer (eg 0) to status code string (eg 'OK'), and LED codes to LED flash states
+    fem_temps: A dictionary with port number (1-12) as key, and temperature as value
+    cpuid: CPU identifier (integer)
+    chipid: Unique ID number (16 bytes), different for every physical SMARTbox
+    firmware_version: Firmware revision mumber for this physical SMARTbox
+    uptime: Time in seconds since this SMARTbox was powered up
+    station_value: Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
+    incoming_voltage: Measured voltage for the (nominal) 48VDC input power (Volts)
+    psu_voltage: Measured output voltage for the internal (nominal) 5V power supply
+    psu_temp: Temperature of the internal 5V power supply (deg C)
+    pcb_temp: Temperature on the internal PCB (deg C)
+    outside_temp: Outside temperature (deg C)
+    statuscode: Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
+    status: Status string, obtained from self.codes['status'] (eg 'OK')
+    service_led: True if the blue service indicator LED is switched ON.
+    indicator_code: LED status value, used as a key for self.codes['led']
+    indicator_state: LED status, obtained from self.codes['led']
+    readtime: Unix timestamp for the last successful polled data from this SMARTbox
+    pdoc_number: Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
+    thresholds: JSON structure containing the analog threshold values for each port on this SMARTbox
+    portconfig: JSON structure containing the port configuration (desired online and offline power state) for each port
+
+    ports: A dictionary with port number (1-12) as the key, and instances of PortStatus() as values.
+    """
+
     def __init__(self, conn=None, modbus_address=None):
+        """
+        Instantiate an instance of SMARTbox() using a connection object, and the modbus address for that physical
+        SMARTbox.
+
+        :param conn: An instance of transport.Connection() defining a connection to an FNDH
+        :param modbus_address: The modbus station address (1-30) for this physical SMARTbox
+        """
         transport.ModbusSlave.__init__(self, conn=conn, modbus_address=modbus_address)
 
-        self.mbrv = None
-        self.pcbrv = None
-        self.register_map = {}
-        self.codes = {}
+        self.mbrv = None   # Modbus register-map revision number for this physical SMARTbox
+        self.pcbrv = None  # PCB revision number for this physical SMARTbox
+        self.register_map = {}  # A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
+        self.codes = {}    # A dictionary mapping status code integer (eg 0) to status code string (eg 'OK'), and LED codes to LED flash states
         self.fem_temps = {}  # Dictionary with FEM number (1-12) as key, and temperature as value
-        self.cpuid = ''
-        self.chipid = []
-        self.firmware_version = 0
-        self.uptime = 0
-        self.station_value = 0
-        self.incoming_voltage = 0.0
-        self.psu_voltage = 0.0
-        self.psu_temp = 0.0
-        self.pcb_temp = 0.0
-        self.outside_temp = 0.0
-        self.statuscode = 0
-        self.status = ''
-        self.service_led = None
-        self.indicator_code = None
-        self.indicator_state = ''
+        self.cpuid = ''    # CPU identifier (integer)
+        self.chipid = []   # Unique ID number (16 bytes), different for every physical SMARTbox
+        self.firmware_version = 0  # Firmware revision mumber for this physical SMARTbox
+        self.uptime = 0            # Time in seconds since this SMARTbox was powered up
+        self.station_value = 0     # Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
+        self.incoming_voltage = 0.0  # Measured voltage for the (nominal) 48VDC input power (Volts)
+        self.psu_voltage = 0.0     # Measured output voltage for the internal (nominal) 5V power supply
+        self.psu_temp = 0.0    # Temperature of the internal 5V power supply (deg C)
+        self.pcb_temp = 0.0    # Temperature on the internal PCB (deg C)
+        self.outside_temp = 0.0    # Outside temperature (deg C)
+        self.statuscode = 0    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
+        self.status = ''       # Status string, obtained from self.codes['status'] (eg 'OK')
+        self.service_led = None    # True if the blue service indicator LED is switched ON.
+        self.indicator_code = None  # LED status value, used as a key for self.codes['led']
+        self.indicator_state = ''   # LED status, obtained from self.codes['led']
         self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
-        self.pdoc_number = None   # populated by the station initialisation code on powerup
+        self.pdoc_number = None   # Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
         try:
+            # JSON structure containing the analog threshold values for each port on this SMARTbox
             self.thresholds = json.load(open(THRESHOLD_FILENAME, 'r'))
         except Exception:
             self.thresholds = None
         try:
+            # JSON structure containing the port configuration (desired online and offline power state) for each port
             allports = json.load(open(PORTCONFIG_FILENAME, 'r'))
             self.portconfig = allports[self.modbus_address]
         except Exception:
             self.portconfig = None
 
-        self.ports = {}
+        self.ports = {}  # A dictionary with port number (1-12) as the key, and instances of PortStatus() as values.
         for pnum in range(1, 13):
             self.ports[pnum] = PortStatus(port_number=pnum,
                                           modbus_address=modbus_address,
@@ -347,9 +432,9 @@ class SMARTbox(transport.ModbusSlave):
 
     def poll_data(self):
         """
-        Get all the polled registers from the device, and use the contents to fill in the instance data for this station
+        Get all the polled registers from the device, and use the contents to fill in the instance data for this instance.
 
-        :return:
+        :return: True for success, None if there were any errors.
         """
         maxregnum = max([data[0] for data in self.register_map['POLL'].values()])
         maxregname = [name for (name, data) in self.register_map['POLL'].items() if data[0] == maxregnum]
@@ -371,6 +456,7 @@ class SMARTbox(transport.ModbusSlave):
             logger.warning('Only %d registers returned from SMARTbox %d by readReg in poll_data, expected %d' % (len(valuelist),
                                                                                                                  self.modbus_address,
                                                                                                                  poll_blocksize))
+            return None
 
         self.mbrv = transport.bytestoN(valuelist[0])
         self.pcbrv = transport.bytestoN(valuelist[1])
@@ -419,7 +505,7 @@ class SMARTbox(transport.ModbusSlave):
             elif regname == 'SYS_LIGHTS':
                 self.service_led = bool(raw_value[0][0])
                 self.indicator_code = raw_value[0][1]
-                self.indicator_state = self.codes['leds']['fromid'][self.indicator_code]
+                self.indicator_state = self.codes['led']['fromid'][self.indicator_code]
             elif (len(regname) >= 12) and ((regname[:7] + regname[-4:]) == 'SYS_FEMTEMP'):
                 fem_num = int(regname[7:-4])
                 self.fem_temps[fem_num] = scaled_float
@@ -431,11 +517,13 @@ class SMARTbox(transport.ModbusSlave):
                 self.ports[pnum].set_current(current_raw=raw_int, current=scaled_float, read_timestamp=read_timestamp)
 
         self.readtime = read_timestamp
+        return True
 
     def read_uptime(self):
         """
         Read enough registers to get the register revision number, and the system uptime.
-        Returns the uptime in seconds.
+
+        :return: uptime in seconds, or None if there was an error.
         """
         try:
             valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=16)
@@ -451,6 +539,7 @@ class SMARTbox(transport.ModbusSlave):
             logger.warning('Only %d registers returned from SMARTbox %d by readReg in poll_data, expected %d' % (len(valuelist),
                                                                                                                  self.modbus_address,
                                                                                                                  16))
+            return None
 
         self.mbrv = transport.bytestoN(valuelist[0])
         self.pcbrv = transport.bytestoN(valuelist[1])
@@ -486,10 +575,10 @@ class SMARTbox(transport.ModbusSlave):
 
     def write_portconfig(self):
         """
-        Write the 'desired port state online' and 'desired port state offline' data (loaded from a JSON file into
-        self.portconfig) to the SMARTbox.
+        Write the current instance data for 'desired port state online' and 'desired port state offline' in each of
+        the port status objects, to the SMARTbox.
 
-        :return: True if successful, False on failure, None if self.portconfig is empty
+        :return: True if successful, False on failure
         """
         vlist = [0] * 24
         startreg = self.register_map['POLL']['P01_STATE'][0]
@@ -505,18 +594,19 @@ class SMARTbox(transport.ModbusSlave):
 
     def configure(self, thresholds=None, portconfig=None):
         """
-        Get the threshold data (as given, or from the config file), and write it to the SMARTbox.
+        Use the threshold data as given, or in self.thresholds read from the config file on initialisation, and write
+        it to the SMARTbox.
 
-        If that succeeds, read the port configuration (desired state online, desired state offline) from the config
-        file (if it's not supplied), and write it to the SMARTbox.
+        If that succeeds, use the port configuration (desired state online, desired state offline) as given, or in
+        self.portconfig read from the config file on initialisation, and write it to the SMARTbox.
 
         Then, if that succeeds, write a '1' to the status register to tell the micontroller to
         transition out of the 'UNINITIALISED' state.
 
         :param thresholds: A dictionary containing the ADC thresholds to write to the SMARTbox. If none, use defaults
-                           from the JSON file specified in THRESHOLD_FILENAME
+                           from the JSON file specified in THRESHOLD_FILENAME loaded on initialistion into self.thresholds
         :param portconfig: A dictionary containing the port configuration data to write to the SMARTbox. If none, use
-                           defaults from the JSON file specified in PORTCONFIG_FILENAME
+                           defaults from the JSON file specified in PORTCONFIG_FILENAME loaded on initialistion into self.portconfig
         :return: True for sucess
         """
         if thresholds:
