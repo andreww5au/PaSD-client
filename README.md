@@ -406,25 +406,24 @@ There are 28 read-only registers (1201-1228), one for each of the PDoC ports, ea
 
 ## CRC code example:
 
+```
 def getcrc(message=None):
-_&quot;&quot;&quot;
- Calculate and returns the CRC bytes required for &#39;message&#39; (a list_
+    """
+    Calculate and returns the CRC bytes required for 'message' (a list of bytes).
 
-_of bytes).
+    :param message: A list of bytes, each in the range 0-255
+    :return: A list of two integers, each in the range 0-255
+    """
+    if not message:
+        return 0, 0
 
- :param message: A list of bytes, each in the range 0-255
- :return: A list of two integers, each in the range 0-255
- &quot;&quot;&quot;_
-  if not message:
-return 0, 0
-
-crc = 0xFFFF
-
-for byte in message:
- crc = crc ^ byte
-for bit in range(8):
- b = crc &amp; 0x0001
-crc = (crc \&gt;\&gt; 1) &amp; 0x7FFF
-if b:
- crc = crc ^ 0xA001
-return [(crc &amp; 0x00FF), ((crc \&gt;\&gt; 8) &amp; 0x00FF)]
+    crc = 0xFFFF
+    for byte in message:
+        crc = crc ^ byte
+        for bit in range(8):
+            b = crc & 0x0001
+            crc = (crc >> 1) & 0x7FFF
+            if b:
+                crc = crc ^ 0xA001
+    return [(crc & 0x00FF), ((crc >> 8) & 0x00FF)]
+```
