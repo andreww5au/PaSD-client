@@ -140,7 +140,7 @@ class PdocStatus(smartbox.PortStatus):
         """
         smartbox.PortStatus.__init__(self, port_number, modbus_address, status_bitmap, 0, 0.0, read_timestamp)
 
-        self.smartbox_address = None   # populated by the station initialisation code on powerup
+        self.smartbox_address = 0   # populated by the station initialisation code on powerup
         self.power_sense = None  # True if 48V power is detected on the output of this port
 
     def set_status_data(self, status_bitmap, read_timestamp):

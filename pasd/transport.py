@@ -13,8 +13,6 @@ logger.level = logging.DEBUG
 PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
 TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
 
-SLAVE_MODBUS_ADDRESS = 63   # Address that technician's SID devices use to reach the MCCS as a slave device
-
 
 # noinspection PyUnusedLocal
 def dummy_validate(slave_registers=None):
@@ -128,7 +126,7 @@ class Connection(object):
             self.sock.send(bytes(message))  # TODO - This will return the number of bytes sent, which might not be all of them. Use sendall() instead?
             time.sleep(PACKET_WINDOW_TIME)
 
-    def listen_for_packet(self, slave_registers, maxtime=10.0, validation_function=dummy_validate):
+    def listen_for_packet(self, listen_address, slave_registers, maxtime=10.0, validation_function=dummy_validate):
         """
         Listen on the socket for an incoming read/write register packet sent by an external bus master (eg, a technician
         in the field). Handle one read/write register call by sending or modifying the contents of the registers passed
@@ -140,6 +138,7 @@ class Connection(object):
                in a valid register write. If a register write fails, because of an invalid register number, or because
                the validation function returns False, then the slave_registers dict is left unchanged.
 
+        :param listen_address: Modbus address to listen for packets on.
         :param slave_registers: A dictionary with register number (1-9999) as the key, and an integer (0-65535) as the
                                 value. Modified in-place by packets that write registers (0x06 or 0x10).
         :param maxtime: Maximum time to listen for, in seconds.
@@ -173,18 +172,18 @@ class Connection(object):
                     continue    # Discard this packet fragment, keep waiting for a new valid packet
 
                 # Handle the packet contents here
-                if msglist[0] != SLAVE_MODBUS_ADDRESS:
+                if msglist[0] != listen_address:
                     logger.info('Packet received, but it was addressed to station %d' % msglist[0])
                     continue
 
                 if msglist[1] == 0x03:   # Reading a register
                     regnum = msglist[2] * 256 + msglist[3]
                     numreg = msglist[4] * 256 + msglist[5]
-                    replylist = [SLAVE_MODBUS_ADDRESS, 0x03]
+                    replylist = [listen_address, 0x03]
                     read_set = set()
                     for r in range(regnum, regnum + numreg):   # Iterate over all requested registers
                         if r not in slave_registers:
-                            replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x02]  # 0x02 is 'Illegal Data Address'
+                            replylist = [listen_address, 0x86, 0x02]  # 0x02 is 'Illegal Data Address'
                             self._send_reply(replylist)
                             logger.error('Reading register %d not allowed, returned exception packet %s' % (r, replylist))
                             continue
@@ -200,11 +199,11 @@ class Connection(object):
                         slave_registers[regnum] = value
                         replylist = msglist[:-2]   # For success, reply with the same packet: CRC re-added in send_reply()
                     else:
-                        replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x02]   # 0x02 is 'Illegal Data Address'
+                        replylist = [listen_address, 0x86, 0x02]   # 0x02 is 'Illegal Data Address'
                         logger.error('Writing register %d not allowed, returned exception packet %s.' % (regnum, replylist))
                     if not validation_function(slave_registers=slave_registers):
                         slave_registers[regnum] = registers_backup[regnum]   # Put back the original contents of that register
-                        replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
+                        replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
                         logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
                     else:
                         self._send_reply(replylist)
@@ -222,7 +221,7 @@ class Connection(object):
                             for r2 in range(regnum, r):
                                 if r2 in slave_registers:
                                     slave_registers[r2] = registers_backup[r2]
-                            replylist = [SLAVE_MODBUS_ADDRESS, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
+                            replylist = [listen_address, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
                             self._send_reply(replylist)
                             logger.error('Writing register %d not allowed, returned exception packet %s.' % (r, replylist))
                             continue
@@ -234,16 +233,16 @@ class Connection(object):
                     if not validation_function(slave_registers=slave_registers):
                         for r in range(regnum, regnum + numreg):
                             slave_registers[r] = registers_backup[r]
-                        replylist = [SLAVE_MODBUS_ADDRESS, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
+                        replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
                         self._send_reply(replylist)
                         logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
                     else:
-                        replylist = [SLAVE_MODBUS_ADDRESS, 0x10] + NtoBytes(regnum, 2) + NtoBytes(numreg, 2)
+                        replylist = [listen_address, 0x10] + NtoBytes(regnum, 2) + NtoBytes(numreg, 2)
                         self._send_reply(replylist)
                         return set(), written_set
                 else:
                     logger.error('Received modbus packet for function %d - not supported.' % msglist[1])
-                    replylist = [SLAVE_MODBUS_ADDRESS, msglist[1] + 0x80, 0x01]
+                    replylist = [listen_address, msglist[1] + 0x80, 0x01]
                     self._send_reply(replylist)
 
         return set(), set()

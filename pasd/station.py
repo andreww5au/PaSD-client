@@ -11,7 +11,7 @@ from pasd import fndh
 from pasd import transport
 from pasd import smartbox
 
-
+SLAVE_MODBUS_ADDRESS = 63   # Address that technician's SID devices use to reach the MCCS as a slave device
 FNDH_ADDRESS = 31   # Modbus address of the FNDH controller
 
 # Initial mapping between SMARTbox/port and antenna number
@@ -52,6 +52,7 @@ ANTNUM = 1001   # Antenna number for service log, R/W.
 CHIPID = 1002   # Chip ID for service log, R/W.
 LOGNUM = 1010   # Log number (0 is most recent) for service log, R/W.
 MESSAGE = 1011   # Log message text, up to 245 characters (including a null terminator) in up to 123 registers, R/W.
+PDOC_REGSTART = 1200  # One register for each PDoC (1-28), eg 1201-1228
 
 # Number of registers of log message block (max of 125 due to Modbus packet length limit),
 # where the last two registers are the 4-byte unix timestamp for when the message was logged.
@@ -272,7 +273,12 @@ class Station(object):
         start_time = time.time()
         end_time = start_time + maxtime
         while (time.time() < end_time):  # Process packets until we run out of time
+            # Set up the registers for the physical->smartbox/port mapping:
             slave_registers = {port.antenna_number:(port.modbus_address * 256 + port.port_number) for port in self.antennae}
+
+            # Set up the registers for the PDoC port number to smartbox address mapping:
+            pdoc_registers = {(PDOC_REGSTART + pdoc_num):self.fndh.ports[pdoc_num].smartbox_address for pdoc_num in self.fndh.ports.keys()}
+            slave_registers.update(pdoc_registers)
 
             # Set up the registers for reading/writing log messages
             log_message, timestamp = get_log_entry(station=self.hostname,
@@ -294,7 +300,8 @@ class Station(object):
             log_registers[MESSAGE + MESSAGE_LEN + 1], log_registers[MESSAGE + MESSAGE_LEN + 2] = divmod(timestamp, 65536)
 
             slave_registers.update(log_registers)    # log entry read/write registers
-            read_set, written_set = self.conn.listen_for_packet(slave_registers=slave_registers,
+            read_set, written_set = self.conn.listen_for_packet(listen_address=SLAVE_MODBUS_ADDRESS,
+                                                                slave_registers=slave_registers,
                                                                 maxtime=(end_time - time.time()),
                                                                 validation_function=validate_mapping)
             for regnum in written_set:
@@ -363,7 +370,7 @@ def get_log_entry(station=None, desired_antenna=None, desired_chipid=None, desir
                                                                                 station,
                                                                                 desired_antenna,
                                                                                 desired_chipid))
-    return ("Insert a real service log database here.", 1614319283)
+    return ("Insert a real service log database here: %d." % desired_lognum, 1614319283)
 
 
 def save_log_entry(station=None, desired_antenna=None, desired_chipid=None, message=None, message_timestamp=None):
