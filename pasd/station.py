@@ -47,11 +47,12 @@ ANTENNA_MAP = {
  28: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None}
 }
 
-# Register numbers for log message requests (when the MCCS is acting as a Modbus slave)
-ANTNUM = 1001   # Antenna number for service log, R/W.
-CHIPID = 1002   # Chip ID for service log, R/W.
-LOGNUM = 1010   # Log number (0 is most recent) for service log, R/W.
-MESSAGE = 1011   # Log message text, up to 245 characters (including a null terminator) in up to 123 registers, R/W.
+# Register numbers for when the MCCS is acting as a Modbus slave)
+PHYSANT_REGSTART = 0  # One register for each physical antenna, eg 1-256
+ANTNUM = 1001   # register holding physical antenna number for service log, R/W.
+CHIPID = 1002   # register holding chip ID for service log, R/W.
+LOGNUM = 1010   # register holding log entry number (0 is most recent) for service log, R/W.
+MESSAGE = 1011   # registers holding Log message text, up to 245 characters (including a null terminator) in up to 123 registers, R/W.
 PDOC_REGSTART = 1200  # One register for each PDoC (1-28), eg 1201-1228
 
 # Number of registers of log message block (max of 125 due to Modbus packet length limit),

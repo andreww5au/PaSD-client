@@ -19,6 +19,11 @@ def dummy_validate(slave_registers=None):
     return True
 
 
+# TODO - make this a generic class that could use either a socket interface, or a pyserial interface, so that the
+# MCCS can use this class from the control room (to the ethernet-serial bridge), or a Technician's SID can use it
+# in the field over an IrDA link. The base class would be Connection(), with stub _open(), _read() and _write() methods.
+# Those _open(), _read() and _write() methods would be overriden by subclasses of SerialConnection() and TCPConnection().
+
 class Connection(object):
     """
     Class to handle Modbus communications between the MCCS and Modbus-RTU devices connected via an ethernet to serial
