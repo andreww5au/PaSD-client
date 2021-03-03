@@ -1,0 +1,430 @@
+# PASD SMARTbox and FNDH API for the local MCCS
+
+## Link layer
+
+As seen at the microcontroller in a SMARTbox or FNDH, the protocol is Modbus RTU, at 9600 bps, (8 bit, no parity), handshaking TBD. The FNDH has an ethernet (100baseT) to serial bridge, which accepts a TCP connection to port 5000 from any client (or UDP packets to port 5000), and translates traffic on the serial port to/from the network.
+
+The local MCCS simply opens a TCP connection to the given IP address (depending on the station number, set via DIP switches in the FNDH) and sends and receives bytes in the Modbus RTU packet format.
+
+The microcontroller in the FNDH forwards these packets directly to a multidrop serial bus, to which all of the SMARTboxes are connected as Modbus slave devices, each with a unique station address. The FNDH microcontroller also sits (logically, if not physically) on the same multidrop serial bus, and acts as a Modbus slave device with a fixed station address, allowing 48VDC power to the each of the 28 SMARTbox ports to be turned on and off.
+
+## Low-level API
+
+The protocol is Modbus RTU. The only registers being used are in the &#39;holding register&#39; area, from 40001-49999. All are formally read/write according to the Modbus standard, but the microcontroller ignores writes to most of them. This allows a single multi-register write command, instead of several individual commands.
+
+In this documentation, &#39;register numbers&#39; refer to the location inside the set of Modbus holding registers, so register &#39;5&#39; means 40005 in the full Modbus address space. Note that the &#39;Regnum&#39; field inside the Modbus packet is 1 less than this, so a packet with a value of &#39;4&#39; in the Regnum field would refer to register 40005, or &#39;register 5&#39; in this document.
+
+### Single or multi-register read (function 0x03):
+
+To read one or more registers from the microcontroller, the MCCS would send a packet consisting of:
+
+| Station\_id | 0x03 | Regnum(hi) | Regnum(lo) | Numreg(hi) | Numreg(lo) | CRC(hi) | CRC(lo) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+
+Sample code to calculate the CRC for a message is included in the appendix.
+
+For example, to read 8 (two-byte) registers, starting with register 11, from the SMARTbox with a station address of 1, the packet contents would be:
+
+| 0x01 | 0x03 | 0x00 | 0x0A | 0x00 | 0x08 | 0x64 | 0x0E |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+
+_Note that the &#39;Regnum&#39; values in the packet are the actual register number minus 1, so we send decimal &#39;10&#39; in the packet (0x0A) to read register 11._
+
+In reply, the microcontroller would send a packet containing its own station ID, a 0x03, the number of registers read (in 1 byte), the desired register contents (MSB first), and ending with a two-byte CRC.
+
+If there was an error, the microcontroller would reply with a packet that looks like:
+
+| Station id | 0x83 | Exc\_code | CRC(hi) | CRC(lo) |
+| --- | --- | --- | --- | --- |
+
+The 0x83 function code is the original function code of 0x03 for &#39;read register&#39;, plus 0x80 to indicate an exception. The &#39;Exc\_code&#39; values are documented elsewhere (eg [Modbus - Wikipedia](https://en.wikipedia.org/wiki/Modbus))
+
+### Single register write (function 0x06):
+
+To write one register to the microcontroller, the MCCS would send a packet that looks like:
+
+| Station id | 0x06 | Regnum(hi) | Regnum(lo) | Data(hi) | Data(lo) | CRC(hi) | CRC(lo) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+
+If there was no error, the microcontroller should reply with a packet identical to the one it received, with register number, data and CRC. If there was an error, it should reply with a 5-byte exception packet, with a function code of 0x86, and an appropriate exception code and CRC.
+
+### Multi-register write (function 0x10):
+
+To write multiple registers to the microcontroller at the same time, the MCCS would send a packet with the station ID, a function code of 0x10, the starting register number (two bytes, MSB first), and a list of register contents (two bytes per register, MSB first). For example, to write 0x1234 to register 23 and 0x5678 to register 24, on station 1:
+
+| 0x01 | 0x10 | 0x00 | 0x16 | 0x12 | 0x34 | 0x56 | 0x78 | 0xA2 | 0xF1 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+For multiple register writes (function 0x10), the microcontroller would respond with a packet that contains the starting register number, and the number of registers written, not the complete list of register values. In the above example, the reply packet would be:
+
+| 0x01 | 0x10 | 0x00 | 0x16 | 0x00 | 0x02 | 0xA0 | 0x0C |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+
+Errors resulting from a multi-register write would have a function code of 0x90, and the relevant exception code.
+
+## SMARTbox register map
+
+The SMARTbox registers are divided into two blocks of contiguous addresses. The first block (starting at register 1) contains all of the values that need to be polled at regular intervals (mostly read-only registers). The second block (starting at register 1001) contains configuration data written by the MCCS after power-up, and does not need to be read after that.
+
+### Polled registers:
+
+The polled register block has 59 two-byte registers, starting at register 1. Two of these registers make up the CPU ID, two make the &#39;uptime&#39; value in seconds, and 8 make up the unique chip ID number (guaranteed to be different for every physical device). Of the 59 registers, 35 are &#39;system&#39; registers, and there an additional two 2-byte &#39;port registers&#39; for each of the 12 FEM ports in the SMARTbox.
+
+| **#** | **Name** | **Size** | **Description** |
+| --- | --- | --- | --- |
+| 1 | SYS\_MBRV | 1 | Modbus register map revision number. RO. |
+| 2 | SYS\_PCBREV | 1 | PCB Revision number. RO. |
+| 3 | SYS\_CPUID | 2 | Microcontroller device ID (two registers, four bytes). RO. |
+| 5 | SYS\_CHIPID | 8 | Chip unique device ID (8 registers, 16 bytes). RO. |
+| 13 | SYS\_FIRMVER | 1 | Firmware revision number. RO. |
+| 14 | SYS\_UPTIME | 2 | System uptime, in seconds (2 registers, four bytes). RO. |
+| 16 | SYS\_ADDRESS | 1 | Modbus station address. RO. |
+| 17 | SYS\_48V\_V | 1 | Incoming 48VDC voltage (raw ADC value). RO. |
+| 18 | SYS\_PSU\_V | 1 | PSU output voltage (raw ADC value). RO. |
+| 19 | SYS\_PSUTEMP | 1 | PSU temperature (raw ADC value). RO. |
+| 20 | SYS\_PCBTEMP | 1 | PCB temperature (raw ADC value). RO. |
+| 21 | SYS\_OUTTEMP | 1 | Outside temperature (raw ADC value). RO. |
+| 22 | SYS\_STATUS | 1 | System status (see text). R/W. |
+| 23 | SYS\_LIGHTS | 1 | LED status (see text). R/W. |
+| 24 | SYS\_FEM01TEMP | 1 | FEM 1 enclosure temperature (raw ADC value). RO. |
+| 25 | SYS\_FEM02TEMP | 1 | FEM 2 enclosure temperature (raw ADC value). RO. |
+| 26 | SYS\_FEM03TEMP | 1 | FEM 3 enclosure temperature (raw ADC value). RO. |
+| 27 | SYS\_FEM04TEMP | 1 | FEM 4 enclosure temperature (raw ADC value). RO. |
+| 28 | SYS\_FEM05TEMP | 1 | FEM 5 enclosure temperature (raw ADC value). RO. |
+| 29 | SYS\_FEM06TEMP | 1 | FEM 6 enclosure temperature (raw ADC value). RO. |
+| 30 | SYS\_FEM07TEMP | 1 | FEM 7 enclosure temperature (raw ADC value). RO. |
+| 31 | SYS\_FEM08TEMP | 1 | FEM 8 enclosure temperature (raw ADC value). RO. |
+| 32 | SYS\_FEM09TEMP | 1 | FEM 9 enclosure temperature (raw ADC value). RO. |
+| 33 | SYS\_FEM10TEMP | 1 | FEM 10 enclosure temperature (raw ADC value). RO. |
+| 34 | SYS\_FEM11TEMP | 1 | FEM 11 enclosure temperature (raw ADC value). RO. |
+| 35 | SYS\_FEM12TEMP | 1 | FEM 12 enclosure temperature (raw ADC value). RO. |
+
+The SYS\_STATUS is one of the two status registers that are read/write. When read, it contains the current status code – 0=OK, 1=WARNING, 2=ALARM, 3=RECOVERY, 4=UNINITIALISED. The SMARTbox will boot into the UNINITIALISED state, and stay in that state until any value is written into the SYS\_STATUS register. That register write will result in a transition to one of the other states. Two of the states (OK and WARNING) allow ports to be turned on, the rest result in the outputs being forced off.
+
+The microcontroller also keeps track of MCCS communications. If the microcontroller has received any serial data from the MCCS recently, it defines the system as &#39;online&#39; (for the purposes of the port state registers described below). If a significant time has elapsed since the last serial communications, the system is defined as &#39;offline&#39;.
+
+The SYS\_LIGHTS register is also read/write. It controls the state of the two LEDs on the SMARTbox. The first (MSB) byte controls the state of the blue service indicator LED (0 is off, 255 is on). Intermediate values may control brightness, depending on the hardware. The second (LSB) byte controls the state of the tri-colour (red-yellow-green) status LED, including flash patterns. These are represented by codes (TBD) – for example, 0 might be off, 1 might represent flashing bright red for 0.2 seconds every 1 second, etc.
+
+The hardware probably won&#39;t allow all 12 FEM enclosure temperatures to be measured, so many of the twelve SYS\_FEM\&lt;N\&gt;TEMP registers will contain zero, meaning that there is no sensor for that FEM. Valid ADC readings for an FEM enclosure would be in a few of those registers. This is the reason the FEM enclosure temperatures are in the system registers, section, rather than port registers.
+
+The port registers are:
+
+| # | **Name** | **Size** | **Description** |
+| --- | --- | --- | --- |
+| 36 | P01\_STATE | 1 | Port 1 state bitmap (see text). R/W. |
+| 37 | P01\_CURRENT | 1 | Port 1 current (raw ADC value). RO. |
+| 38 | P02\_STATE | 1 | Port 2 state bitmap (see text). R/W. |
+| 39 | P02\_CURRENT | 1 | Port 2 current (raw ADC value). RO. |
+| 40 | P03\_STATE | 1 | Port 3 state bitmap (see text). R/W. |
+| 41 | P03\_CURRENT | 1 | Port 3 current (raw ADC value). RO. |
+| 42 | P04\_STATE | 1 | Port 4 state bitmap (see text). R/W. |
+| 43 | P04\_CURRENT | 1 | Port 4 current (raw ADC value). RO. |
+| 44 | P05\_STATE | 1 | Port 5 state bitmap (see text). R/W. |
+| 45 | P05\_CURRENT | 1 | Port 5 current (raw ADC value). RO. |
+| 46 | P06\_STATE | 1 | Port 6 state bitmap (see text). R/W. |
+| 47 | P06\_CURRENT | 1 | Port 6 current (raw ADC value). RO. |
+| 48 | P07\_STATE | 1 | Port 7 state bitmap (see text). R/W. |
+| 49 | P07\_CURRENT | 1 | Port 7 current (raw ADC value). RO. |
+| 50 | P08\_STATE | 1 | Port 8 state bitmap (see text). R/W. |
+| 51 | P08\_CURRENT | 1 | Port 8 current (raw ADC value). RO. |
+| 52 | P09\_STATE | 1 | Port 9 state bitmap (see text). R/W. |
+| 53 | P09\_CURRENT | 1 | Port 9 current (raw ADC value). RO. |
+| 54 | P10\_STATE | 1 | Port 10 state bitmap (see text). R/W. |
+| 55 | P10\_CURRENT | 1 | Port 10 current (raw ADC value). RO. |
+| 56 | P11\_STATE | 1 | Port 11 state bitmap (see text). R/W. |
+| 57 | P11\_CURRENT | 1 | Port 11 current (raw ADC value). RO. |
+| 58 | P12\_STATE | 1 | Port 12 state bitmap (see text). R/W. |
+| 59 | P12\_CURRENT | 1 | Port 12 current (raw ADC value). RO. |
+
+Each of the 12 FEM ports has a state register (described below), which is Read/Write, and a current register containing the raw ADC reading for the current to that port (read only).
+
+The state register is a bitmap. The first (most significant) byte contains:
+
+| **7** | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ENABLE | ONLINE | DSON-H | DSON-L | DSOFF-H | DSOFF-L | TO-H | TO-L |
+
+The second (least significant) byte contains:
+
+| **7** | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| BREAKER | POWER | - | - | - | - | - | - |
+
+The fields are:
+
+ENABLE: (read-only) Contains 1 if the system-wide health and settings allow this port to be active. All ports in a device will share the same ENABLE value.  It is included in every port&#39;s state register to simplify reading only a subset of ports in a single request.
+
+ONLINE: (read-only) Contains a 1 if the system-wide state is &#39;online&#39;, meaning that it has heard from the MCCS recently. All ports in a device will share the same ONLINE value.  It is included in every port&#39;s state register to simplify reading only a subset of ports in a single request.
+
+DSON-H and DSON-L: (read/write). These define a two-bit field that defines whether this port should be turned ON or OFF when the overall system state is &#39;online (the ONLINE bit field is 1). If this field is 10, then this port should be kept OFF when the system is online. If this field is 11, then this port should be turned ON when the system is online. If this field is 00 (the default on powerup), then the desired state is unknown, and is interpreted by the microcontroller as meaning the port should stay turned off. If a 00 is written to this field, then the current value of the desired state bits in the microcontroller is left unchanged.
+
+DSOFF-H and DSOFF-L: (read/write). As for DSON-H and DSON-L, only this field defines whether the port should be turned on when the overall system state is &#39;offline.
+
+TO-H and TO-L: (read/write). These define a two-bit field that defines whether this port should be forced to turn ON or OFF, overriding the DSON and DSOFF fields. The MCCS should never set this field, it should only be used by a technician in the field. Writing a 10 to this field forces the port to turn OFF, writing a 11 to this field forces the port to turn ON, and writing a 01 to this field turns off the override, so the DSON and DSOFF field values are used to determine the power state. Writing 00 to this field leaves the current field contents in the microcontroller unchanged.
+
+BREAKER: (read/write). Contains a 1 if the over-current sense circuit breaker for this port has tripped. Writing a 1 to this field will reset the breaker if it has tripped. Resetting the trip without clearing the fault condition which caused it, may provide thermal stress on the device itself and the components it is attempting to power.  It is recommended that a few seconds minimum is allowed to pass before a retry and only two or three attempts are made before a proper investigation is made into the cause.
+
+POWER: (read-only). Indicates whether the power is turned on for this port. This field represents the current state of this port&#39;s output &#39;enable&#39; from the device&#39;s processor to the power drive circuitry. It is unlikely but possible that device hardware failures or a simple cabling issue, may lead to the physical port being in a different powered state. It is also possible that the FEM or LNAs have failed or are not connected. Use this field plus the value of the CCR &#39;current reading register&#39; to check for nominal operation. For this value to be &#39;On&#39;, the device health must be &#39;OK&#39; or &#39;Warning&#39;, and the port circuit breaker must not be in the &#39;tripped&#39; state.
+
+### Configuration Registers
+
+The configuration register block, starting at register 1001 (all read/write), contains threshold values in ADU used by the microcontroller to act on the values of each of the analogue inputs. Ost of the system-wide analogue inputs have four thresholds, each stored in a 2-byte register:
+
+- ALARM-high (AH): If the new reading is above this value, then the state transitions to (or stays in) ALARM. If the current state is ALARM, and the new reading is _below_ this value, but still above WARNING-high, then transition to the RECOVERY state.
+- WARNING-high (WH): If the current state is OK or WARNING, and the new reading is above this value (but still below ALARM-high), then the state transitions to (or stays in) WARNING. If the current state is ALARM, and the new reading is above this value and below ALARM-high, then transition to RECOVERY. From any state, if any reading is below this value (but still above WARNING-low), then transition to OK.
+
+- WARNING-low (WL): If the current state is OK or WARNING, and the new reading is below this value (but still above ALARM-low), then the state transitions to (or stays in) WARNING. If the current state is ALARM, and the new reading is below this value and above ALARM-low, then transition to RECOVERY. From any state, if any reading is above this value (but still below WARNING-high), then transition to OK.
+- ALARM-low (AL): If the new reading is below this value, then the state transitions to (or stays in) ALARM. If the current state is ALARM, and the new reading is _above_ this value, but still below WARNING-low, then transition to the RECOVERY state.
+
+| 1001 | SYS\_48V\_V\_TH | 4 | Incoming 48VDC voltage (raw ADC value). AH, WH, WL, AL. |
+| --- | --- | --- | --- |
+| 1005 | SYS\_PSU\_V\_TH | 4 | PSU output voltage (raw ADC value). AH, WH, WL, AL. |
+| 1009 | SYS\_PSUTEMP\_TH | 4 | PSU temperature (raw ADC value). AH, WH, WL, AL. |
+| 1013 | SYS\_PCBTEMP\_TH | 4 | PCB temperature (raw ADC value). AH, WH, WL, AL. |
+| 1017 | SYS\_OUTTEMP\_TH | 4 | Outside temperature (raw ADC value). AH, WH, WL, AL. |
+| 1021 | SYS\_FEM01TEMP\_TH | 4 | FEM 1 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1025 | SYS\_FEM02TEMP\_TH | 4 | FEM 2 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1029 | SYS\_FEM03TEMP\_TH | 4 | FEM 3 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1033 | SYS\_FEM04TEMP\_TH | 4 | FEM 4 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1037 | SYS\_FEM05TEMP\_TH | 4 | FEM 5 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1041 | SYS\_FEM06TEMP\_TH | 4 | FEM 6 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1045 | SYS\_FEM07TEMP\_TH | 4 | FEM 7 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1049 | SYS\_FEM08TEMP\_TH | 4 | FEM 8 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1053 | SYS\_FEM09TEMP\_TH | 4 | FEM 9 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1057 | SYS\_FEM10TEMP\_TH | 4 | FEM 10 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1061 | SYS\_FEM11TEMP\_TH | 4 | FEM 11 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1065 | SYS\_FEM12TEMP\_TH | 4 | FEM 12 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1066 | P01\_CURRENT\_TH | 1 | Port 01 current trip threshold (raw ADC value). |
+| 1067 | P02\_CURRENT\_TH | 1 | Port 02 current trip threshold (raw ADC value). |
+| 1068 | P03\_CURRENT\_TH | 1 | Port 03 current trip threshold (raw ADC value). |
+| 1069 | P04\_CURRENT\_TH | 1 | Port 04 current trip threshold (raw ADC value). |
+| 1070 | P05\_CURRENT\_TH | 1 | Port 05 current trip threshold (raw ADC value). |
+| 1071 | P06\_CURRENT\_TH | 1 | Port 06 current trip threshold (raw ADC value). |
+| 1072 | P07\_CURRENT\_TH | 1 | Port 07 current trip threshold (raw ADC value). |
+| 1073 | P08\_CURRENT\_TH | 1 | Port 08 current trip threshold (raw ADC value). |
+| 1074 | P09\_CURRENT\_TH | 1 | Port 09 current trip threshold (raw ADC value). |
+| 1075 | P10\_CURRENT\_TH | 1 | Port 10 current trip threshold (raw ADC value). |
+| 1076 | P11\_CURRENT\_TH | 1 | Port 11 current trip threshold (raw ADC value). |
+| 1077 | P12\_CURRENT\_TH | 1 | Port 12 current trip threshold (raw ADC value). |
+
+The P\&lt;NN\&gt;\_CURRENT\_TH are the thresholds at which the microcontroller will turn off an FEM because the current is too high. The values are raw ADC values, representing the difference between two voltage readings.
+
+## FNDH Register map
+
+The FNDH registers are divided into two blocks of contiguous addresses. The first block (starting at register 1) contains all of the values that need to be polled at regular intervals (mostly read-only registers). The second block (starting at register 1001) contains configuration data written by the MCCS after power-up, and does not need to be read after that.
+
+### Polled registers:
+
+The polled register block has 54 two-byte registers, starting at register 1. Two of these registers make up the CPU ID, two make up the &#39;uptime&#39; value in seconds, and 8 make up the unique chip ID number (guaranteed to be different for every physical device). Of these 54 registers, 26 are &#39;system&#39; registers, and there an additional 2-byte &#39;port state register&#39; for each of the 28 possible output ports in the FNDH.
+
+| **#** | **Name** | **Size** | **Description** |
+| --- | --- | --- | --- |
+| 1 | SYS\_MBRV | 1 | Modbus register map revision number. RO. |
+| 2 | SYS\_PCBREV | 1 | PCB Revision number. RO. |
+| 3 | SYS\_CPUID | 2 | Microcontroller device ID (two registers, four bytes). RO. |
+| 5 | SYS\_CHIPID | 8 | Chip unique device ID (8 registers, 16 bytes). RO. |
+| 13 | SYS\_FIRMVER | 1 | Firmware revision number. RO. |
+| 14 | SYS\_UPTIME | 2 | System uptime, in seconds (2 registers, four bytes). RO. |
+| 16 | SYS\_ADDRESS | 1 | Modbus station address. RO. |
+| 17 | SYS\_48V\_1\_V | 1 | 48VDC PSU 1 output voltage (raw ADC value). RO. |
+| 18 | SYS\_48V\_2\_V | 1 | 48VDC PSU 2 output voltage (raw ADC value). RO. |
+| 19 | SYS\_5V\_V | 1 | 5VDC PSU output voltage (raw ADC value). RO. |
+| 20 | SYS\_48V\_I | 1 | Total 48VDC output current (raw ADC value). RO. |
+| 21 | SYS\_48V\_TEMP | 1 | 48VDC PSU 1+2 temperature (raw ADC value). RO. |
+| 22 | SYS\_5V\_TEMP | 1 | 5VDC PSU temperature (raw ADC value). RO. |
+| 23 | SYS\_PCBTEMP | 1 | PCB temperature (raw ADC value). RO. |
+| 24 | SYS\_OUTTEMP | 1 | Outside temperature (raw ADC value). RO. |
+| 25 | SYS\_STATUS | 1 | System status (see text). R/W. |
+| 26 | SYS\_LIGHTS | 1 | LED status (see text). R/W. |
+
+The SYS\_STATUS is one of the two status registers that are read/write. When read, it contains the current status code – 0=OK, 1=WARNING, 2=ALARM, 3=RECOVERY, 4=UNINITIALISED. The FNDH will boot into the UNINITIALISED state, and stay in that state until any value is written into the SYS\_STATUS register. That register write will result in a transition to one of the other states. Two of the states (OK and WARNING) allow ports to be turned on, the rest result in the outputs being forced off.
+
+The microcontroller also keeps track of MCCS communications. If the microcontroller has received any serial data from the MCCS recently, it defines the system as &#39;online&#39; (for the purposes of the port state registers described below). If a significant time has elapsed since the last serial communications, the system is defined as &#39;offline&#39;.
+
+The SYS\_LIGHTS register is also read/write. It controls the state of the two LEDs on the FNDH. The first (MSB) byte controls the state of the blue service indicator LED (0 is off, 255 is on). Intermediate values may control brightness, depending on the hardware. The second (LSB) byte controls the state of the tri-colour (red-yellow-green) status LED, including flash patterns. These are represented by codes (TBD) – for example, 0 might be off, 1 might represent flashing bright red for 0.2 seconds every 1 second, etc.
+
+The port registers are:
+
+| # | **Name** | **Size** | **Description** |
+| --- | --- | --- | --- |
+| 27 | P01\_STATE | 1 | Port 1 state bitmap (see text). R/W. |
+| 28 | P02\_STATE | 1 | Port 2 state bitmap (see text). R/W. |
+| 29 | P03\_STATE | 1 | Port 3 state bitmap (see text). R/W. |
+| 30 | P04\_STATE | 1 | Port 4 state bitmap (see text). R/W. |
+| 31 | P05\_STATE | 1 | Port 5 state bitmap (see text). R/W. |
+| 32 | P06\_STATE | 1 | Port 6 state bitmap (see text). R/W. |
+| 33 | P07\_STATE | 1 | Port 7 state bitmap (see text). R/W. |
+| 34 | P08\_STATE | 1 | Port 8 state bitmap (see text). R/W. |
+| 35 | P09\_STATE | 1 | Port 9 state bitmap (see text). R/W. |
+| 36 | P10\_STATE | 1 | Port 10 state bitmap (see text). R/W. |
+| 37 | P11\_STATE | 1 | Port 11 state bitmap (see text). R/W. |
+| 38 | P12\_STATE | 1 | Port 12 state bitmap (see text). R/W. |
+| 39 | P13\_STATE | 1 | Port 13 state bitmap (see text). R/W. |
+| 40 | P14\_STATE | 1 | Port 14 state bitmap (see text). R/W. |
+| 41 | P15\_STATE | 1 | Port 15 state bitmap (see text). R/W. |
+| 42 | P16\_STATE | 1 | Port 16 state bitmap (see text). R/W. |
+| 43 | P17\_STATE | 1 | Port 17 state bitmap (see text). R/W. |
+| 44 | P18\_STATE | 1 | Port 18 state bitmap (see text). R/W. |
+| 45 | P19\_STATE | 1 | Port 19 state bitmap (see text). R/W. |
+| 46 | P20\_STATE | 1 | Port 20 state bitmap (see text). R/W. |
+| 47 | P21\_STATE | 1 | Port 21 state bitmap (see text). R/W. |
+| 48 | P22\_STATE | 1 | Port 22 state bitmap (see text). R/W. |
+| 49 | P23\_STATE | 1 | Port 23 state bitmap (see text). R/W. |
+| 50 | P24\_STATE | 1 | Port 24 state bitmap (see text). R/W. |
+| 51 | P25\_STATE | 1 | Port 25 state bitmap (see text). R/W. |
+| 52 | P26\_STATE | 1 | Port 26 state bitmap (see text). R/W. |
+| 53 | P27\_STATE | 1 | Port 27 state bitmap (see text). R/W. |
+| 54 | P28\_STATE | 1 | Port 28 state bitmap (see text). R/W. |
+
+Each of the 12 PDOC ports has a state register (described below), which is Read/Write.
+
+The state register is a bitmap. The first (most significant) byte contains:
+
+| **7** | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ENABLE | ONLINE | DSON-H | DSON-L | DSOFF-H | DSOFF-L | TO-H | TO-L |
+
+The second (least significant) byte contains:
+
+| **7** | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| PWRSENSE | POWER | - | - | - | - | - | - |
+
+The fields are:
+
+ENABLE: (read-only) Contains 1 if the system-wide health and settings allow this port to be active. All ports in a device will share the same ENABLE value.  It is included in every port&#39;s state register to simplify reading only a subset of ports in a single request.
+
+ONLINE: (read-only) Contains a 1 if the system-wide state is &#39;online&#39;, meaning that it has heard from the MCCS recently. All ports in a device will share the same ONLINE value.  It is included in every port&#39;s state register to simplify reading only a subset of ports in a single request.
+
+DSON-H and DSON-L: (read/write). These define a two-bit field that defines whether this port should be turned ON or OFF when the overall system state is &#39;online (the ONLINE bit field is 1). If this field is 10, then this port should be kept OFF when the system is online. If this field is 11, then this port should be turned ON when the system is online. If this field is 00 (the default on powerup), then the desired state is unknown, and is interpreted by the microcontroller as meaning the port should stay turned off. If a 00 is written to this field, then the current value of the desired state bits in the microcontroller is left unchanged.
+
+DSOFF-H and DSOFF-L: (read/write). As for DSON-H and DSON-L, only this field defines whether the port should be turned on when the overall system state is &#39;offline.
+
+TO-H and TO-L: (read/write). These define a two-bit field that defines whether this port should be forced to turn ON or OFF, overriding the DSON and DSOFF fields. The MCCS should never set this field, it should only be used by a technician in the field. Writing a 10 to this field forces the port to turn OFF, writing a 11 to this field forces the port to turn ON, and writing a 01 to this field turns off the override, so the DSON and DSOFF field values are used to determine the power state. Writing 00 to this field leaves the current field contents in the microcontroller unchanged.
+
+PWRSENSE: (read/write). Contains a 1 if there is an active 48V supply on the output to that port. It will be 0 if the port is turned off (POWER=0), or if the under/over current circuit has tripped, disabling 48V for that port. If the current limit has tripped, the port must be turned off and on again using the &#39;desired\_state\_xxxxxxx&#39; bits in the state register. Resetting the trip without clearing the fault condition which caused it, may provide thermal stress on the device itself and the components it is attempting to power.  It is recommended that a few seconds minimum is allowed to pass before a retry and only two or three attempts are made before a proper investigation is made into the cause.
+
+POWER: (read-only). Indicates whether the power is turned on for this port. This field represents the current state of this port&#39;s output &#39;enable&#39; from the device&#39;s processor to the power drive circuitry. It is possible that current limiting logic or a part failure may still mean that the port is not powered (PWRSENSE=0). Use this field plus the value of the PWRSENSE field to check for nominal operation. For this field to be &#39;On&#39;, the device health must be &#39;OK&#39; or &#39;Warning&#39;, and the port circuit breaker must not be in the &#39;tripped&#39; state.
+
+### Configuration Registers
+
+The configuration register block, starting at register 1001 (all read/write), contains threshold values in ADU used by the microcontroller to act on the values of each of the analogue inputs. Each system-wide analogue input has four thresholds, each stored in a 2-byte register:
+
+- ALARM-high (AH): If the new reading is above this value, then the state transitions to (or stays in) ALARM. If the current state is ALARM, and the new reading is _below_ this value, but still above WARNING-high, then transition to the RECOVERY state.
+- WARNING-high (WH): If the current state is OK or WARNING, and the new reading is above this value (but still below ALARM-high), then the state transitions to (or stays in) WARNING. If the current state is ALARM, and the new reading is above this value and below ALARM-high, then transition to RECOVERY. From any state, if any reading is below this value (but still above WARNING-low), then transition to OK.
+
+- WARNING-low (WL): If the current state is OK or WARNING, and the new reading is below this value (but still above ALARM-low), then the state transitions to (or stays in) WARNING. If the current state is ALARM, and the new reading is below this value and above ALARM-low, then transition to RECOVERY. From any state, if any reading is above this value (but still below WARNING-high), then transition to OK.
+- ALARM-low (AL): If the new reading is below this value, then the state transitions to (or stays in) ALARM. If the current state is ALARM, and the new reading is _above_ this value, but still below WARNING-low, then transition to the RECOVERY state.
+
+| 1001 | SYS\_48V\_V\_TH | 4 | Incoming 48VDC voltage (raw ADC value). AH, WH, WL, AL. |
+| --- | --- | --- | --- |
+| 1005 | SYS\_PSU\_V\_TH | 4 | PSU output voltage (raw ADC value). AH, WH, WL, AL. |
+| 1009 | SYS\_PSUTEMP\_TH | 4 | PSU temperature (raw ADC value). AH, WH, WL, AL. |
+| 1013 | SYS\_PCBTEMP\_TH | 4 | PCB temperature (raw ADC value). AH, WH, WL, AL. |
+| 1017 | SYS\_OUTTEMP\_TH | 4 | Outside temperature (raw ADC value). AH, WH, WL, AL. |
+| 1021 | SYS\_FEM01TEMP\_TH | 4 | FEM 1 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1025 | SYS\_FEM02TEMP\_TH | 4 | FEM 2 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1029 | SYS\_FEM03TEMP\_TH | 4 | FEM 3 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1033 | SYS\_FEM04TEMP\_TH | 4 | FEM 4 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1037 | SYS\_FEM05TEMP\_TH | 4 | FEM 5 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1041 | SYS\_FEM06TEMP\_TH | 4 | FEM 6 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1045 | SYS\_FEM07TEMP\_TH | 4 | FEM 7 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1049 | SYS\_FEM08TEMP\_TH | 4 | FEM 8 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1053 | SYS\_FEM09TEMP\_TH | 4 | FEM 9 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1057 | SYS\_FEM10TEMP\_TH | 4 | FEM 10 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1061 | SYS\_FEM11TEMP\_TH | 4 | FEM 11 temperature (raw ADC value). AH, WH, WL, AL. |
+| 1065 | SYS\_FEM12TEMP\_TH | 4 | FEM 12 temperature (raw ADC value). AH, WH, WL, AL. |
+
+## FNDH start-up – SMARTbox to PDoC mapping
+
+On FNDH start-up, the ports will all be turned off. The MCCS will turn them on, one by one, at approximately 10 second intervals. It will then loop over all possibly SMARTbox addresses and read the &#39;uptime&#39; counter register from that address, and (if it gets a reply) use that value to work out which PDoC port it is connected to. That process must be repeated after any SMARTboxes are added to a station, or moved to a different PDoC port.
+
+# Technician&#39;s &#39;Service Interface Device&#39;
+
+Normally, the MCCS acts as the Modbus &#39;Master&#39; device, initiating communications with the SMARTboxes and the FNDH. During servicing, another device can act as a Modbus &#39;master&#39; - a technician&#39;s &#39;Service Interface Device&#39; (SID). This device allows a technician in the field at a given station to talk directly the SMARTboxes within that station, to the FNDH controller for that station, and to the MCCS (which can also act as a Modbus &#39;slave&#39;). Allowing the SID to act as a Modbus master opens up the possibility of conflict on the shared serial bus. The MCCS will only spend a few seconds polling data from a station every minute or two (listening as a Modbus slave device for the rest of the time), so any conflict should be minimal.
+
+A technician uses a SID by approaching a SMARTbox or FNDH and using the short-range infra-red serial (IrDA) link to that device. While the FNDH and all SMARTboxes in a station share the same multi-drop Modbus serial bus, a SID connected to a SMARTbox or FNDH via IrDA can only communicate with that device itself, the FNDH microcontroller, or the MCCS via the serial-ethernet bridge in the FNDH. It will not be able to communicate with any other SMARTbox in that station.
+
+A technician would use a SID to read and write registers in a SMARTbox to:
+
+- Read and display currents, temperatures, system health, etc.
+- Trigger a transition to the &#39;online&#39; and &#39;OK&#39; state by writing configuration data to the controller, even if the MCCS is offline, or not polling that SMARTbox. Note that this will require the SID to have a valid set of configuration data for SMARTboxes, or safe default threshold and configuration data in the device firmware.
+- Force FEM outputs on or off using the &#39;technicians override&#39; bits in the port state bitmap.
+
+A technician would use a SID to read and write registers in the FNDH to:
+
+- Read and display currents, temperatures, system health, etc.
+- Force a transition to the &#39;online&#39; and &#39;OK&#39; state by writing configuration data to the controller, even if the MCCS is offline, or not polling that FNDH. Note that this will require the SID to have a valid set of configuration data for an FNDH, or safe default threshold and configuration data in the device firmware.
+- Force PDOC outputs on or off using the &#39;technicians override&#39; bits in the port state bitmap.
+
+A technician would use a SID to read and write registers in the MCCS to:
+
+- Read and display the mapping from antenna cable number (1-256) to a SMARTbox address and port number inside that SMARTbox. For example, reading two bytes (13, 7) from register 42 might mean that physical antenna 42 is connected to port 7 on SMARTbox 13.
+- Change the mapping from antenna cable number (1-256) to a SMARTbox address and port number inside that SMARTbox. The MCCS would discard any register write packet that would leave the mapping in an inconsistent state (multiple physical antennae connected to the same SMARTbox and port), and send a Modbus exception back to the SID.
+- Read and display the mapping from physical PDoC port number to SMARTbox address in the FNDH.
+- Read and display the service log entries for a given physical antenna, a SMARTbox or FNDH (using the machine-readable device serial number), or for the entire station.
+- Append entries to the service log for a given physical antenna, a single SMARTbox/FNDH, or for the station.
+
+# MCCS registers
+
+When the MCCS is acting as a slave, it presents a set of registers to be read and written by a technician&#39;s Service Interface Device (SID). These are:
+
+## Physical antenna mapping:
+
+Registers 1 through 256 inclusive contain the SMARTbox address (first/MSB) and port number inside that SMARTbox (second/LSB). A value of (0, 0) indicates that the given physical antenna is not connected to any input. The SID can write to one register, or many registers with a single packet, but any write packet will be rejected with an exception code if it would leave the mapping in an inconsistent state, by having the same SMARTbox and port number for two different physical antennae. Any number of physical antennae can be left in the &#39;disconnected&#39; state (0,0).
+
+## Reading service log entries:
+
+This takes place with one packet write (to set the physical antenna number, SMARTbox or FNDH id, and log entry number desired), and one or more packet reads (each reading 125 registers, containing a null-terminated string of up to 250 characters). The first 125-register read returns the requested log entry (where 0 is the most recent), and successive reads return subsequent (older) log entries.
+
+## Writing service log entries:
+
+This takes place with one multi-register write packet, containing the physical antenna number, SMARTbox or FNDH id, and a 125-register log entry containing a null-terminated string of up to 250 characters.
+
+Service log registers:
+
+| **#** | **# of reg** | **Name** | **Description** |
+| --- | --- | --- | --- |
+| 1001 | 1 | ANTNUM | Physical antenna number, or 0 if not used. |
+| 1002 | 8 | CHIPID | Unique chip ID (16 bytes), or all zeros if not used. |
+| 1010 | 1 | LOGNUM | Starting log entry to read (most recent first), or zero. |
+| 1011 | 125 | MESSAGE | 250 byte null-terminated string containing a log entry. |
+
+To read log entries, send a single multi-register (function 0x10) packet writing to registers 1001-1010. If ANTNUM is non-zero, filter only log messages referring to that physical antenna. If CHIPID is non-zero, filter only log messages referring to that physical device. If both are zero, filter only station-wide log messages (???should this be messages referring to any device in this station, or messages referring to the entire station and not a single device???). If both ANTNUM and CHIPID are non-zero, return an exception code.
+
+The LOGNUM register in the write packet should be zero to start reading at the most recent log entry, or an integer to start at an older log entry.
+
+After that register write packet, the SID sends register read request (function 0x03) for registers 1011-1126, to read a 250-byte null-terminated string. Subsequent reads from the same register range will return successive (older) log entries.
+
+To write entries, send a single multi-register write (function 0x10) packet, setting one or neither of ANTNUM and CHIPID (as appropriate), and setting LOGNUM to zero, with registers 1011-1126 containing the log message to write.
+
+## Reading SMARTbox address to PDoC port number mapping
+
+There are 28 read-only registers (1201-1228), one for each of the PDoC ports, each containing either zero (if no SMARTbox is connected to that port), or a SMARTbox address (1-30) if there is one connected. This mapping is set on FNDH start-up, when the MCCS first configures an FNDH microcontroller, by powering up each of the 28 PDoC ports at 10-second intervals.
+
+# Appendix
+
+## CRC code example:
+
+def getcrc(message=None):
+_&quot;&quot;&quot;
+ Calculate and returns the CRC bytes required for &#39;message&#39; (a list_
+
+_of bytes).
+
+ :param message: A list of bytes, each in the range 0-255
+ :return: A list of two integers, each in the range 0-255
+ &quot;&quot;&quot;_
+  if not message:
+return 0, 0
+
+crc = 0xFFFF
+
+for byte in message:
+ crc = crc ^ byte
+for bit in range(8):
+ b = crc &amp; 0x0001
+crc = (crc \&gt;\&gt; 1) &amp; 0x7FFF
+if b:
+ crc = crc ^ 0xA001
+return [(crc &amp; 0x00FF), ((crc \&gt;\&gt; 8) &amp; 0x00FF)]
