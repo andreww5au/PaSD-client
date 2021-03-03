@@ -350,36 +350,37 @@ def validate_mapping(slave_registers=None):
 
 def get_log_entry(station=None, desired_antenna=None, desired_chipid=None, desired_lognum=0):
     """
-    Dummy function to return a log entry for the given antenna, chipid, or station. In reality, these log entries
+    Dummy function to return a log entry for the given antenna, chipid, and station. In reality, these log entries
     would be in a database.
 
-    :param station:
-    :param desired_antenna:
-    :param desired_chipid:
-    :param desired_lognum:
+    :param station: string: hostname of this station (because the log entry database will cover all stations)
+    :param desired_antenna:  # Specifies a single physical antenna (1-256), or 0/None
+    :param desired_chipid:  # Specifies a single physical SMARTbox or FNDH unique serial number, or None.
+    :param desired_lognum:  # 0/None for the most recent log message, or larger numbers for older messages.
     :return: A tuple of the log entry text, and a unix timestamp for when it was created.
     """
     logger.info('Log entry #%d requested for station:%s, Ant#:%s, chipid=%s' % (desired_lognum,
                                                                                 station,
                                                                                 desired_antenna,
                                                                                 desired_chipid))
-    return "Insert a real service log database here.", 1614319283
+    return ("Insert a real service log database here.", 1614319283)
 
 
 def save_log_entry(station=None, desired_antenna=None, desired_chipid=None, message=None, message_timestamp=None):
     """
-    Dummy function to write a log entry for the given antenna, chipid, or station. In reality, these log entries
+    Dummy function to write a log entry for the given antenna, chipid, and station. In reality, these log entries
     would be in a database.
 
-    :param station:
-    :param desired_antenna:
-    :param desired_chipid:
-    :param message:
-    :param message_timestamp:
-    :return:
+    :param station: string: hostname of this station (because the log entry database will cover all stations)
+    :param desired_antenna: integer: Specifies a single physical antenna (1-256), or 0/None
+    :param desired_chipid: bytes: Specifies a single physical SMARTbox or FNDH unique serial number, or None.
+    :param message: string: Message text
+    :param message_timestamp: integer: Unix timestamp
+    :return: True for success, False for failure
     """
     logger.info('Log entry received at %s for station:%s, Ant#:%s, chipid=%s: %s' % (message_timestamp,
                                                                                      station,
                                                                                      desired_antenna,
                                                                                      desired_chipid,
                                                                                      message))
+    return True

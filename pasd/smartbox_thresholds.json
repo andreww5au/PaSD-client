@@ -100,5 +100,41 @@
         3100,
         3500,
         3600
+    ],
+    "P01_CURRENT_TH": [
+        1500
+    ],
+    "P02_CURRENT_TH": [
+        1500
+    ],
+    "P03_CURRENT_TH": [
+        1500
+    ],
+    "P04_CURRENT_TH": [
+        1500
+    ],
+    "P05_CURRENT_TH": [
+        1500
+    ],
+    "P06_CURRENT_TH": [
+        1500
+    ],
+    "P07_CURRENT_TH": [
+        1500
+    ],
+    "P08_CURRENT_TH": [
+        1500
+    ],
+    "P09_CURRENT_TH": [
+        1500
+    ],
+    "P10_CURRENT_TH": [
+        1500
+    ],
+    "P11_CURRENT_TH": [
+        1500
+    ],
+    "P12_CURRENT_TH": [
+        1500
     ]
 }

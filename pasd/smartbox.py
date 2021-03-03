@@ -95,7 +95,20 @@ SMARTBOX_CONF_REGS_1 = {
                         'SYS_FEM10TEMP_TH': (1057, 4, 'FEM 10 temperature AH, WH, WL, AL', conversion.scale_temp),
                         'SYS_FEM11TEMP_TH': (1061, 4, 'FEM 11 temperature AH, WH, WL, AL', conversion.scale_temp),
                         'SYS_FEM12TEMP_TH': (1065, 4, 'FEM 12 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        # TODO - add port current threshold configuration registers (not polled)
+
+                        # No hysteris or low-current limits for FEM currents, just a single value in ADC
+                        'P01_CURRENT_TH':(1066, 1, 'Port 01 current trip threshold', None),
+                        'P02_CURRENT_TH':(1067, 1, 'Port 02 current trip threshold', None),
+                        'P03_CURRENT_TH':(1068, 1, 'Port 03 current trip threshold', None),
+                        'P04_CURRENT_TH':(1069, 1, 'Port 04 current trip threshold', None),
+                        'P05_CURRENT_TH':(1070, 1, 'Port 05 current trip threshold', None),
+                        'P06_CURRENT_TH':(1071, 1, 'Port 06 current trip threshold', None),
+                        'P07_CURRENT_TH':(1072, 1, 'Port 07 current trip threshold', None),
+                        'P08_CURRENT_TH':(1073, 1, 'Port 08 current trip threshold', None),
+                        'P09_CURRENT_TH':(1074, 1, 'Port 09 current trip threshold', None),
+                        'P10_CURRENT_TH':(1075, 1, 'Port 10 current trip threshold', None),
+                        'P11_CURRENT_TH':(1076, 1, 'Port 11 current trip threshold', None),
+                        'P12_CURRENT_TH':(1077, 1, 'Port 12 current trip threshold', None),
 }
 
 SMARTBOX_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED'},
@@ -565,13 +578,14 @@ class SMARTbox(transport.ModbusSlave):
 
         # Count how many system threshold registers there are, and create an empty list of register values
         conf_reglist = self.register_map['CONF'].keys()
-        vlist = [0] * len(conf_reglist) * 4
+        vlist = [0] * sum(x[1] for x in self.register_map['CONF'].values())
 
         startreg = min([data[0] for data in self.register_map['CONF'].values()])
         for regname in conf_reglist:
             regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
             values = self.thresholds[regname]
-            vlist[(regnum - startreg) * 4:(regnum - startreg) * 4 + 4] = values
+            assert len(values) == numreg
+            vlist[(regnum - startreg):(regnum - startreg) + numreg] = values
 
         res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         if res:
