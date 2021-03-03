@@ -7,9 +7,9 @@ logging.basicConfig()
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 
-import fndh
-import transport
-import smartbox
+from pasd import fndh
+from pasd import transport
+from pasd import smartbox
 
 
 FNDH_ADDRESS = 31   # Modbus address of the FNDH controller
