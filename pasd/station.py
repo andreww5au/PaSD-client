@@ -14,7 +14,7 @@ import smartbox
 
 FNDH_ADDRESS = 31   # Modbus address of the FNDH controller
 
-# Mapping between SMARTbox/port and antenna number
+# Initial mapping between SMARTbox/port and antenna number
 # Here as a dict to show the concept, in reality this would be in a database.
 ANTENNA_MAP = {
  1: {1: None, 2: 1, 3: 2, 4: 3, 5: None, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8, 11: 9, 12: 10},
@@ -47,7 +47,7 @@ ANTENNA_MAP = {
  28: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None}
 }
 
-# Register numbers for log message requests
+# Register numbers for log message requests (when the MCCS is acting as a Modbus slave)
 ANTNUM = 1001   # Antenna number for service log, R/W.
 CHIPID = 1002   # Chip ID for service log, R/W.
 LOGNUM = 1010   # Log number (0 is most recent) for service log, R/W.
@@ -59,17 +59,55 @@ MESSAGE_LEN = 125
 
 
 class Station(object):
-    def __init__(self, hostname, port):
-        self.hostname = hostname
-        self.port = port
-        self.conn = transport.Connection(hostname=self.hostname, port=self.port)
-        self.antennae = {}  # A dict with physical antenna number as key, and smartbox.PortStatus() instances as value
-        self.smartboxes = {}  # A dict with smartbox number as key, and smartbox.SMARTbox() instances as value
-        self.desired_antenna = None
-        self.desired_chipid = None
-        self.desired_lognum = 0
+    """
+    Class representing an SKA-Low station - an instance of this class controls the PaSD for a single station.
 
-        # Initialise self.antennae, and self.smartboxes[N].ports instances, with the physical antenna mapping from
+    It acts as a Modbus master for a few seconds every few minutes, polling telemetry data from the SMARTboxes and
+    FNDH that make up the station. For the rest of the time, it acts as a Modbus slave, waiting for incoming packets
+    a technician's Service Interface Device. These could be for changes to the physical antenna mapping, or to read
+    or write short service log entries referring to the FNDH, a SMARTBox, or the station as a whole.
+
+    Constant attributes (don't change after initialisation):
+        hostname: The DNS name (or IP address as a string) for the ethernet-serial bridge in the FNDH for this station
+        port: The port number for the ethernet-serial bridge server, for TCP connections or as a UDP packet destination
+        conn: An instance of transport.Connection() connected to self.port on self.hostname
+
+    Attributes that define the mapping between physical antenna number and which SMARTbox/port they are connected to:
+        antennae: A dict with physical antenna number (1-256) as key, and smartbox.PortStatus() instances as value
+        smartboxes: A dict with smartbox address (1-30) as key, and smartbox.SMARTbox() instances as value
+
+    Attributes used to mediate requests to read and write service log entries for a SMARTbox, antenna, or station.
+        servicelog_desired_antenna: Specifies a single physical antenna (1-256), or 0/None
+        servicelog_desired_chipid: Specifies a single physical SMARTbox or FNDH unique serial number, or None.
+        servicelog_desired_lognum: 0/None for the most recent log message, or larger numbers for older messages.
+
+    Note that only one of 'servicelog_desired_antenna' and 'servicelog_desired_chipid' can be non-zero. If both are
+    zero, then the user is requesting/writing a log message associated with the station as a whole.
+
+    In reality, the service log entries would be stored in a site-wide database (SMARTboxes might be moved from station
+    to station), so the code handling them here is a simple demo function.
+    """
+    def __init__(self, hostname, port):
+        """
+        Instantiate an instance of Station() using the hostname and port of the ethernet-serial bridge for this given
+        station.
+
+        This initialisation function doesn't communicate with any of the station hardware, it just sets up the
+        data structures.
+
+        :param hostname: DNS name (or IP address as a string) for the ethernet-serial bridge in the FNDH for this station
+        :param port: Port number for the ethernet-serial bridge server, for TCP connections or as a UDP packet destination
+        """
+        self.hostname = hostname  # DNS name (or IP address as a string) for the ethernet-serial bridge in the FNDH for this station
+        self.port = port  # The port number for the ethernet-serial bridge server, for TCP connections or as a UDP packet destination
+        self.conn = transport.Connection(hostname=self.hostname, port=self.port)  # An instance of transport.Connection()
+        self.antennae = {}  # A dict with physical antenna number (1-256) as key, and smartbox.PortStatus() instances as value
+        self.smartboxes = {}  # A dict with smartbox address (1-30) as key, and smartbox.SMARTbox() instances as value
+        self.servicelog_desired_antenna = None  # Specifies a single physical antenna (1-256), or 0/None
+        self.servicelog_desired_chipid = None  # Specifies a single physical SMARTbox or FNDH unique serial number, or None.
+        self.servicelog_desired_lognum = 0  # 0/None for the most recent log message, or larger numbers for older messages.
+
+        # Initialise self.antennae, and self.smartboxes[N].ports instances, with the dummy physical antenna mapping from
         # the ANTENNA_MAP dictionary. In a real system, this would be replaced with code to instantiate them from
         # database queries.
         for sadd in ANTENNA_MAP.keys():
@@ -83,7 +121,23 @@ class Station(object):
         self.fndh = fndh.FNDH(conn=self.conn, modbus_address=FNDH_ADDRESS)
 
     def startup(self):
-        """Find out which SMARTboxes are connected to which PDoC ports.
+        """
+        Configure and start up the FNDH. THe startup sequence is:
+
+            1) Write the threshold level data to the FNDH micocontroller, and configure all the PDoC ports to stay turned
+               off in both 'online' and 'offline' states.
+            2) Transition the FNDH from UNINITIALISED to 'OK' by writing to the system status register.
+            3) Force ON all the PDoC ports, one by one, with a 10 second delay between ports. For each physical port (1-28),
+               record the Unix timestamp (seconds since epoch) that it was turned on.
+            4) Loop over all possible SMARTbox addresses (1-30), interrogating each to see if it's online, and if so,
+               to read back the system 'uptime' count in seconds. Subtract that value from the current timestamp to
+               work out when that box booted.
+            5) Use the PDoC port 'power on' times for ports 1-28, and the calculated boot times for each of the SMARTboxes
+               that responds, to work out which SMARTbox is connected to which PDoC port.
+            6) Record that mapping by setting the .pdoc_number attribute in each SMARTbox instance in self.smartboxes,
+               and by setting the .smartbox_address attribute in each of the PdocStatus instances in self.fndh.ports
+            7) Finish by setting the real 'desired_state_online' and 'desired_state_offline' values for all of the PDoC
+               ports, and writing that to the FNDH.
         """
         ok = self.fndh.configure_all_off()   # Transition the FNDH to online, but with all PDoC ports turned off
         if not ok:
@@ -136,47 +190,84 @@ class Station(object):
 
     def poll_data(self):
         """
-        Grab status data from all of the SMARTboxes
-        :return:
+        Poll the FNDH microcontroller, asking each for all of the registers in the 'POLL' set, to get the latest state
+        and telemetry data. If the FNDH is in the 'UNINITIALISED' state, indicating that it hasn't been configured by
+        the MCCS since power-up, then go through a full startup() procedure configure it, bring it online, and determine
+        the mapping between PDoC ports and SMARTbox address,.
+
+        Then iterate over all possible SMARTbox addresses (1-30), asking each of them for all of the registers in the
+        'POLL' set, to get the latest state and telemetry data. If any of the SMARTboxes are in the 'UNINITIALISED'
+        state, configure them and bring them online. Add any 'unknown' SMARTboxes (not already in self.smartboxes) to
+        the instance data.
+
+        If neither the FNDH nor any of the SMARTboxes have been power cycled and need to be configured, this poll_data()
+        function should take ~10 seconds for a fully populated station.
+
+        :return: None
         """
-        boxlist = list(self.smartboxes.keys())
-        boxlist.sort()
-
         # First, check the FNDH, and go through the full startup procedure if it's been power cycled since the last poll
-        self.fndh.poll_data()
-        if self.fndh.statuscode > 0:
-            logger.warning('FNDH has status %d (%s)' % (self.fndh.statuscode, self.fndh.status))
-        if self.fndh.statuscode == 4:  # UNINITIALISED
-            ok = self.startup()     # In a real setting, pass in static configuration data from config file or database
-            if ok:
-                logger.info('FNDH configured, it is now online with all PDoC ports mapped.')
-            else:
-                logger.error('Error starting up FNDH')
+        fndh_ok = self.fndh.poll_data()
+        if fndh_ok:
+            if self.fndh.statuscode > 0:
+                logger.warning('FNDH has status %d (%s)' % (self.fndh.statuscode, self.fndh.status))
+            if self.fndh.statuscode == 4:  # UNINITIALISED
+                fndh_ok = self.startup()     # In a real setting, pass in static configuration data from config file or database
+                if fndh_ok:
+                    logger.info('FNDH configured, it is now online with all PDoC ports mapped.')
+                else:
+                    logger.error('Error starting up FNDH')
+        else:
+            logger.error('Error calling poll_data() for FNDH')
 
-        # Next, grab all the data from all the SMARTboxes, to keep comms restricted to a short time window
-        for sadd in boxlist:
-            self.smartboxes[sadd].poll_data()
+        # Next, grab all the data from all possible SMARTboxes, to keep comms restricted to a short time window
+        for sadd in range(1, 31):
+            if sadd not in self.smartboxes:   # Check for a new SMARTbox with this address
+                smb = smartbox.SMARTbox(conn=self.conn, modbus_address=sadd)
+                test_ok = smb.poll_data()
+                if test_ok:
+                    self.smartboxes[sadd] = smb   # If we heard a reply, add it to self.smartboxes, if not, ignore it
+            else:
+                smb_ok = self.smartboxes[sadd].poll_data()
+                if not smb_ok:
+                    logger.error('Error calling poll_data for SMARTbox %d' % sadd)
 
         # Now configure and activate any UNINITIALISED boxes, and log any error/warning states
-        for sadd in boxlist:
-            smb = self.smartboxes[sadd]
-            if smb.statuscode > 0:
-                logger.warning('SMARTbox %d has status %d (%s)' % (sadd, smb.statuscode, smb.status))
+        for sadd in range(1, 31):
+            if sadd in self.smartboxes:
+                smb = self.smartboxes[sadd]
+                if smb.statuscode > 0:
+                    logger.warning('SMARTbox %d has status %d (%s)' % (sadd, smb.statuscode, smb.status))
 
-            if smb.statuscode == 4:  # UNINITIALISED
-                ok = smb.configure()    # In a real setting, pass in static configuration data from config file or database
-                if ok:
-                    logger.info('SMARTbox %d configured, it is now online' % sadd)
-                else:
-                    logger.error('Error configuring SMARTbox %d' % sadd)
+                if smb.statuscode == 4:  # UNINITIALISED
+                    ok = smb.configure()    # In a real setting, pass in static configuration data from config file or database
+                    if ok:
+                        logger.info('SMARTbox %d configured, it is now online' % sadd)
+                    else:
+                        logger.error('Error configuring SMARTbox %d' % sadd)
 
-    def listen(self, maxtime=10.0):
+    def listen(self, maxtime=60.0):
         """
         Listen on the socket for any incoming read/write register packets sent by an external bus master (eg, a technician
-        in the field). Handle read/write register calls. Exit after 'maxtime' seconds.
+        in the field). Handle any read/write register calls. Exit after 'maxtime' seconds (typically a few minutes).
 
-        :param maxtime: Maximum time to listen for, in seconds.
-        :return:
+        The transport.Connection.listen_for_packet() method exits after the first valid packet processed, to allow
+        the calling code to handle side-effects from register read/write operations (for example, multiple reads from
+        the same register block returning different values). This code loops until the specified maxtime, and for
+        each, it:
+
+        1) Sets up the slave_registers dictionary with the current physical antenna number to SMARTbox/port number
+           mapping.
+        2) Sets up the slave_registers dictionary with the next log message for the SID to read, given the current
+           values of servicelog_desired_antenna, servicelog_desired_chipid, and servicelog_desired_lognum.
+        3) Calls self.conn.listen_for_packet(), which returns all of the register numbers read or written by a packet
+           (if one was processed in that call). If no packets are received, it will return at the specified maxtime.
+        4) Uses the list of written registers to update the mapping between physical antenna number and SMARTbox/port
+           number, or to save a new service log message.
+        5) Uses the list of read registers to increment the log message counter to the next message, if a service log
+           message was read.
+
+        :param maxtime: Maximum time to listen for, in seconds (typically a few minutes).
+        :return: None
         """
         start_time = time.time()
         end_time = start_time + maxtime
@@ -185,16 +276,16 @@ class Station(object):
 
             # Set up the registers for reading/writing log messages
             log_message, timestamp = get_log_entry(station=self.hostname,
-                                                   desired_antenna=self.desired_antenna,
-                                                   desired_chipid=self.desired_chipid,
-                                                   desired_lognum=self.desired_lognum)
+                                                   desired_antenna=self.servicelog_desired_antenna,
+                                                   desired_chipid=self.servicelog_desired_chipid,
+                                                   desired_lognum=self.servicelog_desired_lognum)
             # Make sure it's not too long, is null terminated, and an even length, to pad out to a whole number of registers
             log_message = log_message[:(MESSAGE_LEN - 2) * 2 - 1]  # Truncate to one fewer character than the limit, to make room for a null
             if divmod(len(log_message), 2)[1] == 0:
                 log_message += chr(0) + chr(0)
             else:
                 log_message += chr(0)
-            log_registers = {ANTNUM:self.desired_antenna, LOGNUM:self.desired_lognum}  # Initialise log entry registers
+            log_registers = {ANTNUM:self.servicelog_desired_antenna, LOGNUM:self.servicelog_desired_lognum}  # Initialise log entry registers
             for i in range(MESSAGE_LEN - 2):  # Iterate over registers in the log message block
                 if (i * 2) < len(log_message):
                     log_registers[MESSAGE + i] = [ord(log_message[i * 2]), ord(log_message[i * 2 + 1])]
@@ -213,25 +304,25 @@ class Station(object):
                     self.antennae[regnum] = self.smartboxes[sadd].ports[portnum]
                     self.antennae[regnum].antenna_number = regnum
 
-            if (ANTNUM in written_set) and (self.desired_antenna != slave_registers[ANTNUM]):
-                self.desired_antenna = slave_registers[ANTNUM]
-                self.desired_lognum = 0   # New desired antenna, so reset the log message counter
-            if (CHIPID in written_set) and (self.desired_chipid != slave_registers[CHIPID:CHIPID + 8]):
-                self.desired_chipid = slave_registers[CHIPID:CHIPID + 8]
-                self.desired_lognum = 0   # New desired chipid, so reset the log message counter
-            if (LOGNUM in written_set) and (self.desired_lognum != slave_registers[LOGNUM]):
-                self.desired_lognum = slave_registers[LOGNUM]   # New log message counter
+            if (ANTNUM in written_set) and (self.servicelog_desired_antenna != slave_registers[ANTNUM]):
+                self.servicelog_desired_antenna = slave_registers[ANTNUM]
+                self.servicelog_desired_lognum = 0   # New desired antenna, so reset the log message counter
+            if (CHIPID in written_set) and (self.servicelog_desired_chipid != slave_registers[CHIPID:CHIPID + 8]):
+                self.servicelog_desired_chipid = slave_registers[CHIPID:CHIPID + 8]
+                self.servicelog_desired_lognum = 0   # New desired chipid, so reset the log message counter
+            if (LOGNUM in written_set) and (self.servicelog_desired_lognum != slave_registers[LOGNUM]):
+                self.servicelog_desired_lognum = slave_registers[LOGNUM]   # New log message counter
 
             if MESSAGE in read_set:
-                self.desired_lognum += 1   # We've read a log message, so next time use the next message
+                self.servicelog_desired_lognum += 1   # We've read a log message, so next time use the next message
 
             if MESSAGE in written_set:
                 messagelist = []
                 for value in slave_registers[MESSAGE:MESSAGE + MESSAGE_LEN - 2]:  # Last two registers are timestamp
                     messagelist += list(divmod(value, 256))
                 save_log_entry(station=self.hostname,
-                               desired_antenna=self.desired_antenna,
-                               desired_chipid=self.desired_chipid,
+                               desired_antenna=self.servicelog_desired_antenna,
+                               desired_chipid=self.servicelog_desired_chipid,
                                message=bytes(messagelist).decode('utf8'),
                                message_timestamp=time.time())
 
@@ -239,6 +330,12 @@ class Station(object):
 def validate_mapping(slave_registers=None):
     """Return True if the physical antenna mapping in registers 1-256 is valid, or False if the same
        SMARTbox and port number is in more than one physical antenna register.
+
+       This function is passed into transport.Connection.listen_for_packet() as a parameter, and used to validate the
+       slave_registers dictionary after any packet that writes one or more registers. If the function returns False,
+       the packet gets an exception code as a reply and the register changes are discarded.
+
+       :param slave_registers: A dictionary with register number (1-9999) as key, and integers (0-65535) as values.
     """
     seen = set()
     for regnum in slave_registers.keys():
@@ -252,6 +349,16 @@ def validate_mapping(slave_registers=None):
 
 
 def get_log_entry(station=None, desired_antenna=None, desired_chipid=None, desired_lognum=0):
+    """
+    Dummy function to return a log entry for the given antenna, chipid, or station. In reality, these log entries
+    would be in a database.
+
+    :param station:
+    :param desired_antenna:
+    :param desired_chipid:
+    :param desired_lognum:
+    :return: A tuple of the log entry text, and a unix timestamp for when it was created.
+    """
     logger.info('Log entry #%d requested for station:%s, Ant#:%s, chipid=%s' % (desired_lognum,
                                                                                 station,
                                                                                 desired_antenna,
@@ -260,6 +367,17 @@ def get_log_entry(station=None, desired_antenna=None, desired_chipid=None, desir
 
 
 def save_log_entry(station=None, desired_antenna=None, desired_chipid=None, message=None, message_timestamp=None):
+    """
+    Dummy function to write a log entry for the given antenna, chipid, or station. In reality, these log entries
+    would be in a database.
+
+    :param station:
+    :param desired_antenna:
+    :param desired_chipid:
+    :param message:
+    :param message_timestamp:
+    :return:
+    """
     logger.info('Log entry received at %s for station:%s, Ant#:%s, chipid=%s: %s' % (message_timestamp,
                                                                                      station,
                                                                                      desired_antenna,

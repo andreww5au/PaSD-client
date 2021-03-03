@@ -130,6 +130,9 @@ class PdocStatus(smartbox.PortStatus):
         """
         Instantiate an instance of a PdocStatus() object.
 
+        This initialisation function doesn't communicate with the port hardware, it just sets up the
+        data structures.
+
         :param port_number: Which PDoC port this is (1-28)
         :param modbus_address: Modbus address of the FNDH microcontroller (should always be 31)
         :param status_bitmap: Raw contents of the P<NN>_STATE register for this port (0-65535)
@@ -224,6 +227,9 @@ class FNDH(transport.ModbusSlave):
         """
         Instantiate an instance of FNDH() using a connection object, and the modbus address for the FNDH
         (usually 31).
+
+        This initialisation function doesn't communicate with the FNDH hardware, it just sets up the
+        data structures.
 
         :param conn: An instance of transport.Connection() defining a connection to an FNDH
         :param modbus_address: Modbus address of the FNDH (usually 31)
@@ -356,6 +362,7 @@ class FNDH(transport.ModbusSlave):
                 self.ports[pnum].set_status_data(status_bitmap=raw_int, read_timestamp=read_timestamp)
 
         self.readtime = read_timestamp
+        return True
 
     def write_thresholds(self):
         """

@@ -161,6 +161,9 @@ class PortStatus(object):
         Instantiate a SMARTbox port status instance, given a 16 bit integer bitwise state (from a PNN_STATE register),
         a raw (ADC) current value, a scaled (float) current reading, and a timestamp at which that data was read.
 
+        This initialisation function doesn't communicate with the FNDH hardware, it just sets up the
+        data structures.
+
         Parameters:
         :param port_number: integer, 1-12 - physical FEM port number inside the SMARTbox
         :param modbus_address: integer - the modbus station address of the SMARTbox that this port is in.
@@ -378,6 +381,9 @@ class SMARTbox(transport.ModbusSlave):
         """
         Instantiate an instance of SMARTbox() using a connection object, and the modbus address for that physical
         SMARTbox.
+
+        This initialisation function doesn't communicate with the SMARTbox hardware, it just sets up the
+        data structures.
 
         :param conn: An instance of transport.Connection() defining a connection to an FNDH
         :param modbus_address: The modbus station address (1-30) for this physical SMARTbox
