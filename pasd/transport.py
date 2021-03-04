@@ -5,6 +5,8 @@ import time
 import socket
 import threading
 
+import serial
+
 logging.basicConfig()
 logger = logging.getLogger()
 logger.level = logging.DEBUG
@@ -12,6 +14,7 @@ logger.level = logging.DEBUG
 
 PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
 TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
+COMMS_TIMEOUT = 0.001  # Low-level timeout for each call to socket.socket().recv or serial.Serial.write()
 
 
 # noinspection PyUnusedLocal
@@ -19,15 +22,21 @@ def dummy_validate(slave_registers=None):
     return True
 
 
-# TODO - make this a generic class that could use either a socket interface, or a pyserial interface, so that the
-# MCCS can use this class from the control room (to the ethernet-serial bridge), or a Technician's SID can use it
-# in the field over an IrDA link. The base class would be Connection(), with stub _open(), _read() and _write() methods.
-# Those _open(), _read() and _write() methods would be overriden by subclasses of SerialConnection() and TCPConnection().
-
 class Connection(object):
     """
     Class to handle Modbus communications between the MCCS and Modbus-RTU devices connected via an ethernet to serial
-    bridge. One instance of this class handles all communications for an entire station.
+    bridge, or directly via a serial port. One instance of this class handles all communications for an entire station.
+
+    An instance of this class is thread-safe - it can be shared between threads, and an internal lock prevents resource
+    conflict.
+
+    If .multimode is False, then each thread only writes to the remote device, and only sees incoming
+    data from the remote device (whichever thread calls ._read() first will get the data, and strip it from the
+    buffer so that other threads won't see it).
+
+    if .multimode is True, then each thread writes to the remote device, and also appends to the input buffers
+    for all other threads. When any thread calls ._read(), it reads from the remote device, appends any remote data
+    to the input buffers for ALL threads, then pulls and returns the desired number of bytes from its own input buffer.
 
     It has public methods for acting as a Modbus master, and reading/writing registers on remote devices:
         readReg()
@@ -35,50 +44,157 @@ class Connection(object):
         writeMultReg()
     And for acting as a Modbus slave, and listening for commands from a bus master device (the Technician's SID):
         listen_for_packet
-
     """
-    def __init__(self, hostname, port=5000):
+    def __init__(self, hostname=None, devicename=None, port=5000, baudrate=9600, multidrop=False):
         """
-        Create a new connection instance to the given hostname and port.
+        Create a new instance, using either a socket connection to a serial bridge hostname, or a physical serial port,
+        or neither
 
-        :param hostname: DNS name (or IP address as a string) to connect to
-        :param port: port number
+        If 'multidrop' is true, this class can be used for emulating serial traffic between multiple threads, with or
+        without an actual remote (serial or socket) connection. When any thread calls ._write(), data is sent to the
+        remote device, and also appended to all other thread's input buffers. When any thread calls ._read(), the
+        specified number of bytes is read from the remote device and appended to the input buffers for all threads. Then
+        the first 'nbytes' of characters are removed from that thread's input buffer, and returned.
+
+        :param hostname: Hostname (or IP address as a string) of a remote ethernet-serial bridge
+        :param devicename: Device name of serial port, eg '/dev/ttyS0'
+        :param port: Port number for a remote ethernet-serial bridge
+        :param baudrate: Connection speed for serial port connection
+        :param multidrop: If True, and this connection is shared between multiple threads, each thread will read()
+                          any traffic written by any other thread, as well as that coming in from the (optional)
+                          remote device, if specified.
         """
-        self.sock = None
-        self.hostname = hostname
-        self.port = port
-        self._open_socket()
         self.lock = threading.RLock()
+        self.sock = None  # socket.socket() object, for an ethernet-serial bridge, or None
+        self.ser = None  # serial.Serial() object, for a physical serial port, or None
+        self.hostname = hostname   # Hostname (or IP address as a string) of a remote ethernet-serial bridge
+        self.port = port  # Port number for a remote ethernet-serial bridge
+        self.devicename = devicename  # Device name of serial port, eg '/dev/ttyS0'
+        self.baudrate = baudrate  # Connection speed for serial port connection
+        self.multidrop = multidrop  # Emulate a multi-drop serial bus between multiple threads
+        self.buffers = {}   # Dictionary with thread ID as key, and bytes() objects as values, so each thread has its own
+                            # input buffer in multidrop mode.
+        self._open()
 
-    def _open_socket(self):
+    def _open(self):
         """
-        Try closing self.socket (if it exists), then open a TCP socket to 'self.hostname' on port 'self.port'
+        Opens either a socket.socket connection (if hostname is supplied), or a serial.Serial connection (if
+        a devicename is supplied).
         """
-        if self.sock is not None:
-            try:
-                self.sock.close()  # Close any existing socket, ignoring any errors (it might already be closed, or dead)
-            except socket.error:
-                pass
+        with self.lock:
+            if self.hostname:  # We want a Socket.socket() connection
+                if self.sock is not None:
+                    try:
+                        self.sock.close()  # Close any existing socket, ignoring any errors (it might already be closed, or dead)
+                    except socket.error:
+                        pass
 
-        try:
-            # Open TCP connect to specified port on the specified IP address for the WIZNet board in the FNDH
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
-            self.sock.settimeout(0.1)
-            self.sock.connect((self.hostname, self.port))
-        except socket.error:
-            logging.exception('Error opening socket to %s' % self.hostname)
+                try:
+                    # Open TCP connect to specified port on the specified IP address for the WIZNet board in the FNDH
+                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
+                    self.sock.settimeout(COMMS_TIMEOUT)
+                    self.sock.connect((self.hostname, self.port))
+                except socket.error:
+                    logging.exception('Error opening socket to %s' % self.hostname)
+            elif self.devicename is not None:
+                if self.ser is not None:
+                    try:
+                        self.ser.close()  # Close any existing serial connection, ignoring any errors (it might already be closed, or dead)
+                    except serial.serialutil.SerialException:
+                        pass
+
+                try:
+                    # Open serial port for the specified device and speed
+                    self.ser = serial.Serial(self.devicename, timeout=COMMS_TIMEOUT, baudrate=self.baudrate)
+                except serial.serialutil.SerialException:
+                    logging.exception('Error opening serial port to %s' % self.devicename)
+            else:
+                if self.multidrop:
+                    logger.info('No remote device, emulating a multi-drop serial bus between threads.')
+                else:
+                    logger.error("No hostname or devicename, can't open socket or TCP connection")
+
+            # Clear all the shared buffers, if they exist
+            for threadid, buffer in self.buffers:
+                self.buffers[threadid] = bytes([])
+
+    def _read(self, nbytes=1000):
+        """
+        Accepts the number of bytes to read, and returns that many bytes of data.
+
+        If multidrop is False, this simply calls self.sock.recv(bytes) or self.ser.read(nbytes), and returns the result.
+
+        If multidrop is True, when any thread calls ._read(), the specified number of bytes is read from the remote
+        device and appended to the input buffers for all threads. Then the first 'nbytes' of characters are removed
+        from that thread's input buffer, and returned.
+
+        :return: A bytes() object containing up to 'bytes' characters.
+        """
+        with self.lock:
+            if self.sock is not None:
+                remote_data = self.sock.recv(nbytes)
+            elif self.ser is not None:
+                remote_data = self.ser.read(nbytes)
+            else:
+                remote_data = bytes([])
+
+            if not self.multidrop:  # single remote connection only
+                return remote_data
+            else:
+                # Add any remote data received to the end of _all_ of the local buffers, so that other threads will see it
+                thread_id = threading.get_ident()
+                if thread_id not in self.buffers:
+                    self.buffers[thread_id] = bytes([])
+                for tid in self.buffers.keys():
+                    self.buffers[tid] += remote_data
+
+                # Pull the first 'nbytes' characters from the head of our local buffer
+                data = self.buffers[thread_id][:nbytes]
+                self.buffers[thread_id] = self.buffers[thread_id][nbytes:]
+
+                return data
+
+    def _write(self, data):
+        """
+        Accepts the data to write out, and sends that data to the remote device, and/or the input buffers for other
+        threads when self.multidrop is True.
+
+        If self.multidrop is False, this simply writes the given data by calling self.sock.send(data) or self.ser.write(data).
+
+        If self.multidrop is True, when any thread calls ._write(), data is sent to the remote device, and also appended
+        to all other thread's input buffers.
+
+        :param data:
+        :return: None
+        """
+        with self.lock:
+            if self.sock is not None:
+                self.sock.sendall(data)
+            elif self.ser is not None:
+                self.ser.write(data)
+
+            if self.multidrop:
+                # Add any data sent to the end of the OTHER local buffers, so that other threads will see it
+                thread_id = threading.get_ident()
+                if thread_id not in self.buffers:
+                    self.buffers[thread_id] = bytes([])
+                for tid in self.buffers.keys():
+                    if tid != thread_id:   # Don't add it to my read buffer, because I sent it.
+                        self.buffers[tid] += data
+
+        return None
 
     def _flush(self):
         """
-        Flush the input buffer by calling self.sock.recv() until no data is returned. If there's a socket error,
-        then close and re-open the socket.
+        Flush the input buffer by calling self._read() until no data is returned. If there's a socket error, or a serial
+        communications error, then close and re-open the socket.
         """
         with self.lock:
             try:
-                while self.sock.recv(1000):
+                while self._read(1000):
                     pass
-            except socket.error:
-                self._open_socket()
+            except (socket.error, serial.serialutil.SerialException):
+                self._open()
 
     def _send_as_master(self, message):
         """
@@ -93,7 +209,7 @@ class Connection(object):
             self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
             message += getcrc(message)
             time.sleep(PACKET_WINDOW_TIME)
-            self.sock.send(bytes(message))  # TODO - This will return the number of bytes sent, which might not be all of them. Use sendall() instead?
+            self._write(bytes(message))
             time.sleep(PACKET_WINDOW_TIME)
             replist = []
 
@@ -101,7 +217,7 @@ class Connection(object):
             # Wait until the timeout trips, or until we have a packet with a valid CRC checksum
             while (time.time() - stime < TIMEOUT) and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
                 try:
-                    reply = self.sock.recv(2)
+                    reply = self._read(2)
                     replist += list(map(int, reply))
                 except socket.timeout:
                     pass
@@ -128,7 +244,7 @@ class Connection(object):
             self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
             message += getcrc(message)
             time.sleep(PACKET_WINDOW_TIME)
-            self.sock.send(bytes(message))  # TODO - This will return the number of bytes sent, which might not be all of them. Use sendall() instead?
+            self._write(bytes(message))
             time.sleep(PACKET_WINDOW_TIME)
 
     def listen_for_packet(self, listen_address, slave_registers, maxtime=10.0, validation_function=dummy_validate):
@@ -161,7 +277,7 @@ class Connection(object):
                 # Wait until the timeout trips, or until we have a full packet with a valid CRC checksum
                 while (time.time() - packet_start_time) < TIMEOUT and ((len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
                     try:
-                        data = self.sock.recv(2)
+                        data = self._read(2)
                         msglist += list(map(int, data))
                         if len(msglist) == 2:
                             packet_start_time = time.time()
@@ -478,4 +594,3 @@ def getcrc(message=None):
             if b:
                 crc = crc ^ 0xA001
     return [(crc & 0x00FF), ((crc >> 8) & 0x00FF)]
-
