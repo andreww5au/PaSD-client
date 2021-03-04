@@ -8,7 +8,6 @@ logger = logging.getLogger()
 logger.level = logging.DEBUG
 
 from pasd import fndh
-from pasd import transport
 from pasd import smartbox
 
 SLAVE_MODBUS_ADDRESS = 63   # Address that technician's SID devices use to reach the MCCS as a slave device
@@ -89,20 +88,19 @@ class Station(object):
     In reality, the service log entries would be stored in a site-wide database (SMARTboxes might be moved from station
     to station), so the code handling them here is a simple demo function.
     """
-    def __init__(self, hostname, port):
+    def __init__(self, conn, station_id=None):
         """
-        Instantiate an instance of Station() using the hostname and port of the ethernet-serial bridge for this given
+        Instantiate an instance of Station() using the connection object for this given
         station.
 
         This initialisation function doesn't communicate with any of the station hardware, it just sets up the
         data structures.
 
-        :param hostname: DNS name (or IP address as a string) for the ethernet-serial bridge in the FNDH for this station
-        :param port: Port number for the ethernet-serial bridge server, for TCP connections or as a UDP packet destination
+        :param conn: An instance of transport.Connection() for the transport layer.
+        :param station_id: An integer, unique for each physical station.
         """
-        self.hostname = hostname  # DNS name (or IP address as a string) for the ethernet-serial bridge in the FNDH for this station
-        self.port = port  # The port number for the ethernet-serial bridge server, for TCP connections or as a UDP packet destination
-        self.conn = transport.Connection(hostname=self.hostname, port=self.port)  # An instance of transport.Connection()
+        self.conn = conn  # An instance of transport.Connection()
+        self.station_id = station_id
         self.antennae = {}  # A dict with physical antenna number (1-256) as key, and smartbox.PortStatus() instances as value
         self.smartboxes = {}  # A dict with smartbox address (1-30) as key, and smartbox.SMARTbox() instances as value
         self.servicelog_desired_antenna = None  # Specifies a single physical antenna (1-256), or 0/None
@@ -282,7 +280,7 @@ class Station(object):
             slave_registers.update(pdoc_registers)
 
             # Set up the registers for reading/writing log messages
-            log_message, timestamp = get_log_entry(station=self.hostname,
+            log_message, timestamp = get_log_entry(station_id=self.station_id,
                                                    desired_antenna=self.servicelog_desired_antenna,
                                                    desired_chipid=self.servicelog_desired_chipid,
                                                    desired_lognum=self.servicelog_desired_lognum)
@@ -328,11 +326,20 @@ class Station(object):
                 messagelist = []
                 for value in slave_registers[MESSAGE:MESSAGE + MESSAGE_LEN - 2]:  # Last two registers are timestamp
                     messagelist += list(divmod(value, 256))
-                save_log_entry(station=self.hostname,
+                save_log_entry(station_id=self.station_id,
                                desired_antenna=self.servicelog_desired_antenna,
                                desired_chipid=self.servicelog_desired_chipid,
                                message=bytes(messagelist).decode('utf8'),
                                message_timestamp=time.time())
+
+    def mainloop(self):
+        """
+        Runs forever, polling the FNDH and SMARTboxes once a minute (as a Modbus master), and spending the rest of the time
+        acting as a Modbus slave, waiting for commands from a technician's SID.
+        """
+        while True:
+            self.poll_data()
+            self.listen(maxtime=60)
 
 
 def validate_mapping(slave_registers=None):
@@ -356,30 +363,30 @@ def validate_mapping(slave_registers=None):
     return True
 
 
-def get_log_entry(station=None, desired_antenna=None, desired_chipid=None, desired_lognum=0):
+def get_log_entry(station_id=None, desired_antenna=None, desired_chipid=None, desired_lognum=0):
     """
     Dummy function to return a log entry for the given antenna, chipid, and station. In reality, these log entries
     would be in a database.
 
-    :param station: string: hostname of this station (because the log entry database will cover all stations)
+    :param station_id: integer: Station number (because the log entry database will cover all stations)
     :param desired_antenna:  # Specifies a single physical antenna (1-256), or 0/None
     :param desired_chipid:  # Specifies a single physical SMARTbox or FNDH unique serial number, or None.
     :param desired_lognum:  # 0/None for the most recent log message, or larger numbers for older messages.
     :return: A tuple of the log entry text, and a unix timestamp for when it was created.
     """
     logger.info('Log entry #%d requested for station:%s, Ant#:%s, chipid=%s' % (desired_lognum,
-                                                                                station,
+                                                                                station_id,
                                                                                 desired_antenna,
                                                                                 desired_chipid))
     return ("Insert a real service log database here: %d." % desired_lognum, 1614319283)
 
 
-def save_log_entry(station=None, desired_antenna=None, desired_chipid=None, message=None, message_timestamp=None):
+def save_log_entry(station_id=None, desired_antenna=None, desired_chipid=None, message=None, message_timestamp=None):
     """
     Dummy function to write a log entry for the given antenna, chipid, and station. In reality, these log entries
     would be in a database.
 
-    :param station: string: hostname of this station (because the log entry database will cover all stations)
+    :param station_id: integer: Station number (because the log entry database will cover all stations)
     :param desired_antenna: integer: Specifies a single physical antenna (1-256), or 0/None
     :param desired_chipid: bytes: Specifies a single physical SMARTbox or FNDH unique serial number, or None.
     :param message: string: Message text
@@ -387,7 +394,7 @@ def save_log_entry(station=None, desired_antenna=None, desired_chipid=None, mess
     :return: True for success, False for failure
     """
     logger.info('Log entry received at %s for station:%s, Ant#:%s, chipid=%s: %s' % (message_timestamp,
-                                                                                     station,
+                                                                                     station_id,
                                                                                      desired_antenna,
                                                                                      desired_chipid,
                                                                                      message))

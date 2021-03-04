@@ -477,8 +477,8 @@ class SMARTbox(transport.ModbusSlave):
                                                                                                                  poll_blocksize))
             return None
 
-        self.mbrv = transport.bytestoN(valuelist[0])
-        self.pcbrv = transport.bytestoN(valuelist[1])
+        self.mbrv = valuelist[0][0] * 256 + valuelist[0][1]
+        self.pcbrv = valuelist[1][0] * 256 + valuelist[1][1]
         self.register_map = SMARTBOX_REGISTERS[self.mbrv]
         self.codes = SMARTBOX_CODES[self.mbrv]
 
@@ -501,7 +501,7 @@ class SMARTbox(transport.ModbusSlave):
                 bytelist = []
                 for byte_tuple in bytelist:
                     bytelist += list(byte_tuple)
-                self.chipid = bytes(bytelist).decode('utf8')  # Convert the 16 bytes into a string
+                self.chipid = bytes(bytelist)
             elif regname == 'SYS_FIRMVER':
                 self.firmware_version = raw_int
             elif regname == 'SYS_UPTIME':
@@ -560,8 +560,8 @@ class SMARTbox(transport.ModbusSlave):
                                                                                                                  16))
             return None
 
-        self.mbrv = transport.bytestoN(valuelist[0])
-        self.pcbrv = transport.bytestoN(valuelist[1])
+        self.mbrv = valuelist[0][0] * 256 + valuelist[0][1]
+        self.pcbrv = valuelist[1][0] * 256 + valuelist[1][1]
         self.register_map = SMARTBOX_REGISTERS[self.mbrv]
         self.codes = SMARTBOX_CODES[self.mbrv]
         self.uptime = valuelist[self.register_map['UPTIME'][0] - 1][0] * 256 + valuelist[self.register_map['UPTIME'][0] - 1][1]

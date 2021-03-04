@@ -6,7 +6,6 @@ query the MCCS instead of the FNDH or a SMARTbox.
 """
 
 import logging
-import time
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -55,6 +54,7 @@ class MCCS(transport.ModbusSlave):
 
         Fetch the 256 registers corresponding to physical antenna numbers, and get
         the SMARTbox and port numbers for each physical antenna.
+
         :return: True if there were no errors, None on error.
         """
         # Get a list of 28 tuples, where each tuple is a two-byte register value, eg (0,255)
