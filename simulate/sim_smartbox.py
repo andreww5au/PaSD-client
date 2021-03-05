@@ -236,5 +236,7 @@ conn = transport.Connection(devicename='COM6')
 from simulate import sim_smartbox as ss
 s = ss.SimSMARTbox(conn=conn, modbus_address=1)
 
-s.mainloop()
+import threading
+mt = threading.Thread(target=s.mainloop)
+mt.start()
 """
