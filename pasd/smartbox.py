@@ -593,8 +593,10 @@ class SMARTbox(transport.ModbusSlave):
 
         res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         if res:
+            logger.info('Wrote thresholds.')
             return True
         else:
+            logger.info('Could not write thresholds.')
             return False
 
     def write_portconfig(self):
@@ -613,7 +615,9 @@ class SMARTbox(transport.ModbusSlave):
         res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         if res:
             return True
+            logger.info('Wrote portconfig.')
         else:
+            logger.info('Could not write portconfig.')
             return False
 
     def configure(self, thresholds=None, portconfig=None):
