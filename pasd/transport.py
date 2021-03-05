@@ -313,7 +313,7 @@ class Connection(object):
                         if r not in slave_registers:
                             read_error = True
                         else:
-                            replylist.append(NtoBytes(slave_registers[r], 2))
+                            replylist += list(divmod(slave_registers[r], 65536))
                             read_set.add(r)
                     if read_error:
                         replylist = [listen_address, 0x83, 0x02]  # 0x02 is 'Illegal Data Address'
