@@ -155,9 +155,15 @@ class SimSMARTbox(smartbox.SMARTbox):
                 for port in self.ports.values():
                     port.system_online = True
 
+            if self.register_map['POLL']['SYS_LIGHTS'][0] in written_set:  # Wrote to SYS_LIGHTS, so set light attributes
+                msb, lsb = divmod(slave_registers[self.register_map['POLL']['SYS_LIGHTS'][0]], 256)
+                self.service_led = bool(msb)
+                self.indicator_code = lsb
+                self.indicator_state = self.codes['led']['fromid'][lsb]
+
             if self.register_map['POLL']['SYS_STATUS'][0] in written_set:   # Wrote to SYS_STATUS, so clear UNINITIALISED state
                 self.statuscode = 0
-                self.status = self.codes['status'][0]
+                self.status = self.codes['status']['fromid'][0]
 
             if (self.status not in [0, 1]):   # If we're not OK or WARNING, disable all the outputs
                 for port in self.ports.values():
