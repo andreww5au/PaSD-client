@@ -290,7 +290,10 @@ class Connection(object):
                         logger.exception('Exception in sock.recv()')
                         return set(), set()
 
-                if ((len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
+                if not msglist:
+                    return set(), set()
+
+                if ((0 < len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
                     logger.warning('Packet fragment received: %s' % msglist)
                     self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                     continue    # Discard this packet fragment, keep waiting for a new valid packet

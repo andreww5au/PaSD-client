@@ -98,14 +98,14 @@ class SimSMARTbox(smartbox.SMARTbox):
             for regname in self.register_map['POLL']:
                 regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
                 if regname == 'SYS_CPUID':
-                    slave_registers[regnum] = self.cpuid
+                    slave_registers[regnum], slave_registers[regnum + 1] = divmod(self.cpuid, 65536)
                 elif regname == 'SYS_CHIPID':
                     for i in range(numreg):
                         slave_registers[regnum + i] = self.chipid[i // 2] * 256 + self.chipid[i // 2 + 1]
                 elif regname == 'SYS_FIRMVER':
                     slave_registers[regnum] = self.firmware_version
                 elif regname == 'SYS_UPTIME':
-                    slave_registers[regnum] = self.uptime
+                    slave_registers[regnum], slave_registers[regnum + 1] = divmod(self.uptime, 65536)
                 elif regname == 'SYS_ADDRESS':
                     slave_registers[regnum] = self.station_value
                 elif regname == 'SYS_48V_V':
