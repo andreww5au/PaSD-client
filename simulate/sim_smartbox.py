@@ -152,7 +152,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                 for port in self.ports.values():
                     port.system_online = True
 
-            if self.register_map['SYS_STATUS'][0] in written_set:   # Wrote to SYS_STATUS, so clear UNINITIALISED state
+            if self.register_map['POLL']['SYS_STATUS'][0] in written_set:   # Wrote to SYS_STATUS, so clear UNINITIALISED state
                 self.statuscode = 0
                 self.status = self.codes['status'][0]
 
