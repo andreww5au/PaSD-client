@@ -23,55 +23,55 @@
         3500,
         3600
     ],
-    "SYS_FEM1TEMP_TH": [
+    "SYS_FEM01TEMP_TH": [
         3000,
         3100,
         3500,
         3600
     ],
-    "SYS_FEM2TEMP_TH": [
+    "SYS_FEM02TEMP_TH": [
         3000,
         3100,
         3500,
         3600
     ],
-    "SYS_FEM3TEMP_TH": [
+    "SYS_FEM03TEMP_TH": [
         3000,
         3100,
         3500,
         3600
     ],
-    "SYS_FEM4TEMP_TH": [
+    "SYS_FEM04TEMP_TH": [
         3000,
         3100,
         3500,
         3600
     ],
-    "SYS_FEM5TEMP_TH": [
+    "SYS_FEM05TEMP_TH": [
         3000,
         3100,
         3500,
         3600
     ],
-    "SYS_FEM6TEMP_TH": [
+    "SYS_FEM06TEMP_TH": [
         3000,
         3100,
         3500,
         3600
     ],
-    "SYS_FEM7TEMP_TH": [
+    "SYS_FEM07TEMP_TH": [
         3000,
         3100,
         3500,
         3600
     ],
-    "SYS_FEM8TEMP_TH": [
+    "SYS_FEM08TEMP_TH": [
         3000,
         3100,
         3500,
         3600
     ],
-    "SYS_FEM9TEMP_TH": [
+    "SYS_FEM09TEMP_TH": [
         3000,
         3100,
         3500,
