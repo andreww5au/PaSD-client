@@ -193,14 +193,14 @@ class PortStatus(object):
         self.current_raw = current_raw           # Raw ADC value for the port current
         self.current = current                   # Port current in mA
         self.status_timestamp = read_timestamp   # Unix epoch at the time the P<NN>_STATE register was last read
-        self.system_level_enabled = None   # Has the SMARTbox decided that it's in a safe state (not overheated, etc)
-        self.system_online = None   # Has the SMARTbox decided that it's heard from the MCCS recently enough to go online
-        self.desire_enabled_online = None   # Does the MCCS want this port enabled when the device is online
-        self.desire_enabled_offline = None   # Does the MCCS want this port enabled when the device is offline
-        self.locally_forced_on = None     # Has this port been locally forced ON by a technician overide
-        self.locally_forced_off = None    # Has this port been locally forced OFF by a technician overide
-        self.breaker_tripped = None    # Has the over-current breaker tripped on this port
-        self.power_state = None    # Is this port switched ON
+        self.system_level_enabled = False   # Has the SMARTbox decided that it's in a safe state (not overheated, etc)
+        self.system_online = False   # Has the SMARTbox decided that it's heard from the MCCS recently enough to go online
+        self.desire_enabled_online = False   # Does the MCCS want this port enabled when the device is online
+        self.desire_enabled_offline = False   # Does the MCCS want this port enabled when the device is offline
+        self.locally_forced_on = False     # Has this port been locally forced ON by a technician overide
+        self.locally_forced_off = False    # Has this port been locally forced OFF by a technician overide
+        self.breaker_tripped = False    # Has the over-current breaker tripped on this port
+        self.power_state = False    # Is this port switched ON
         self.antenna_number = None   # Physical station antenna number (1-256). Only set externally, at the station level.
 
         self.set_current(current_raw, current, read_timestamp=read_timestamp)
@@ -614,8 +614,8 @@ class SMARTbox(transport.ModbusSlave):
 
         res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         if res:
-            return True
             logger.info('Wrote portconfig.')
+            return True
         else:
             logger.info('Could not write portconfig.')
             return False
@@ -657,3 +657,13 @@ class SMARTbox(transport.ModbusSlave):
         else:
             logger.error('Could not load and write threshold data.')
         return False
+
+
+"""
+from pasd import transport
+conn = transport.Connection(hostname='134.7.50.172', port=5000)
+from pasd import smartbox
+s = smartbox.SMARTbox(conn=conn, modbus_address=1)
+s.poll_data()
+s.configure()
+"""
