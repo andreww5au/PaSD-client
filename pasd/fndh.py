@@ -92,8 +92,8 @@ FNDH_CODES_1 = {'status':{'fromid':{0:'UNINITIALISED', 1:'OK', 2:'ALARM', 3:'WAR
 FNDH_REGISTERS = {1: {'POLL':FNDH_POLL_REGS_1, 'CONF':FNDH_CONF_REGS_1}}
 FNDH_CODES = {1: FNDH_CODES_1}
 
-THRESHOLD_FILENAME = 'fndh_thresholds.json'
-PORTCONFIG_FILENAME = 'fndh_ports.json'
+THRESHOLD_FILENAME = 'pasd/fndh_thresholds.json'  # TODO - create this file
+PORTCONFIG_FILENAME = 'pasd/fndh_ports.json'
 
 
 class PdocStatus(smartbox.PortStatus):
@@ -462,8 +462,8 @@ class FNDH(transport.ModbusSlave):
         """
         # Startup finished, now set all the port states as per the saved port configuration:
         for portnum in range(1, 29):
-            self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
-            self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
+            self.ports[portnum].desire_enabled_online = bool(self.portconfig[str(portnum)][0])
+            self.ports[portnum].desire_enabled_offline = bool(self.portconfig[(portnum)][1])
         ok = self.write_portconfig()
         return ok
 
