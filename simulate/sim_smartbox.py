@@ -5,7 +5,12 @@ Simulates a SMARTbox, acting as a Modbus slave and responding to 0x03, 0x06 and 
 to read and write registers.
 """
 
+import logging
 import time
+
+logging.basicConfig()
+logger = logging.getLogger()
+logger.level = logging.DEBUG
 
 from pasd import smartbox
 
@@ -154,6 +159,50 @@ class SimSMARTbox(smartbox.SMARTbox):
                 self.online = True
                 for port in self.ports.values():
                     port.system_online = True
+
+            for regnum in range(self.register_map['POLL']['P01_STATE'][0], self.register_map['POLL']['P12_STATE'][0], 2):
+                if regnum in written_set:
+                    port = self.ports[(regnum - self.register_map['POLL']['P01_STATE'][0]) // 2 + 1]
+                    status_bitmap = slave_registers[regnum]
+                    bitstring = "{:016b}".format(status_bitmap)
+
+                    # Desired state online - R/W, write 00 if no change to current value
+                    if (bitstring[2:4] == '10'):
+                        port.desire_enabled_online = False
+                    elif (bitstring[2:4] == '11'):
+                        port.desire_enabled_online = True
+                    elif (bitstring[2:4] == '00'):
+                        pass
+                    else:
+                        logger.warning('Unknown desire enabled online flag: %s' % bitstring[2:4])
+                        port.desire_enabled_online = None
+
+                    # Desired state offline - R/W, write 00 if no change to current value
+                    if (bitstring[4:6] == '10'):
+                        port.desire_enabled_offline = False
+                    elif (bitstring[4:6] == '11'):
+                        port.desire_enabled_offline = True
+                    elif (bitstring[4:6] == '00'):
+                        pass
+                    else:
+                        logger.warning('Unknown desired state offline flag: %s' % bitstring[4:6])
+                        port.desire_enabled_offline = None
+
+                    # Technician override - R/W, write 00 if no change to current value
+                    if (bitstring[6:8] == '10'):
+                        port.locally_forced_on = False
+                        port.locally_forced_off = True
+                    elif (bitstring[6:8] == '11'):
+                        port.locally_forced_on = True
+                        port.locally_forced_off = False
+                    elif (bitstring[6:8] == '01'):
+                        port.locally_forced_on = False
+                        port.locally_forced_off = False
+                    else:
+                        pass
+
+                    if bitstring[8] == '1':  # Reset breaker
+                        port.breaker_tripped = False
 
             if self.register_map['POLL']['SYS_LIGHTS'][0] in written_set:  # Wrote to SYS_LIGHTS, so set light attributes
                 msb, lsb = divmod(slave_registers[self.register_map['POLL']['SYS_LIGHTS'][0]], 256)
