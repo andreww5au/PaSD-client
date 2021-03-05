@@ -135,6 +135,7 @@ class SimSMARTbox(smartbox.SMARTbox):
             for regnum in range(1001, 1078):   # Zero all the threshold registers
                 slave_registers[regnum] = 0
 
+            print(slave_registers)
             read_set, written_set = self.conn.listen_for_packet(listen_address=self.modbus_address,
                                                                 slave_registers=slave_registers,
                                                                 maxtime=5.0,
@@ -168,3 +169,13 @@ class SimSMARTbox(smartbox.SMARTbox):
                          (port.locally_forced_on)) and (not port.locally_forced_off):
                         port_on = True
                     port.power_state = port_on
+
+
+"""
+from pasd import transport
+conn = transport.Connection(devicename='COM6')
+from simulate import sim_smartbox as ss
+s = ss.SimSMARTbox(conn=conn, modbus_address=1)
+
+s.mainloop()
+"""
