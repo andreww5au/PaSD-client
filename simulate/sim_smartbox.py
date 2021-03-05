@@ -165,16 +165,18 @@ class SimSMARTbox(smartbox.SMARTbox):
                 self.statuscode = 0
                 self.status = self.codes['status']['fromid'][0]
 
-            if (self.status not in [0, 1]):   # If we're not OK or WARNING, disable all the outputs
+            if (self.statuscode not in [0, 1]):   # If we're not OK or WARNING, disable all the outputs
                 for port in self.ports.values():
                     port.system_level_enabled = False
                     port.power_state = False
             else:
                 for port in self.ports.values():
+                    port.system_level_enabled = True
                     port_on = False
-                    if ( (self.online and port.desire_enabled_online) or
-                         ((not self.online) and port.desire_enabled_offline) or
-                         (port.locally_forced_on)) and (not port.locally_forced_off):
+                    if ( ( (self.online and port.desire_enabled_online)
+                           or ((not self.online) and port.desire_enabled_offline)
+                           or (port.locally_forced_on) )
+                         and (not port.locally_forced_off) ):
                         port_on = True
                     port.power_state = port_on
 

@@ -469,7 +469,8 @@ class Connection(object):
             errs += "Packet: %s\n" % str(reply)
             logger.error(errs)
             return None
-        if reply != packet:
+        if reply != packet[:-2]:  # The _send_as_master() method adds the CRC to the packet list, in place, so strip it
+            logger.error('writeReg: %s != %s' % (reply, packet))
             return False  # Value returned is not equal to value written
         return True
 
