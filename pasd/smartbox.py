@@ -221,18 +221,18 @@ class PortStatus(object):
                 lfstring = 'Forced:OFF'
             else:
                 lfstring = 'NotForced'
-            status_items = ['Status(%1.1f s) on SMARTbox %s:' % (time.time() - self.current_timestamp, self.modbus_address),
+            status_items = ['Status(%1.1f s):' % (time.time() - self.current_timestamp),
                             {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled],
                             {False:'Offline', True:'Online', None:'??line?'}[self.system_online],
                             'DesEnableOnline=%s' % self.desire_enabled_online,
                             'DesEnableOffline=%s' % self.desire_enabled_offline,
                             lfstring,
-                            {False:'Power:ON', True:'Power:OFF', None:'Power:?'}[self.power_state],
+                            {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[self.power_state],
                             {False:'', True:'BreakerTrip!', None:'Breaker:?'}[self.breaker_tripped]
                             ]
             status_string = ' '.join(status_items)
 
-        return "P%02d: %s %s" % (self.port_number, current_string, status_string)
+        return "P%02d on SB:%d: %s %s" % (self.port_number, self.modbus_address, current_string, status_string)
 
     def __repr__(self):
         return str(self)
