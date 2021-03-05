@@ -303,10 +303,10 @@ class Connection(object):
                     logger.info('Packet received, but it was addressed to station %d' % msglist[0])
                     continue
 
-                if msglist[1] == 0x03:   # Reading a register
+                if msglist[1] == 0x03:   # Reading one or more registers
                     regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
                     numreg = msglist[4] * 256 + msglist[5]
-                    replylist = [listen_address, 0x03]
+                    replylist = [listen_address, 0x03, numreg * 2]
                     read_set = set()
                     read_error = False
                     for r in range(regnum, regnum + numreg):   # Iterate over all requested registers
@@ -395,7 +395,7 @@ class Connection(object):
 
         packet = [modbus_address, 0x03] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
         reply = self._send_as_master(packet)
-
+        print(reply)
         if not reply:
             return None
         if reply[0] != modbus_address:
@@ -416,6 +416,7 @@ class Connection(object):
                     return "Exception %s: Unknown exception" % (hex(excode + 0x83 * 256),)
             errs = "Unexpected reply received.\n"
             errs += "Packet: %s\n" % str(reply)
+            print(errs)
             logger.error(errs)
             return None
         blist = reply[3:]
