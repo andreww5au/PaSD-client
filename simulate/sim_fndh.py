@@ -125,6 +125,8 @@ class SimFNDH(fndh.FNDH):
                     slave_registers[regnum] = int(4096 * self.psu48v2_voltage / 100.0)
                 elif regname == 'SYS_5V_V':
                     slave_registers[regnum] = int(4096 * self.psu5v_voltage / 10.0)
+                elif regname == 'SYS_48V_I':
+                    slave_registers[regnum] = int(4096 * self.psu48v_current / 50.0)
                 elif regname == 'SYS_48V_TEMP':
                     slave_registers[regnum] = int(4096 * (self.psu48v_temp + 10) / 150.0)
                 elif regname == 'SYS_5V_TEMP':

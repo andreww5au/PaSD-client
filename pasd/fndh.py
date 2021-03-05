@@ -284,9 +284,13 @@ class FNDH(transport.ModbusSlave):
 
         :return:True for success, None if there were any errors.
         """
-        maxregnum = max([data[0] for data in self.register_map['POLL'].values()])
-        maxregname = [name for (name, data) in self.register_map['POLL'].items() if data[0] == maxregnum]
-        poll_blocksize = maxregnum + (self.register_map['POLL'][maxregname][1] - 1)  # number of registers to read
+        if self.register_map:  # We've talked to this box before, so we know the actual register map
+            tmp_regmap = self.register_map['POLL']
+        else:   # We haven't talked to this box, so use a default map to get the registers to read this time
+            tmp_regmap = FNDH_POLL_REGS_1
+        maxregnum = max([data[0] for data in tmp_regmap.values()])
+        maxregname = [name for (name, data) in tmp_regmap.items() if data[0] == maxregnum][0]
+        poll_blocksize = maxregnum + (tmp_regmap[maxregname][1] - 1)  # number of registers to read
 
         # Get a list of tuples, where each tuple is a two-byte register value, eg (0,255)
         try:
@@ -301,8 +305,7 @@ class FNDH(transport.ModbusSlave):
             return None
 
         if len(valuelist) != poll_blocksize:
-            logger.warning(
-                'Only %d registers returned from FNSH by readReg in poll_data, expected %d' % (len(valuelist), poll_blocksize))
+            logger.warning('Only %d registers returned from FNSH by readReg in poll_data, expected %d' % (len(valuelist), poll_blocksize))
 
         self.mbrv = transport.bytestoN(valuelist[0])
         self.pcbrv = transport.bytestoN(valuelist[1])
@@ -464,3 +467,12 @@ class FNDH(transport.ModbusSlave):
         ok = self.write_portconfig()
         return ok
 
+
+"""
+from pasd import transport
+conn = transport.Connection(hostname='134.7.50.172', port=5000)
+from pasd import fndh
+f = fndh.FNDH(conn=conn, modbus_address=31)
+f.poll_data()
+f.configure()
+"""

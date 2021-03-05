@@ -61,4 +61,4 @@ def scale_48vcurrent(raw_value, pcb_version):
         :param pcb_version: integer PCB version number, 0-65535
         :return: output_value in Amps
         """
-    return 100.0 * (raw_value / 4096.0)  # 0 to 100 mA
+    return 50.0 * (raw_value / 4096.0)  # 0 to 50 A
