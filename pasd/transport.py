@@ -334,7 +334,7 @@ class Connection(object):
                     else:
                         replylist = [listen_address, 0x86, 0x02]   # 0x02 is 'Illegal Data Address'
                         logger.error('Writing register %d not allowed, returned exception packet %s.' % (regnum, replylist))
-                    if not validation_function(slave_registers=slave_registers):
+                    if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
                         slave_registers[regnum] = registers_backup[regnum]   # Put back the original contents of that register
                         replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
                         logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
