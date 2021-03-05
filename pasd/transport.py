@@ -132,7 +132,10 @@ class Connection(object):
         """
         with self.lock:
             if self.sock is not None:
-                remote_data = self.sock.recv(nbytes)
+                try:
+                    remote_data = self.sock.recv(nbytes)
+                except socket.timeout:
+                    remote_data = b''
             elif self.ser is not None:
                 remote_data = self.ser.read(nbytes)
             else:
@@ -302,15 +305,18 @@ class Connection(object):
                     numreg = msglist[4] * 256 + msglist[5]
                     replylist = [listen_address, 0x03]
                     read_set = set()
+                    read_error = False
                     for r in range(regnum, regnum + numreg):   # Iterate over all requested registers
                         if r not in slave_registers:
-                            replylist = [listen_address, 0x86, 0x02]  # 0x02 is 'Illegal Data Address'
-                            self._send_reply(replylist)
-                            logger.error('Reading register %d not allowed, returned exception packet %s' % (r, replylist))
-                            continue
+                            read_error = True
                         else:
                             replylist.append(NtoBytes(slave_registers[r], 2))
                             read_set.add(r)
+                    if read_error:
+                        replylist = [listen_address, 0x83, 0x02]  # 0x02 is 'Illegal Data Address'
+                        self._send_reply(replylist)
+                        logger.error('Reading unknown register not allowed, returned exception packet %s' % (replylist,))
+                        continue
                     self._send_reply(replylist)
                     return read_set, set()
                 elif msglist[1] == 0x06:  # Writing a single register
@@ -337,20 +343,25 @@ class Connection(object):
 
                     assert len(bytelist) == numbytes == (numreg // 2)
                     written_set = set()
+                    write_error = False
                     for r in range(regnum, regnum + numreg):
                         if r not in slave_registers:
-                            for r2 in range(regnum, r):
-                                if r2 in slave_registers:
-                                    slave_registers[r2] = registers_backup[r2]
-                            replylist = [listen_address, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
-                            self._send_reply(replylist)
-                            logger.error('Writing register %d not allowed, returned exception packet %s.' % (r, replylist))
-                            continue
+                            write_error = True
+                            break
                         else:
                             value = bytelist[0] * 256 + bytelist[1]
                             bytelist = bytelist[2:]   # Use, then pop off, the first two bytes
                             slave_registers[r] = value
                             written_set.add(r)
+                    if write_error:
+                        for r2 in range(regnum, regnum + numreg):
+                            if r2 in slave_registers:
+                                slave_registers[r2] = registers_backup[r2]
+                        replylist = [listen_address, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
+                        self._send_reply(replylist)
+                        logger.error('Writing unknown register/s not allowed, returned exception packet %s.' % (replylist,))
+                        continue
+
                     if not validation_function(slave_registers=slave_registers):
                         for r in range(regnum, regnum + numreg):
                             slave_registers[r] = registers_backup[r]
