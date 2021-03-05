@@ -22,7 +22,6 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.codes = smartbox.SMARTBOX_CODES[1]
         self.mbrv = 1   # Modbus register-map revision number for this physical SMARTbox
         self.pcbrv = 1  # PCB revision number for this physical SMARTbox
-        self.codes = {}    # A dictionary mapping status code integer (eg 0) to status code string (eg 'OK'), and LED codes to LED flash states
         self.fem_temps = {i:1500 for i in range(1, 13)}  # Dictionary with FEM number (1-12) as key, and temperature as value
         self.cpuid = 1    # CPU identifier (integer)
         self.chipid = bytes([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])   # Unique ID number (16 bytes), different for every physical SMARTbox
