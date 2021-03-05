@@ -97,7 +97,11 @@ class SimSMARTbox(smartbox.SMARTbox):
 
             for regname in self.register_map['POLL']:
                 regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
-                if regname == 'SYS_CPUID':
+                if regname == 'SYS_MBRV':
+                    slave_registers[regnum] = self.mbrv
+                elif regname == 'SYS_PCBREV':
+                    slave_registers[regnum] = self.pcbrv
+                elif regname == 'SYS_CPUID':
                     slave_registers[regnum], slave_registers[regnum + 1] = divmod(self.cpuid, 65536)
                 elif regname == 'SYS_CHIPID':
                     for i in range(numreg):
@@ -109,22 +113,22 @@ class SimSMARTbox(smartbox.SMARTbox):
                 elif regname == 'SYS_ADDRESS':
                     slave_registers[regnum] = self.station_value
                 elif regname == 'SYS_48V_V':
-                    slave_registers[regnum] = 4096 * self.incoming_voltage / 100.0
+                    slave_registers[regnum] = int(4096 * self.incoming_voltage / 100.0)
                 elif regname == 'SYS_PSU_V':
-                    slave_registers[regnum] = 4096 * self.psu_voltage / 10.0
+                    slave_registers[regnum] = int(4096 * self.psu_voltage / 10.0)
                 elif regname == 'SYS_PSUTEMP':
-                    slave_registers[regnum] = 4096 * (self.psu_temp + 10) / 150.0
+                    slave_registers[regnum] = int(4096 * (self.psu_temp + 10) / 150.0)
                 elif regname == 'SYS_PCBTEMP':
-                    slave_registers[regnum] = 4096 * (self.pcb_temp + 10) / 150.0
+                    slave_registers[regnum] = int(4096 * (self.pcb_temp + 10) / 150.0)
                 elif regname == 'SYS_OUTTEMP':
-                    slave_registers[regnum] = 4096 * (self.outside_temp + 10) / 150.0
+                    slave_registers[regnum] = int(4096 * (self.outside_temp + 10) / 150.0)
                 elif regname == 'SYS_STATUS':
                     slave_registers[regnum] = self.statuscode
                 elif regname == 'SYS_LIGHTS':
                     slave_registers[regnum] = int(self.service_led) * 256 + self.indicator_code
                 elif (len(regname) >= 12) and ((regname[:7] + regname[-4:]) == 'SYS_FEMTEMP'):
                     fem_num = int(regname[7:-4])
-                    slave_registers[regnum] = 4096 * (self.fem_temps[fem_num] + 10) / 150.0
+                    slave_registers[regnum] = int(4096 * (self.fem_temps[fem_num] + 10) / 150.0)
                 elif (len(regname) >= 8) and ((regname[0] + regname[-6:]) == 'P_STATE'):
                     pnum = int(regname[1:-6])
                     slave_registers[regnum] = self.ports[pnum].status_to_integer(write_state=True, write_to=True)
