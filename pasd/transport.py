@@ -343,7 +343,7 @@ class Connection(object):
                     numreg = msglist[4] * 256 + msglist[5]
                     numbytes = msglist[6]
                     bytelist = msglist[7:-2]
-
+                    print(len(bytelist), numbytes, numreg, msglist)
                     assert len(bytelist) == numbytes == (numreg // 2)
                     written_set = set()
                     write_error = False
