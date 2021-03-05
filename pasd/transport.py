@@ -365,7 +365,7 @@ class Connection(object):
                         logger.error('Writing unknown register/s not allowed, returned exception packet %s.' % (replylist,))
                         continue
 
-                    if not validation_function(slave_registers=slave_registers):
+                    if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
                         for r in range(regnum, regnum + numreg):
                             slave_registers[r] = registers_backup[r]
                         replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'

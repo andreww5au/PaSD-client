@@ -121,8 +121,8 @@ SMARTBOX_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOV
 SMARTBOX_REGISTERS = {1: {'POLL':SMARTBOX_POLL_REGS_1, 'CONF':SMARTBOX_CONF_REGS_1}}
 SMARTBOX_CODES = {1: SMARTBOX_CODES_1}
 
-THRESHOLD_FILENAME = 'smartbox_thresholds.json'
-PORTCONFIG_FILENAME = 'smartbox_ports.json'
+THRESHOLD_FILENAME = 'pasd/smartbox_thresholds.json'
+PORTCONFIG_FILENAME = 'pasd/smartbox_ports.json'
 
 STATUS_STRING = """\
 SMARTBox at address: %(modbus_address)s:
@@ -433,7 +433,7 @@ class SMARTbox(transport.ModbusSlave):
         try:
             # JSON structure containing the port configuration (desired online and offline power state) for each port
             allports = json.load(open(PORTCONFIG_FILENAME, 'r'))
-            self.portconfig = allports[self.modbus_address]
+            self.portconfig = allports[str(self.modbus_address)]
         except Exception:
             self.portconfig = None
 
@@ -643,8 +643,8 @@ class SMARTbox(transport.ModbusSlave):
 
         if ok:
             for portnum in range(1, 13):
-                self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
-                self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
+                self.ports[portnum].desire_enabled_online = bool(self.portconfig[str(portnum)][0])
+                self.ports[portnum].desire_enabled_offline = bool(self.portconfig[str(portnum)][1])
             ok = self.write_portconfig()
             if ok:
                 return self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
