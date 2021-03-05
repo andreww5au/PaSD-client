@@ -375,7 +375,7 @@ class Connection(object):
                         self._send_reply(replylist)
                         logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
                     else:
-                        replylist = [listen_address, 0x10] + NtoBytes(regnum, 2) + NtoBytes(numreg, 2)
+                        replylist = [listen_address, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
                         self._send_reply(replylist)
                         return set(), written_set
                 else:
