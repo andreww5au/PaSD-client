@@ -160,7 +160,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                 for port in self.ports.values():
                     port.system_online = True
 
-            for regnum in range(self.register_map['POLL']['P01_STATE'][0], self.register_map['POLL']['P12_STATE'][0], 2):
+            for regnum in range(self.register_map['POLL']['P01_STATE'][0], self.register_map['POLL']['P12_STATE'][0] + 1, 2):
                 if regnum in written_set:
                     port = self.ports[(regnum - self.register_map['POLL']['P01_STATE'][0]) // 2 + 1]
                     status_bitmap = slave_registers[regnum]

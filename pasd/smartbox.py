@@ -350,8 +350,8 @@ class PortStatus(object):
         else:
             bitstring += '0'
 
-        bitstring += '000000'  # pad to 16 bits
         bitstring += b[self.power_state]
+        bitstring += '000000'  # pad to 16 bits
         return int(bitstring, 2)
 
 
