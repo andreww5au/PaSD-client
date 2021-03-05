@@ -139,7 +139,6 @@ class SimSMARTbox(smartbox.SMARTbox):
             for regnum in range(1001, 1078):   # Zero all the threshold registers
                 slave_registers[regnum] = 0
 
-            print(slave_registers)
             read_set, written_set = self.conn.listen_for_packet(listen_address=self.modbus_address,
                                                                 slave_registers=slave_registers,
                                                                 maxtime=5.0,
