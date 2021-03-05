@@ -304,7 +304,7 @@ class Connection(object):
                     continue
 
                 if msglist[1] == 0x03:   # Reading a register
-                    regnum = msglist[2] * 256 + msglist[3]
+                    regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
                     numreg = msglist[4] * 256 + msglist[5]
                     replylist = [listen_address, 0x03]
                     read_set = set()
@@ -323,7 +323,7 @@ class Connection(object):
                     self._send_reply(replylist)
                     return read_set, set()
                 elif msglist[1] == 0x06:  # Writing a single register
-                    regnum = msglist[2] * 256 + msglist[3]
+                    regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
                     value = msglist[4] * 256 + msglist[5]
                     if regnum in slave_registers:
                         slave_registers[regnum] = value
@@ -339,7 +339,7 @@ class Connection(object):
                         self._send_reply(replylist)
                         return set(), {regnum}
                 elif msglist[1] == 0x10:  # Writing multiple registers
-                    regnum = msglist[2] * 256 + msglist[3]
+                    regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
                     numreg = msglist[4] * 256 + msglist[5]
                     numbytes = msglist[6]
                     bytelist = msglist[7:-2]
