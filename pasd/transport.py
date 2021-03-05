@@ -395,7 +395,6 @@ class Connection(object):
 
         packet = [modbus_address, 0x03] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
         reply = self._send_as_master(packet)
-        print(reply)
         if not reply:
             return None
         if reply[0] != modbus_address:
@@ -416,7 +415,6 @@ class Connection(object):
                     return "Exception %s: Unknown exception" % (hex(excode + 0x83 * 256),)
             errs = "Unexpected reply received.\n"
             errs += "Packet: %s\n" % str(reply)
-            print(errs)
             logger.error(errs)
             return None
         blist = reply[3:]
