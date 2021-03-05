@@ -314,6 +314,7 @@ class Connection(object):
                     for r in range(regnum, regnum + numreg):   # Iterate over all requested registers
                         if r not in slave_registers:
                             read_error = True
+                            logger.error('Bad read register: %d' % r)
                         else:
                             replylist += list(divmod(slave_registers[r], 256))
                             read_set.add(r)
@@ -352,7 +353,7 @@ class Connection(object):
                     for r in range(regnum, regnum + numreg):
                         if r not in slave_registers:
                             write_error = True
-                            break
+                            logger.error('Bad write register: %d' % r)
                         else:
                             value = bytelist[0] * 256 + bytelist[1]
                             bytelist = bytelist[2:]   # Use, then pop off, the first two bytes
