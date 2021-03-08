@@ -44,7 +44,7 @@ ANTENNA_MAP = {
  20: {1: 212, 2: None, 3: 213, 4: 214, 5: 215, 6: 216, 7: 217, 8: 218, 9: 219, 10: 220, 11: 221, 12: 222},
  21: {1: 223, 2: None, 3: 224, 4: 225, 5: 226, 6: 227, 7: 228, 8: 229, 9: 230, 10: 231, 11: 232, 12: 233},
  22: {1: 234, 2: 235, 3: 236, 4: 237, 5: 238, 6: 239, 7: 240, 8: 241, 9: 242, 10: 243, 11: 244, 12: 245},
- 23: {1: 246, 2: 247, 3: 248, 4: 249, 5: 250, 6: 251, 7: 252, 8: 253, 9: 254, 10: 255, 11: 256},
+ 23: {1: 246, 2: 247, 3: 248, 4: 249, 5: 250, 6: 251, 7: 252, 8: 253, 9: 254, 10: 255, 11: 256, 12: None},
  24: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None},
  25: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None},
  26: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None},
@@ -279,7 +279,7 @@ class Station(object):
         end_time = start_time + maxtime
         while (time.time() < end_time):  # Process packets until we run out of time
             # Set up the registers for the physical->smartbox/port mapping:
-            slave_registers = {port.antenna_number:(port.modbus_address * 256 + port.port_number) for port in self.antennae}
+            slave_registers = {port.antenna_number:(port.modbus_address * 256 + port.port_number) for port in self.antennae.values()}
 
             # Set up the registers for the PDoC port number to smartbox address mapping:
             pdoc_registers = {(PDOC_REGSTART + pdoc_num):self.fndh.ports[pdoc_num].smartbox_address for pdoc_num in self.fndh.ports.keys()}
@@ -405,3 +405,13 @@ def save_log_entry(station_id=None, desired_antenna=None, desired_chipid=None, m
                                                                                      desired_chipid,
                                                                                      message))
     return True
+
+
+# Testing usage
+"""
+from pasd import transport
+from pasd import station
+conn = transport.Connection(hostname='134.7.50.172', port=5000)
+s = station.Station(conn=conn, station_id=99)
+s.listen(900)
+"""
