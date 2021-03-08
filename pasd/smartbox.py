@@ -2,6 +2,8 @@
 
 """Classes to handle communications with an SKA-Low PaSD 'SMARTbox', 24 of which make
    up an SKA-Low station.
+
+   This code runs on the MCCS side in the control building, and talks to a physical SMARTbox module in the field.
 """
 
 import json
@@ -355,7 +357,7 @@ class PortStatus(object):
         return int(bitstring, 2)
 
 
-class SMARTbox(transport.ModbusSlave):
+class SMARTbox(transport.ModbusDevice):
     """
     SMARTbox class, instances of which represent each of the ~24 SMARTboxes inside an SKA-Low station, connected to an
     FNDH via a shared low-speed serial bus.
@@ -401,7 +403,7 @@ class SMARTbox(transport.ModbusSlave):
         :param conn: An instance of transport.Connection() defining a connection to an FNDH
         :param modbus_address: The modbus station address (1-30) for this physical SMARTbox
         """
-        transport.ModbusSlave.__init__(self, conn=conn, modbus_address=modbus_address)
+        transport.ModbusDevice.__init__(self, conn=conn, modbus_address=modbus_address)
 
         self.mbrv = None   # Modbus register-map revision number for this physical SMARTbox
         self.pcbrv = None  # PCB revision number for this physical SMARTbox

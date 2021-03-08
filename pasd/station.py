@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+"""Classes to handle PaSD communications with an SKA-Low station, 256 of which make
+   up the whole of SKA-Low.
+
+   This code runs on the MCCS side in the control building, and talks to an FNDH and up to 28 SMARTbox modules in the field.
+"""
+
 import logging
 import time
 

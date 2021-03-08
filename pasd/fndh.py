@@ -2,6 +2,8 @@
 
 """Classes to handle communications with SKA-Low PaSD 'SMARTbox' elements, 24 of which make
    up an SKA-Low station.
+
+   This code runs on the MCCS side in the control building, and talks to a physical FNDH module in the field.
 """
 
 import json
@@ -79,7 +81,6 @@ FNDH_CONF_REGS_1 = {
                     'SYS_5V_TEMP':(1021, 4, '5V PSU temperature AH, WH, WL, AL', conversion.scale_temp),
                     'SYS_PCBTEMP_TH':(1025, 4, 'PCB temperature AH, WH, WL, AL', conversion.scale_temp),
                     'SYS_OUTTEMP_TH':(1029, 4, 'Outside temperature AH, WH, WL, AL', conversion.scale_temp),
-
 }
 
 FNDH_CODES_1 = {'status':{'fromid':{0:'UNINITIALISED', 1:'OK', 2:'ALARM', 3:'WARNING', 4:'RECOVERY'},
@@ -92,7 +93,7 @@ FNDH_CODES_1 = {'status':{'fromid':{0:'UNINITIALISED', 1:'OK', 2:'ALARM', 3:'WAR
 FNDH_REGISTERS = {1: {'POLL':FNDH_POLL_REGS_1, 'CONF':FNDH_CONF_REGS_1}}
 FNDH_CODES = {1: FNDH_CODES_1}
 
-THRESHOLD_FILENAME = 'pasd/fndh_thresholds.json'  # TODO - create this file
+THRESHOLD_FILENAME = 'pasd/fndh_thresholds.json'
 PORTCONFIG_FILENAME = 'pasd/fndh_ports.json'
 
 
@@ -187,7 +188,7 @@ class PdocStatus(smartbox.PortStatus):
         return "P%02d: %s %s" % (self.port_number, current_string, status_string)
 
 
-class FNDH(transport.ModbusSlave):
+class FNDH(transport.ModbusDevice):
     """
     FNDH class, an instance of which represents the microcontroller inside the FNDH in an SKA-Low station, sitting
     (virtually) on the same shared low-speed serial bus used to communicate with the SMARTboxes.
@@ -234,7 +235,7 @@ class FNDH(transport.ModbusSlave):
         :param conn: An instance of transport.Connection() defining a connection to an FNDH
         :param modbus_address: Modbus address of the FNDH (usually 31)
         """
-        transport.ModbusSlave.__init__(self, conn=conn, modbus_address=modbus_address)
+        transport.ModbusDevice.__init__(self, conn=conn, modbus_address=modbus_address)
 
         self.mbrv = None   # Modbus register-map revision number for this physical FNDH
         self.pcbrv = None  # PCB revision number for this physical FNDH
@@ -267,7 +268,7 @@ class FNDH(transport.ModbusSlave):
         try:
             # JSON structure containing the port configuration (desired online and offline power state) for each port
             allports = json.load(open(PORTCONFIG_FILENAME, 'r'))
-            self.portconfig = allports[self.modbus_address]
+            self.portconfig = allports
         except Exception:
             self.portconfig = None
 
@@ -378,13 +379,14 @@ class FNDH(transport.ModbusSlave):
 
         # Count how many system threshold registers there are, and create an empty list of register values
         conf_reglist = self.register_map['CONF'].keys()
-        vlist = [0] * len(conf_reglist) * 4
+        vlist = [0] * sum(x[1] for x in self.register_map['CONF'].values())
 
         startreg = min([data[0] for data in self.register_map['CONF'].values()])
         for regname in conf_reglist:
             regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
             values = self.thresholds[regname]
-            vlist[(regnum - startreg) * 4:(regnum - startreg) * 4 + 4] = values
+            assert len(values) == numreg
+            vlist[(regnum - startreg):(regnum - startreg) + numreg] = values
 
         res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         if res:
@@ -463,7 +465,7 @@ class FNDH(transport.ModbusSlave):
         # Startup finished, now set all the port states as per the saved port configuration:
         for portnum in range(1, 29):
             self.ports[portnum].desire_enabled_online = bool(self.portconfig[str(portnum)][0])
-            self.ports[portnum].desire_enabled_offline = bool(self.portconfig[(portnum)][1])
+            self.ports[portnum].desire_enabled_offline = bool(self.portconfig[str(portnum)][1])
         ok = self.write_portconfig()
         return ok
 
@@ -474,5 +476,6 @@ conn = transport.Connection(hostname='134.7.50.172', port=5000)
 from pasd import fndh
 f = fndh.FNDH(conn=conn, modbus_address=31)
 f.poll_data()
-f.configure()
+f.configure_all_off()
+f.configure_final()
 """

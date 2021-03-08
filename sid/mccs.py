@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Classes to handle communication with the PaSD local MCCS, when it is acting as a Modbus slave. Used by SID device to
+Class to handle communication with the PaSD local MCCS, when it is acting as a Modbus slave. Used by SID device to
 query the MCCS instead of the FNDH or a SMARTbox.
 """
 
@@ -28,7 +28,7 @@ PDOC_REGSTART = 1200  # One register for each PDoC (1-28), eg 1201-1228
 MESSAGE_LEN = 125
 
 
-class MCCS(transport.ModbusSlave):
+class MCCS(transport.ModbusDevice):
     """
     MCCS class, an instance of which represents the PaSD local MCCS software
     """
@@ -42,12 +42,12 @@ class MCCS(transport.ModbusSlave):
         :param conn: An instance of transport.Connection() defining a connection to an FNDH
         :param modbus_address: The modbus station address of the MCCS, typically 63
         """
-        transport.ModbusSlave.__init__(self, conn=conn, modbus_address=modbus_address)
+        transport.ModbusDevice.__init__(self, conn=conn, modbus_address=modbus_address)
         self.pdocs = {}   # Dictionary with PDoC port number (1-28) as key, and SMARTbox address (or 0) as value
         self.antennae = {}  # Dictionary with physical antenna number (1-256) as key, and a tuple of
                             # (SMARTbox_address, port_number) as value
 
-    def poll_data(self):
+    def read_antennae(self):
         """
         Fetch the 28 registers corresponding to physical PDoC ports, and get the smartbox addresses connected
         to each of the 28 ports.
@@ -76,12 +76,68 @@ class MCCS(transport.ModbusSlave):
         self.antennae = {ant_num:valuelist[ant_num - 1] for ant_num in range(1, 256)}
         return True
 
+    def write_antennae(self):
+        """
+        Take the current instance data defining the physical antenna mapping (the self.antennae dictionary), and
+        write it to the remote MCCS to update the remote database.
+
+        :return: True if there were no errors, None on error.
+        """
+        valuelist = {ant_num:self.antennae[ant_num] for ant_num in range(1, 256)}
+        ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=1, valuelist=valuelist)
+        return ok
+
     def get_log_message(self, desired_antenna=None, desired_chipid=None, desired_lognum=0):
         """
         Return a log entry for the given antenna, chipid, and station, by querying the MCCS over the serial link.
 
         :param desired_antenna:  # Specifies a single physical antenna (1-256), or 0/None
-        :param desired_chipid:  # Specifies a single physical SMARTbox or FNDH unique serial number, or None.
+        :param desired_chipid:  # Specifies a single physical SMARTbox or FNDH serial number (bytes() object), or None.
         :param desired_lognum:  # 0/None for the most recent log message, or larger numbers for older messages.
-        :return: A tuple of the log entry text, and a unix timestamp for when it was created.
+        :return: None if there was an error, or A tuple of the log entry text, and a unix timestamp for when it was created
         """
+        if desired_antenna is None:
+            des_ant = 0
+        else:
+            des_ant = desired_antenna
+
+        if desired_chipid is None:
+            des_chip = [0] * 8
+        else:
+            des_chip = [desired_chipid[i * 2] * 256 + desired_chipid[i * 2 + 1] for i in range(8)]
+
+        if desired_lognum is None:
+            des_log = 0
+        else:
+            des_log = desired_lognum
+
+        valuelist = [des_ant] + des_chip + [des_log]
+        ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=ANTNUM, valuelist=valuelist)
+
+        if ok:
+            return self.get_next_log_message()
+        else:
+            return None
+
+    def get_next_log_message(self):
+        """
+        Return the next (older in time) log message from the MCCS, using the previously defined desired antenna
+        number, chipid, and/or starting log message number.
+
+        :return: None if there was an error, or A tuple of the log entry text, and a unix timestamp for when it was created
+        """
+        messagelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=MESSAGE, numreg=MESSAGE_LEN)
+        if messagelist is None:
+            return None
+
+        message_timestamp = transport.bytestoN(messagelist[-2:])
+
+        # Convert a list of MESSAGE_LEN-2 tuples of (msb, lsb) into a string, terminated at the first 0 byte.
+        charlist = []
+        for regvalue in messagelist[:-2]:
+            for b in regvalue:
+                if b > 0:
+                    charlist.append(b)
+                else:
+                    break
+        return bytes(charlist).decode('utf8'), message_timestamp

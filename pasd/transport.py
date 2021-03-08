@@ -1,5 +1,18 @@
 #!/usr/bin/env python
 
+"""Classes to handle communications with remote devices using Modbus-RTU, either directly via serial port, over an
+   ethernet-serial bridge (found in every FNDH), or via a simulated multi-drop shared serial bus to other threads using
+   the same Connection instance.
+
+   This code runs on both the MCCS side (in the control building), in a Technician's Serial Interface Device (a
+   laptop or handheld device used in the field), and in the simulation software used to emulate FNDH's and SMARTboxes
+   for testing.
+
+   All code in this file implements the modbus specification for reading and writing holding registers (functions 0x03,
+   0x06 and 0x10), both as a master device and as a slave device. It should work for any Modbus device using only the
+   holding register set (40000-49999).
+"""
+
 import logging
 import time
 import socket
@@ -409,13 +422,13 @@ class Connection(object):
             if reply[1] == 0x83:
                 excode = reply[2]
                 if excode == 2:
-                    return "Exception 0x8302: Invalid register address"
+                    logger.error("Exception 0x8302: Invalid register address")
                 elif excode == 3:
-                    return "Exception 0x8303: Register count <1 or >123"
+                    logger.error("Exception 0x8303: Register count <1 or >123")
                 elif excode == 4:
-                    return "Exception 0x8304: Read error on one or more registers"
+                    logger.error("Exception 0x8304: Read error on one or more registers")
                 else:
-                    return "Exception %s: Unknown exception" % (hex(excode + 0x83 * 256),)
+                    logger.error("Exception %s: Unknown exception" % (hex(excode + 0x83 * 256),))
             errs = "Unexpected reply received.\n"
             errs += "Packet: %s\n" % str(reply)
             logger.error(errs)
@@ -445,7 +458,7 @@ class Connection(object):
             logger.error('Unexpected register value: %s' % value)
             return False
 
-        packet = [0x01, 0x06] + NtoBytes(regnum - 1, 2) + valuelist
+        packet = [modbus_address, 0x06] + NtoBytes(regnum - 1, 2) + valuelist
         reply = self._send_as_master(packet)
         if not reply:
             return None
@@ -458,13 +471,13 @@ class Connection(object):
             if reply[1] == 0x86:
                 excode = reply[2]
                 if excode == 2:
-                    return "Exception 0x8602: Invalid register address"
+                    logger.error("Exception 0x8602: Invalid register address")
                 elif excode == 3:
-                    return "Exception 0x8603: Register value out of range"
+                    logger.error("Exception 0x8603: Register value out of range")
                 elif excode == 4:
-                    return "Exception 0x8604: Write error on one or more registers"
+                    logger.error("Exception 0x8604: Write error on one or more registers")
                 else:
-                    return "Exception %s: Unknown exception" % (hex(excode + 0x86 * 256),)
+                    logger.error("Exception %s: Unknown exception" % (hex(excode + 0x86 * 256),))
             errs = "Unexpected reply received.\n"
             errs += "Packet: %s\n" % str(reply)
             logger.error(errs)
@@ -511,13 +524,13 @@ class Connection(object):
             if reply[1] == 0x90:
                 excode = reply[2]
                 if excode == 2:
-                    return "Exception 0x9002: Starting or ending register address invalid"
+                    logger.error("Exception 0x9002: Starting or ending register address invalid")
                 elif excode == 3:
-                    return "Exception 0x9003: Register count <1 or >123, or bytecount<>rlen*2"
+                    logger.error("Exception 0x9003: Register count <1 or >123, or bytecount<>rlen*2")
                 elif excode == 4:
-                    return "Exception 0x9004: Write error on one or more registers"
+                    logger.error("Exception 0x9004: Write error on one or more registers")
                 else:
-                    return "Exception %s: Unknown exception" % (hex(excode + 0x90 * 256),)
+                    logger.error("Exception %s: Unknown exception" % (hex(excode + 0x90 * 256),))
             errs = "Unexpected reply received.\n"
             errs += "Packet: %s\n" % str(reply)
             logger.error(errs)
@@ -527,7 +540,7 @@ class Connection(object):
         return True
 
 
-class ModbusSlave(object):
+class ModbusDevice(object):
     """
     Generic parent class for all modbus slaves that the MCCS can communicate with.
 

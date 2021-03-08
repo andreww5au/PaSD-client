@@ -2,7 +2,7 @@
 
 """
 Simulates a FNDH, acting as a Modbus slave and responding to 0x03, 0x06 and 0x10 Modbus commands
-to read and write registers.
+to read and write registers. Used for testing PaSD code.
 """
 
 import logging
@@ -13,7 +13,6 @@ logger = logging.getLogger()
 logger.level = logging.DEBUG
 
 from pasd import fndh
-from pasd import smartbox
 
 
 class SimFNDH(fndh.FNDH):

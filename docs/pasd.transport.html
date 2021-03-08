@@ -1,0 +1,211 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module transport</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>transport</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/andrew/PyDevel/PaSD-client/pasd/transport.py">/home/andrew/PyDevel/PaSD-client/pasd/transport.py</a></font></td></tr></table>
+    <p><tt>Classes&nbsp;to&nbsp;handle&nbsp;communications&nbsp;with&nbsp;remote&nbsp;devices&nbsp;using&nbsp;Modbus-RTU,&nbsp;either&nbsp;directly&nbsp;via&nbsp;serial&nbsp;port,&nbsp;over&nbsp;an<br>
+ethernet-serial&nbsp;bridge&nbsp;(found&nbsp;in&nbsp;every&nbsp;FNDH),&nbsp;or&nbsp;via&nbsp;a&nbsp;simulated&nbsp;multi-drop&nbsp;shared&nbsp;serial&nbsp;bus&nbsp;to&nbsp;other&nbsp;threads&nbsp;using<br>
+the&nbsp;same&nbsp;<a href="#Connection">Connection</a>&nbsp;instance.<br>
+&nbsp;<br>
+This&nbsp;code&nbsp;runs&nbsp;on&nbsp;both&nbsp;the&nbsp;MCCS&nbsp;side&nbsp;(in&nbsp;the&nbsp;control&nbsp;building),&nbsp;in&nbsp;a&nbsp;Technician's&nbsp;Serial&nbsp;Interface&nbsp;Device&nbsp;(a<br>
+laptop&nbsp;or&nbsp;handheld&nbsp;device&nbsp;used&nbsp;in&nbsp;the&nbsp;field),&nbsp;and&nbsp;in&nbsp;the&nbsp;simulation&nbsp;software&nbsp;used&nbsp;to&nbsp;emulate&nbsp;FNDH's&nbsp;and&nbsp;SMARTboxes<br>
+for&nbsp;testing.<br>
+&nbsp;<br>
+All&nbsp;code&nbsp;in&nbsp;this&nbsp;file&nbsp;implements&nbsp;the&nbsp;modbus&nbsp;specification&nbsp;for&nbsp;reading&nbsp;and&nbsp;writing&nbsp;holding&nbsp;registers&nbsp;(functions&nbsp;0x03,<br>
+0x06&nbsp;and&nbsp;0x10),&nbsp;both&nbsp;as&nbsp;a&nbsp;master&nbsp;device&nbsp;and&nbsp;as&nbsp;a&nbsp;slave&nbsp;device.&nbsp;It&nbsp;should&nbsp;work&nbsp;for&nbsp;any&nbsp;Modbus&nbsp;device&nbsp;using&nbsp;only&nbsp;the<br>
+holding&nbsp;register&nbsp;set&nbsp;(40000-49999).</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="logging.html">logging</a><br>
+<a href="serial.html">serial</a><br>
+</td><td width="25%" valign=top><a href="socket.html">socket</a><br>
+<a href="threading.html">threading</a><br>
+</td><td width="25%" valign=top><a href="time.html">time</a><br>
+</td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="builtins.html#object">builtins.object</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="transport.html#Connection">Connection</a>
+</font></dt><dt><font face="helvetica, arial"><a href="transport.html#ModbusDevice">ModbusDevice</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="Connection">class <strong>Connection</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Class&nbsp;to&nbsp;handle&nbsp;Modbus&nbsp;communications&nbsp;between&nbsp;the&nbsp;MCCS&nbsp;and&nbsp;Modbus-RTU&nbsp;devices&nbsp;connected&nbsp;via&nbsp;an&nbsp;ethernet&nbsp;to&nbsp;serial<br>
+bridge,&nbsp;or&nbsp;directly&nbsp;via&nbsp;a&nbsp;serial&nbsp;port.&nbsp;One&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;handles&nbsp;all&nbsp;communications&nbsp;for&nbsp;an&nbsp;entire&nbsp;station.<br>
+&nbsp;<br>
+An&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;is&nbsp;thread-safe&nbsp;-&nbsp;it&nbsp;can&nbsp;be&nbsp;shared&nbsp;between&nbsp;threads,&nbsp;and&nbsp;an&nbsp;internal&nbsp;lock&nbsp;prevents&nbsp;resource<br>
+conflict.<br>
+&nbsp;<br>
+If&nbsp;.multimode&nbsp;is&nbsp;False,&nbsp;then&nbsp;each&nbsp;thread&nbsp;only&nbsp;writes&nbsp;to&nbsp;the&nbsp;remote&nbsp;device,&nbsp;and&nbsp;only&nbsp;sees&nbsp;incoming<br>
+data&nbsp;from&nbsp;the&nbsp;remote&nbsp;device&nbsp;(whichever&nbsp;thread&nbsp;calls&nbsp;._read()&nbsp;first&nbsp;will&nbsp;get&nbsp;the&nbsp;data,&nbsp;and&nbsp;strip&nbsp;it&nbsp;from&nbsp;the<br>
+buffer&nbsp;so&nbsp;that&nbsp;other&nbsp;threads&nbsp;won't&nbsp;see&nbsp;it).<br>
+&nbsp;<br>
+if&nbsp;.multimode&nbsp;is&nbsp;True,&nbsp;then&nbsp;each&nbsp;thread&nbsp;writes&nbsp;to&nbsp;the&nbsp;remote&nbsp;device,&nbsp;and&nbsp;also&nbsp;appends&nbsp;to&nbsp;the&nbsp;input&nbsp;buffers<br>
+for&nbsp;all&nbsp;other&nbsp;threads.&nbsp;When&nbsp;any&nbsp;thread&nbsp;calls&nbsp;._read(),&nbsp;it&nbsp;reads&nbsp;from&nbsp;the&nbsp;remote&nbsp;device,&nbsp;appends&nbsp;any&nbsp;remote&nbsp;data<br>
+to&nbsp;the&nbsp;input&nbsp;buffers&nbsp;for&nbsp;ALL&nbsp;threads,&nbsp;then&nbsp;pulls&nbsp;and&nbsp;returns&nbsp;the&nbsp;desired&nbsp;number&nbsp;of&nbsp;bytes&nbsp;from&nbsp;its&nbsp;own&nbsp;input&nbsp;buffer.<br>
+&nbsp;<br>
+It&nbsp;has&nbsp;public&nbsp;methods&nbsp;for&nbsp;acting&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;master,&nbsp;and&nbsp;reading/writing&nbsp;registers&nbsp;on&nbsp;remote&nbsp;devices:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Connection-readReg">readReg</a>()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Connection-writeReg">writeReg</a>()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<a href="#Connection-writeMultReg">writeMultReg</a>()<br>
+And&nbsp;for&nbsp;acting&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;slave,&nbsp;and&nbsp;listening&nbsp;for&nbsp;commands&nbsp;from&nbsp;a&nbsp;bus&nbsp;master&nbsp;device&nbsp;(the&nbsp;Technician's&nbsp;SID):<br>
+&nbsp;&nbsp;&nbsp;&nbsp;listen_for_packet<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="Connection-__init__"><strong>__init__</strong></a>(self, hostname=None, devicename=None, port=5000, baudrate=9600, multidrop=False)</dt><dd><tt>Create&nbsp;a&nbsp;new&nbsp;instance,&nbsp;using&nbsp;either&nbsp;a&nbsp;socket&nbsp;connection&nbsp;to&nbsp;a&nbsp;serial&nbsp;bridge&nbsp;hostname,&nbsp;or&nbsp;a&nbsp;physical&nbsp;serial&nbsp;port,<br>
+or&nbsp;neither<br>
+&nbsp;<br>
+If&nbsp;'multidrop'&nbsp;is&nbsp;true,&nbsp;this&nbsp;class&nbsp;can&nbsp;be&nbsp;used&nbsp;for&nbsp;emulating&nbsp;serial&nbsp;traffic&nbsp;between&nbsp;multiple&nbsp;threads,&nbsp;with&nbsp;or<br>
+without&nbsp;an&nbsp;actual&nbsp;remote&nbsp;(serial&nbsp;or&nbsp;socket)&nbsp;connection.&nbsp;When&nbsp;any&nbsp;thread&nbsp;calls&nbsp;._write(),&nbsp;data&nbsp;is&nbsp;sent&nbsp;to&nbsp;the<br>
+remote&nbsp;device,&nbsp;and&nbsp;also&nbsp;appended&nbsp;to&nbsp;all&nbsp;other&nbsp;thread's&nbsp;input&nbsp;buffers.&nbsp;When&nbsp;any&nbsp;thread&nbsp;calls&nbsp;._read(),&nbsp;the<br>
+specified&nbsp;number&nbsp;of&nbsp;bytes&nbsp;is&nbsp;read&nbsp;from&nbsp;the&nbsp;remote&nbsp;device&nbsp;and&nbsp;appended&nbsp;to&nbsp;the&nbsp;input&nbsp;buffers&nbsp;for&nbsp;all&nbsp;threads.&nbsp;Then<br>
+the&nbsp;first&nbsp;'nbytes'&nbsp;of&nbsp;characters&nbsp;are&nbsp;removed&nbsp;from&nbsp;that&nbsp;thread's&nbsp;input&nbsp;buffer,&nbsp;and&nbsp;returned.<br>
+&nbsp;<br>
+:param&nbsp;hostname:&nbsp;Hostname&nbsp;(or&nbsp;IP&nbsp;address&nbsp;as&nbsp;a&nbsp;string)&nbsp;of&nbsp;a&nbsp;remote&nbsp;ethernet-serial&nbsp;bridge<br>
+:param&nbsp;devicename:&nbsp;Device&nbsp;name&nbsp;of&nbsp;serial&nbsp;port,&nbsp;eg&nbsp;'/dev/ttyS0'<br>
+:param&nbsp;port:&nbsp;Port&nbsp;number&nbsp;for&nbsp;a&nbsp;remote&nbsp;ethernet-serial&nbsp;bridge<br>
+:param&nbsp;baudrate:&nbsp;<a href="#Connection">Connection</a>&nbsp;speed&nbsp;for&nbsp;serial&nbsp;port&nbsp;connection<br>
+:param&nbsp;multidrop:&nbsp;If&nbsp;True,&nbsp;and&nbsp;this&nbsp;connection&nbsp;is&nbsp;shared&nbsp;between&nbsp;multiple&nbsp;threads,&nbsp;each&nbsp;thread&nbsp;will&nbsp;read()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;any&nbsp;traffic&nbsp;written&nbsp;by&nbsp;any&nbsp;other&nbsp;thread,&nbsp;as&nbsp;well&nbsp;as&nbsp;that&nbsp;coming&nbsp;in&nbsp;from&nbsp;the&nbsp;(optional)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;remote&nbsp;device,&nbsp;if&nbsp;specified.</tt></dd></dl>
+
+<dl><dt><a name="Connection-listen_for_packet"><strong>listen_for_packet</strong></a>(self, listen_address, slave_registers, maxtime=10.0, validation_function=&lt;function dummy_validate at 0x7fcb1dda8730&gt;)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;an&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packet&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;a&nbsp;technician<br>
+in&nbsp;the&nbsp;field).&nbsp;Handle&nbsp;one&nbsp;read/write&nbsp;register&nbsp;call&nbsp;by&nbsp;sending&nbsp;or&nbsp;modifying&nbsp;the&nbsp;contents&nbsp;of&nbsp;the&nbsp;registers&nbsp;passed<br>
+in&nbsp;the&nbsp;'slave_registers'&nbsp;dictionary.&nbsp;Exit&nbsp;after&nbsp;'maxtime'&nbsp;seconds,&nbsp;or&nbsp;after&nbsp;processing&nbsp;one&nbsp;valid&nbsp;packet,&nbsp;whichever<br>
+comes&nbsp;first.&nbsp;Note&nbsp;that&nbsp;if&nbsp;a&nbsp;packet&nbsp;results&nbsp;in&nbsp;an&nbsp;exception&nbsp;reply&nbsp;(invalid&nbsp;register&nbsp;number,&nbsp;invlaid&nbsp;data,&nbsp;etc),<br>
+then&nbsp;it&nbsp;will&nbsp;continue&nbsp;waiting&nbsp;for&nbsp;a&nbsp;valid&nbsp;packet&nbsp;until&nbsp;the&nbsp;maxtime&nbsp;elapses.<br>
+&nbsp;<br>
+NOTE&nbsp;-&nbsp;the&nbsp;slave_registers&nbsp;dictionary&nbsp;will&nbsp;be&nbsp;modified&nbsp;in&nbsp;place&nbsp;with&nbsp;the&nbsp;results&nbsp;of&nbsp;any&nbsp;packet&nbsp;that&nbsp;results<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;in&nbsp;a&nbsp;valid&nbsp;register&nbsp;write.&nbsp;If&nbsp;a&nbsp;register&nbsp;write&nbsp;fails,&nbsp;because&nbsp;of&nbsp;an&nbsp;invalid&nbsp;register&nbsp;number,&nbsp;or&nbsp;because<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the&nbsp;validation&nbsp;function&nbsp;returns&nbsp;False,&nbsp;then&nbsp;the&nbsp;slave_registers&nbsp;dict&nbsp;is&nbsp;left&nbsp;unchanged.<br>
+&nbsp;<br>
+:param&nbsp;listen_address:&nbsp;Modbus&nbsp;address&nbsp;to&nbsp;listen&nbsp;for&nbsp;packets&nbsp;on.<br>
+:param&nbsp;slave_registers:&nbsp;A&nbsp;dictionary&nbsp;with&nbsp;register&nbsp;number&nbsp;(1-9999)&nbsp;as&nbsp;the&nbsp;key,&nbsp;and&nbsp;an&nbsp;integer&nbsp;(0-65535)&nbsp;as&nbsp;the<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;value.&nbsp;Modified&nbsp;in-place&nbsp;by&nbsp;packets&nbsp;that&nbsp;write&nbsp;registers&nbsp;(0x06&nbsp;or&nbsp;0x10).<br>
+:param&nbsp;maxtime:&nbsp;Maximum&nbsp;time&nbsp;to&nbsp;listen&nbsp;for,&nbsp;in&nbsp;seconds.<br>
+:param&nbsp;validation_function:&nbsp;Function&nbsp;to&nbsp;call&nbsp;to&nbsp;validate&nbsp;slave_registers&nbsp;contents.&nbsp;If&nbsp;this&nbsp;validation_function<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;returns&nbsp;false,&nbsp;reply&nbsp;to&nbsp;the&nbsp;sender&nbsp;with&nbsp;an&nbsp;'Illegal&nbsp;Data&nbsp;Value'&nbsp;exception.&nbsp;.<br>
+:return:&nbsp;A&nbsp;tuple&nbsp;(read_set,&nbsp;written_set)&nbsp;-&nbsp;two&nbsp;sets&nbsp;containing&nbsp;all&nbsp;the&nbsp;register&nbsp;numbers&nbsp;that&nbsp;were&nbsp;read-from&nbsp;or<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;written-to&nbsp;by&nbsp;the&nbsp;packet&nbsp;processed&nbsp;in&nbsp;this&nbsp;call&nbsp;to&nbsp;<a href="#Connection-listen_for_packet">listen_for_packet</a>().</tt></dd></dl>
+
+<dl><dt><a name="Connection-readReg"><strong>readReg</strong></a>(self, modbus_address, regnum, numreg=1)</dt><dd><tt>Given&nbsp;a&nbsp;register&nbsp;number&nbsp;and&nbsp;the&nbsp;number&nbsp;of&nbsp;registers&nbsp;to&nbsp;read,&nbsp;return&nbsp;the&nbsp;raw&nbsp;register&nbsp;contents<br>
+of&nbsp;the&nbsp;desired&nbsp;register/s.<br>
+&nbsp;<br>
+:param&nbsp;modbus_address:&nbsp;MODBUS&nbsp;station&nbsp;number,&nbsp;0-255<br>
+:param&nbsp;regnum:&nbsp;Register&nbsp;number&nbsp;to&nbsp;read<br>
+:param&nbsp;numreg:&nbsp;Number&nbsp;of&nbsp;registers&nbsp;to&nbsp;read&nbsp;(default&nbsp;1)<br>
+:return:&nbsp;A&nbsp;list&nbsp;of&nbsp;register&nbsp;values,&nbsp;each&nbsp;a&nbsp;tuple&nbsp;of&nbsp;(MSB,&nbsp;LSB),&nbsp;where&nbsp;MSB&nbsp;and&nbsp;LSB&nbsp;are&nbsp;integers,&nbsp;0-255</tt></dd></dl>
+
+<dl><dt><a name="Connection-writeMultReg"><strong>writeMultReg</strong></a>(self, modbus_address, regnum, valuelist)</dt><dd><tt>Given&nbsp;a&nbsp;starting&nbsp;register&nbsp;number&nbsp;and&nbsp;a&nbsp;list&nbsp;of&nbsp;bytes,&nbsp;write&nbsp;the&nbsp;data&nbsp;to&nbsp;the&nbsp;given&nbsp;register<br>
+in&nbsp;the&nbsp;given&nbsp;modbus&nbsp;station.&nbsp;Return&nbsp;True&nbsp;if&nbsp;the&nbsp;write&nbsp;succeeded,&nbsp;return&nbsp;False&nbsp;if&nbsp;the<br>
+reply&nbsp;doesn't&nbsp;match&nbsp;the&nbsp;data&nbsp;written,&nbsp;and&nbsp;return&nbsp;None&nbsp;if&nbsp;there&nbsp;is&nbsp;any&nbsp;other&nbsp;error.<br>
+&nbsp;<br>
+:param&nbsp;modbus_address:&nbsp;MODBUS&nbsp;station&nbsp;number,&nbsp;0-255<br>
+:param&nbsp;regnum:&nbsp;Register&nbsp;number&nbsp;to&nbsp;read<br>
+:param&nbsp;valuelist:&nbsp;A&nbsp;list&nbsp;of&nbsp;register&nbsp;values&nbsp;to&nbsp;write.&nbsp;To&nbsp;write&nbsp;to&nbsp;multiple&nbsp;consecutive&nbsp;registers,&nbsp;pass&nbsp;a&nbsp;list&nbsp;with<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;more&nbsp;than&nbsp;1&nbsp;value.&nbsp;Each&nbsp;value&nbsp;can&nbsp;be&nbsp;a&nbsp;single&nbsp;integer&nbsp;(passed&nbsp;as&nbsp;a&nbsp;16-bit&nbsp;value,&nbsp;MSB&nbsp;first),&nbsp;or<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;tuple&nbsp;of&nbsp;(MSB,&nbsp;LSB),&nbsp;where&nbsp;MSB&nbsp;and&nbsp;LSB&nbsp;are&nbsp;integers&nbsp;(each&nbsp;0-255).<br>
+:return:&nbsp;True&nbsp;for&nbsp;success,&nbsp;False&nbsp;if&nbsp;there&nbsp;is&nbsp;an&nbsp;unexpected&nbsp;value&nbsp;in&nbsp;the&nbsp;reply,&nbsp;or&nbsp;None&nbsp;for&nbsp;any&nbsp;other&nbsp;error</tt></dd></dl>
+
+<dl><dt><a name="Connection-writeReg"><strong>writeReg</strong></a>(self, modbus_address, regnum, value)</dt><dd><tt>Given&nbsp;a&nbsp;register&nbsp;number&nbsp;and&nbsp;a&nbsp;value,&nbsp;write&nbsp;the&nbsp;data&nbsp;to&nbsp;the&nbsp;given&nbsp;register<br>
+in&nbsp;the&nbsp;given&nbsp;modbus&nbsp;station.&nbsp;Return&nbsp;True&nbsp;if&nbsp;the&nbsp;write&nbsp;succeeded,&nbsp;return&nbsp;False&nbsp;if&nbsp;the<br>
+final&nbsp;register&nbsp;contents&nbsp;are&nbsp;not&nbsp;equal&nbsp;to&nbsp;the&nbsp;value&nbsp;written,&nbsp;and&nbsp;return&nbsp;None&nbsp;if&nbsp;there&nbsp;is&nbsp;any&nbsp;other&nbsp;error.<br>
+&nbsp;<br>
+If&nbsp;value&nbsp;is&nbsp;an&nbsp;integer,&nbsp;assume&nbsp;it's&nbsp;a&nbsp;16-bit&nbsp;value&nbsp;and&nbsp;pass&nbsp;it&nbsp;as&nbsp;two&nbsp;bytes,&nbsp;MSB&nbsp;first&nbsp;(network&nbsp;byte&nbsp;order)<br>
+If&nbsp;value&nbsp;is&nbsp;a&nbsp;list&nbsp;of&nbsp;two&nbsp;integers,&nbsp;assume&nbsp;they&nbsp;are&nbsp;8-bit&nbsp;bytes&nbsp;and&nbsp;pass&nbsp;them&nbsp;in&nbsp;the&nbsp;given&nbsp;order.<br>
+&nbsp;<br>
+:param&nbsp;modbus_address:&nbsp;MODBUS&nbsp;station&nbsp;number,&nbsp;0-255<br>
+:param&nbsp;regnum:&nbsp;Register&nbsp;number&nbsp;to&nbsp;read<br>
+:param&nbsp;value:&nbsp;An&nbsp;integer&nbsp;value&nbsp;to&nbsp;write&nbsp;to&nbsp;the&nbsp;(2-byte)&nbsp;register,&nbsp;or&nbsp;a&nbsp;list&nbsp;of&nbsp;two&nbsp;(0-255)&nbsp;integers<br>
+:return:&nbsp;True&nbsp;for&nbsp;success,&nbsp;False&nbsp;if&nbsp;there&nbsp;is&nbsp;an&nbsp;unexpected&nbsp;value&nbsp;in&nbsp;the&nbsp;reply,&nbsp;or&nbsp;None&nbsp;for&nbsp;any&nbsp;other&nbsp;error</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="ModbusDevice">class <strong>ModbusDevice</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Generic&nbsp;parent&nbsp;class&nbsp;for&nbsp;all&nbsp;modbus&nbsp;slaves&nbsp;that&nbsp;the&nbsp;MCCS&nbsp;can&nbsp;communicate&nbsp;with.<br>
+&nbsp;<br>
+Child&nbsp;objects&nbsp;will&nbsp;be&nbsp;SMARTbox&nbsp;units&nbsp;themselves,&nbsp;and&nbsp;the&nbsp;FNDH&nbsp;controller.<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="ModbusDevice-__init__"><strong>__init__</strong></a>(self, conn=None, modbus_address=None)</dt><dd><tt>Initialize&nbsp;self.&nbsp;&nbsp;See&nbsp;help(type(self))&nbsp;for&nbsp;accurate&nbsp;signature.</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-NtoBytes"><strong>NtoBytes</strong></a>(value, nbytes=2)</dt><dd><tt>Given&nbsp;an&nbsp;integer&nbsp;value&nbsp;'value'&nbsp;and&nbsp;a&nbsp;word&nbsp;length&nbsp;'nbytes',<br>
+convert&nbsp;'value'&nbsp;into&nbsp;a&nbsp;list&nbsp;of&nbsp;integers&nbsp;from&nbsp;0-255,&nbsp;&nbsp;with&nbsp;MSB&nbsp;first<br>
+and&nbsp;LSB&nbsp;last.<br>
+&nbsp;<br>
+:param&nbsp;value:&nbsp;An&nbsp;integer&nbsp;small&nbsp;enough&nbsp;to&nbsp;fit&nbsp;into&nbsp;the&nbsp;given&nbsp;word&nbsp;length<br>
+:param&nbsp;nbytes:&nbsp;The&nbsp;word&nbsp;length&nbsp;to&nbsp;return<br>
+:return:&nbsp;a&nbsp;list&nbsp;of&nbsp;integers,&nbsp;each&nbsp;in&nbsp;the&nbsp;range&nbsp;0-255</tt></dd></dl>
+ <dl><dt><a name="-bytestoN"><strong>bytestoN</strong></a>(valuelist)</dt><dd><tt>Given&nbsp;a&nbsp;list&nbsp;or&nbsp;tuple&nbsp;of&nbsp;integers,&nbsp;or&nbsp;a&nbsp;list&nbsp;of&nbsp;tuples,&nbsp;in&nbsp;network&nbsp;order&nbsp;(MSB&nbsp;first),&nbsp;convert&nbsp;to&nbsp;an&nbsp;integer.<br>
+&nbsp;<br>
+:param&nbsp;valuelist:&nbsp;A&nbsp;list&nbsp;of&nbsp;integers,&nbsp;or&nbsp;tuple&nbsp;of&nbsp;two&nbsp;integers,&nbsp;or&nbsp;a&nbsp;list&nbsp;of&nbsp;tuples&nbsp;of&nbsp;two&nbsp;integers<br>
+:return:&nbsp;An&nbsp;integer</tt></dd></dl>
+ <dl><dt><a name="-dummy_validate"><strong>dummy_validate</strong></a>(slave_registers=None)</dt><dd><tt>#&nbsp;noinspection&nbsp;PyUnusedLocal</tt></dd></dl>
+ <dl><dt><a name="-getcrc"><strong>getcrc</strong></a>(message=None)</dt><dd><tt>Calculate&nbsp;and&nbsp;returns&nbsp;the&nbsp;CRC&nbsp;bytes&nbsp;required&nbsp;for&nbsp;'message'&nbsp;(a&nbsp;list&nbsp;of&nbsp;bytes).<br>
+&nbsp;<br>
+:param&nbsp;message:&nbsp;A&nbsp;list&nbsp;of&nbsp;bytes,&nbsp;each&nbsp;in&nbsp;the&nbsp;range&nbsp;0-255<br>
+:return:&nbsp;A&nbsp;list&nbsp;of&nbsp;two&nbsp;integers,&nbsp;each&nbsp;in&nbsp;the&nbsp;range&nbsp;0-255</tt></dd></dl>
+</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>COMMS_TIMEOUT</strong> = 0.001<br>
+<strong>PACKET_WINDOW_TIME</strong> = 0.01<br>
+<strong>TIMEOUT</strong> = 1.0<br>
+<strong>logger</strong> = &lt;RootLogger root (DEBUG)&gt;</td></tr></table>
+</body></html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module conversion</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>conversion</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/andrew/PyDevel/PaSD-client/pasd/conversion.py">/home/andrew/PyDevel/PaSD-client/pasd/conversion.py</a></font></td></tr></table>
+    <p><tt>Scaling&nbsp;functions&nbsp;that&nbsp;take&nbsp;PCB&nbsp;and&nbsp;modbus&nbsp;register&nbsp;version&nbsp;numbers,&nbsp;and&nbsp;convert&nbsp;raw<br>
+register&nbsp;values&nbsp;into&nbsp;real&nbsp;values.</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-scale_48v"><strong>scale_48v</strong></a>(raw_value, pcb_version)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
+value&nbsp;to&nbsp;a&nbsp;voltage.<br>
+&nbsp;<br>
+:param&nbsp;raw_value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535<br>
+:param&nbsp;pcb_version:&nbsp;integer&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;0-65535<br>
+:return:&nbsp;output_value&nbsp;in&nbsp;Volts</tt></dd></dl>
+ <dl><dt><a name="-scale_48vcurrent"><strong>scale_48vcurrent</strong></a>(raw_value, pcb_version)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
+value&nbsp;to&nbsp;Amps.<br>
+&nbsp;<br>
+:param&nbsp;raw_value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535<br>
+:param&nbsp;pcb_version:&nbsp;integer&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;0-65535<br>
+:return:&nbsp;output_value&nbsp;in&nbsp;Amps</tt></dd></dl>
+ <dl><dt><a name="-scale_5v"><strong>scale_5v</strong></a>(raw_value, pcb_version)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
+value&nbsp;to&nbsp;a&nbsp;voltage.<br>
+&nbsp;<br>
+:param&nbsp;raw_value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535<br>
+:param&nbsp;pcb_version:&nbsp;integer&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;0-65535<br>
+:return:&nbsp;output_value&nbsp;in&nbsp;Volts</tt></dd></dl>
+ <dl><dt><a name="-scale_current"><strong>scale_current</strong></a>(raw_value, pcb_version)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
+value&nbsp;to&nbsp;mA.<br>
+&nbsp;<br>
+:param&nbsp;raw_value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535<br>
+:param&nbsp;pcb_version:&nbsp;integer&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;0-65535<br>
+:return:&nbsp;output_value&nbsp;in&nbsp;mA</tt></dd></dl>
+ <dl><dt><a name="-scale_temp"><strong>scale_temp</strong></a>(raw_value, pcb_version)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
+value&nbsp;to&nbsp;deg&nbsp;C.<br>
+&nbsp;<br>
+:param&nbsp;raw_value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535<br>
+:param&nbsp;pcb_version:&nbsp;integer&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;0-65535<br>
+:return:&nbsp;output_value&nbsp;in&nbsp;deg&nbsp;C</tt></dd></dl>
+</td></tr></table>
+</body></html>

@@ -2,7 +2,7 @@
 
 """
 Simulates a SMARTbox, acting as a Modbus slave and responding to 0x03, 0x06 and 0x10 Modbus commands
-to read and write registers.
+to read and write registers. Used for testing PaSD code.
 """
 
 import logging
