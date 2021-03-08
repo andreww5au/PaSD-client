@@ -75,7 +75,7 @@ class MCCS(transport.ModbusDevice):
             logger.exception('Exception in readReg in poll_data for physical antenna mapping from MCCS')
             return None
 
-        self.antennae = {ant_num:valuelist[ant_num - 1] for ant_num in range(1, 256)}
+        self.antennae = {ant_num:valuelist[ant_num - 1] for ant_num in range(1, 257)}
         return True
 
     def map_antenna(self, phys_num, smartbox_address, port_number):
