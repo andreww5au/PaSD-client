@@ -67,8 +67,10 @@ class MCCS(transport.ModbusDevice):
         self.pdocs = {pdoc_num:(valuelist[pdoc_num - 1][0] * 256 + valuelist[pdoc_num - 1][0]) for pdoc_num in range(1, 29)}
 
         # Get a list of 256 tuples, where each tuple is a two-byte register value, eg (0,255)
-        try:
-            valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=PHYSANT_REGSTART + 1, numreg=256)
+        try:   # Limit is 125 register values in a single packet, so split this into three readReg() calls
+            valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=PHYSANT_REGSTART + 1, numreg=100)
+            valuelist += self.conn.readReg(modbus_address=self.modbus_address, regnum=PHYSANT_REGSTART + 101, numreg=100)
+            valuelist += self.conn.readReg(modbus_address=self.modbus_address, regnum=PHYSANT_REGSTART + 201, numreg=56)
         except Exception:
             logger.exception('Exception in readReg in poll_data for physical antenna mapping from MCCS')
             return None
