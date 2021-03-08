@@ -141,3 +141,11 @@ class MCCS(transport.ModbusDevice):
                 else:
                     break
         return bytes(charlist).decode('utf8'), message_timestamp
+
+
+"""
+from sid import mccs
+from pasd import transport
+conn = transport.Connection(devicename='COM6')
+m = mccs.MCCS(conn=conn)
+"""
