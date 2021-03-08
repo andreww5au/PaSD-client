@@ -312,9 +312,13 @@ class Station(object):
             for regnum in written_set:
                 if 1 <= regnum <= 256:
                     sadd, portnum = divmod(slave_registers[regnum], 256)
-                    self.antennae[regnum].antenna_number = None
-                    self.antennae[regnum] = self.smartboxes[sadd].ports[portnum]
-                    self.antennae[regnum].antenna_number = regnum
+                    if self.antennae[regnum].antenna_number is not None:  # If there is already a SMARTbox instance mapped to this antenna
+                        self.antennae[regnum].antenna_number = None          # then unmap it
+                    if sadd in self.smartboxes:  # If we have a SMARTbox with this address, map it to this antenna
+                        self.antennae[regnum] = self.smartboxes[sadd].ports[portnum]
+                        self.antennae[regnum].antenna_number = regnum     # And update it's antenna_number attribute
+                    else:
+                        self.antennae[regnum] = None   # No SMARTbox instance for the given address.
 
             if (ANTNUM in written_set) and (self.servicelog_desired_antenna != slave_registers[ANTNUM]):
                 self.servicelog_desired_antenna = slave_registers[ANTNUM]
