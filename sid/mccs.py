@@ -78,15 +78,46 @@ class MCCS(transport.ModbusDevice):
         self.antennae = {ant_num:valuelist[ant_num - 1] for ant_num in range(1, 256)}
         return True
 
-    def write_antennae(self):
+    def map_antenna(self, phys_num, smartbox_address, port_number):
         """
-        Take the current instance data defining the physical antenna mapping (the self.antennae dictionary), and
-        write it to the remote MCCS to update the remote database.
+        Associate the given physical antenna number (1-256), and associate it with port number 'port_number' (1-12) on
+        the SMARTbox with address 'smartbox_address'.
 
+        If any physical antenna was already mapped to the given SMARTbox address and port, then unmap that physical
+        antenna first (so it's not mapped to any SMARTbox/port).
+
+        Then write the new mapping to the remote MCCS to update the remote database.
+
+        :param phys_num: physical antenna number (1-256)
+        :param smartbox_address: SMARTbox modbus address (1-30)
+        :param port_number: FEM port number inside SMARTbox (1-12)
         :return: True if there were no errors, None on error.
         """
-        valuelist = {ant_num:self.antennae[ant_num] for ant_num in range(1, 256)}
-        ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=1, valuelist=valuelist)
+        unmapped_regnum = None
+        mapped_regnum = None
+        for antnum in range(1,257):
+            if self.antennae[antnum] == (smartbox_address, port_number):
+                if antnum != phys_num:   # Another smartbox/port is already mapped to this physical antenna, so unmap it.
+                    self.antennae[antnum] = (0, 0)
+                    unmapped_regnum = antnum
+            elif antnum == phys_num:   # Add the new smartbox/port for this physical antenna number
+                self.antennae[antnum] = (smartbox_address, port_number)
+                mapped_regnum = antnum
+
+        ok = True
+        if unmapped_regnum:
+            ok = self.conn.writeMultReg(modbus_address=self.modbus_address,
+                                        regnum=unmapped_regnum,
+                                        valuelist=[0])
+            if ok:
+                logger.info('Disconnected antenna %d from port %d on SMARTbox %d.' % (unmapped_regnum, smartbox_address, port_number))
+
+        if mapped_regnum and ok:
+            ok = self.conn.writeMultReg(modbus_address=self.modbus_address,
+                                        regnum=mapped_regnum,
+                                        valuelist=[smartbox_address * 256 + port_number])
+            if ok:
+                logger.info('Connected antenna %d to port %d on SMARTbox %d.' % (mapped_regnum, smartbox_address, port_number))
         return ok
 
     def get_log_message(self, desired_antenna=None, desired_chipid=None, desired_lognum=0):
