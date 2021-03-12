@@ -164,7 +164,7 @@ class Station(object):
 
         # Read the uptimes for all possible SMARTbox addresses, to work out when they were turned on
         address_on_times = {}   # Unix timestamp at which each SMARTbox booted, according to the uptime
-        for sadd in range(1, 30):   # All possible SMARTbox addresses
+        for sadd in range(1, 31):   # All possible SMARTbox addresses
             if sadd in self.smartboxes:
                 smb = self.smartboxes[sadd]
             else:   # If this address isn't in the saved antenna map, create a temporary SMARTbox instance.
@@ -279,7 +279,10 @@ class Station(object):
         end_time = start_time + maxtime
         while (time.time() < end_time):  # Process packets until we run out of time
             # Set up the registers for the physical->smartbox/port mapping:
-            slave_registers = {port.antenna_number:(port.modbus_address * 256 + port.port_number) for port in self.antennae.values()}
+            slave_registers = {n:None for n in range(1, 257)}
+            for port in self.antennae.values():
+                if port is not None:
+                    slave_registers[port.antenna_number] = port.modbus_address * 256 + port.port_number
 
             # Set up the registers for the PDoC port number to smartbox address mapping:
             pdoc_registers = {(PDOC_REGSTART + pdoc_num):self.fndh.ports[pdoc_num].smartbox_address for pdoc_num in self.fndh.ports.keys()}
