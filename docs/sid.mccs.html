@@ -71,16 +71,24 @@ number,&nbsp;chipid,&nbsp;and/or&nbsp;starting&nbsp;log&nbsp;message&nbsp;number
 &nbsp;<br>
 :return:&nbsp;None&nbsp;if&nbsp;there&nbsp;was&nbsp;an&nbsp;error,&nbsp;or&nbsp;A&nbsp;tuple&nbsp;of&nbsp;the&nbsp;log&nbsp;entry&nbsp;text,&nbsp;and&nbsp;a&nbsp;unix&nbsp;timestamp&nbsp;for&nbsp;when&nbsp;it&nbsp;was&nbsp;created</tt></dd></dl>
 
+<dl><dt><a name="MCCS-map_antenna"><strong>map_antenna</strong></a>(self, phys_num, smartbox_address, port_number)</dt><dd><tt>Associate&nbsp;the&nbsp;given&nbsp;physical&nbsp;antenna&nbsp;number&nbsp;(1-256),&nbsp;and&nbsp;associate&nbsp;it&nbsp;with&nbsp;port&nbsp;number&nbsp;'port_number'&nbsp;(1-12)&nbsp;on<br>
+the&nbsp;SMARTbox&nbsp;with&nbsp;address&nbsp;'smartbox_address'.<br>
+&nbsp;<br>
+If&nbsp;any&nbsp;physical&nbsp;antenna&nbsp;was&nbsp;already&nbsp;mapped&nbsp;to&nbsp;the&nbsp;given&nbsp;SMARTbox&nbsp;address&nbsp;and&nbsp;port,&nbsp;then&nbsp;unmap&nbsp;that&nbsp;physical<br>
+antenna&nbsp;first&nbsp;(so&nbsp;it's&nbsp;not&nbsp;mapped&nbsp;to&nbsp;any&nbsp;SMARTbox/port).<br>
+&nbsp;<br>
+Then&nbsp;write&nbsp;the&nbsp;new&nbsp;mapping&nbsp;to&nbsp;the&nbsp;remote&nbsp;<a href="#MCCS">MCCS</a>&nbsp;to&nbsp;update&nbsp;the&nbsp;remote&nbsp;database.<br>
+&nbsp;<br>
+:param&nbsp;phys_num:&nbsp;physical&nbsp;antenna&nbsp;number&nbsp;(1-256)<br>
+:param&nbsp;smartbox_address:&nbsp;SMARTbox&nbsp;modbus&nbsp;address&nbsp;(1-30)<br>
+:param&nbsp;port_number:&nbsp;FEM&nbsp;port&nbsp;number&nbsp;inside&nbsp;SMARTbox&nbsp;(1-12)<br>
+:return:&nbsp;True&nbsp;if&nbsp;there&nbsp;were&nbsp;no&nbsp;errors,&nbsp;None&nbsp;on&nbsp;error.</tt></dd></dl>
+
 <dl><dt><a name="MCCS-read_antennae"><strong>read_antennae</strong></a>(self)</dt><dd><tt>Fetch&nbsp;the&nbsp;28&nbsp;registers&nbsp;corresponding&nbsp;to&nbsp;physical&nbsp;PDoC&nbsp;ports,&nbsp;and&nbsp;get&nbsp;the&nbsp;smartbox&nbsp;addresses&nbsp;connected<br>
 to&nbsp;each&nbsp;of&nbsp;the&nbsp;28&nbsp;ports.<br>
 &nbsp;<br>
 Fetch&nbsp;the&nbsp;256&nbsp;registers&nbsp;corresponding&nbsp;to&nbsp;physical&nbsp;antenna&nbsp;numbers,&nbsp;and&nbsp;get<br>
 the&nbsp;SMARTbox&nbsp;and&nbsp;port&nbsp;numbers&nbsp;for&nbsp;each&nbsp;physical&nbsp;antenna.<br>
-&nbsp;<br>
-:return:&nbsp;True&nbsp;if&nbsp;there&nbsp;were&nbsp;no&nbsp;errors,&nbsp;None&nbsp;on&nbsp;error.</tt></dd></dl>
-
-<dl><dt><a name="MCCS-write_antennae"><strong>write_antennae</strong></a>(self)</dt><dd><tt>Take&nbsp;the&nbsp;current&nbsp;instance&nbsp;data&nbsp;defining&nbsp;the&nbsp;physical&nbsp;antenna&nbsp;mapping&nbsp;(the&nbsp;self.<strong>antennae</strong>&nbsp;dictionary),&nbsp;and<br>
-write&nbsp;it&nbsp;to&nbsp;the&nbsp;remote&nbsp;<a href="#MCCS">MCCS</a>&nbsp;to&nbsp;update&nbsp;the&nbsp;remote&nbsp;database.<br>
 &nbsp;<br>
 :return:&nbsp;True&nbsp;if&nbsp;there&nbsp;were&nbsp;no&nbsp;errors,&nbsp;None&nbsp;on&nbsp;error.</tt></dd></dl>
 
