@@ -237,13 +237,8 @@ class SimFNDH(fndh.FNDH):
                     port.power_state = port_on
 
 
-"""
-from pasd import transport
-conn = transport.Connection(devicename='COM6')
-from simulate import sim_fndh as sf
-f = sf.SimFNDH(conn=conn, modbus_address=31)
-
-import threading
-mt = threading.Thread(target=f.mainloop)
-mt.start()
-"""
+if __name__ == '__main__':
+    from pasd import transport
+    conn = transport.Connection(devicename='COM6')
+    f = SimFNDH(conn=conn, modbus_address=31)
+    f.mainloop()

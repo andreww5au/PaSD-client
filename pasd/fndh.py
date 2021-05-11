@@ -470,12 +470,12 @@ class FNDH(transport.ModbusDevice):
         return ok
 
 
-"""
-from pasd import transport
-conn = transport.Connection(hostname='134.7.50.172', port=5000)
-from pasd import fndh
-f = fndh.FNDH(conn=conn, modbus_address=31)
-f.poll_data()
-f.configure_all_off()
-f.configure_final()
-"""
+if __name__ == '__main__':
+    from pasd import transport
+    conn = transport.Connection(devicename='COM6')  # Serial port
+    # conn = transport.Connection(hostname='134.7.50.172', port=5000)   # To a serial-over-Ethernet device
+
+    f = FNDH(conn=conn, modbus_address=31)
+    f.poll_data()
+    f.configure_all_off()
+    f.configure_final()

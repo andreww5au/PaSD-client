@@ -661,11 +661,11 @@ class SMARTbox(transport.ModbusDevice):
         return False
 
 
-"""
-from pasd import transport
-conn = transport.Connection(hostname='134.7.50.172', port=5000)
-from pasd import smartbox
-s = smartbox.SMARTbox(conn=conn, modbus_address=1)
-s.poll_data()
-s.configure()
-"""
+if __name__ == '__main__':
+    from pasd import transport
+    conn = transport.Connection(devicename='COM6')  # Serial port
+    # conn = transport.Connection(hostname='134.7.50.172', port=5000)   # To a serial-over-Ethernet device
+
+    s = SMARTbox(conn=conn, modbus_address=1)
+    s.poll_data()
+    s.configure()

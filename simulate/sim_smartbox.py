@@ -238,13 +238,8 @@ class SimSMARTbox(smartbox.SMARTbox):
                     port.power_state = port_on
 
 
-"""
-from pasd import transport
-conn = transport.Connection(devicename='COM6')
-from simulate import sim_smartbox as ss
-s = ss.SimSMARTbox(conn=conn, modbus_address=1)
-
-import threading
-mt = threading.Thread(target=s.mainloop)
-mt.start()
-"""
+if __name__ == '__main__':
+    from pasd import transport
+    conn = transport.Connection(devicename='COM6')
+    s = SimSMARTbox(conn=conn, modbus_address=1)
+    s.mainloop()
