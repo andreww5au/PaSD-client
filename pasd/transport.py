@@ -28,6 +28,7 @@ logger.level = logging.DEBUG
 PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
 TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
 COMMS_TIMEOUT = 0.001  # Low-level timeout for each call to socket.socket().recv or serial.Serial.write()
+PROTOCOL = 'ASCII'  # Either 'ASCII' (Modbus-ASCII) or 'RTU' (Modbus-RTU)
 
 
 # noinspection PyUnusedLocal
@@ -180,7 +181,7 @@ class Connection(object):
         If self.multidrop is True, when any thread calls ._write(), data is sent to the remote device, and also appended
         to all other thread's input buffers.
 
-        :param data:
+        :param data: A bytes() object containing the data to write
         :return: None
         """
         with self.lock:
@@ -218,32 +219,67 @@ class Connection(object):
         Return a bytelist containing any valid reply (without the CRC), or 'False' if there was no
         reply within TIMEOUT seconds, or if the reply had an invalid CRC.
 
-        :param message: A list of bytes, each in the range 0-255
-        :return: A list of bytes, each in the range 0-255, or False if no valid reply was received
+        :param message: A list of integers, each in the range 0-255
+        :return: A list of integers, each in the range 0-255, or False if no valid reply was received
         """
         with self.lock:
             self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
-            message += getcrc(message)
+            fullmessage = message + getcrc(message)
             time.sleep(PACKET_WINDOW_TIME)
-            self._write(bytes(message))
-            time.sleep(PACKET_WINDOW_TIME)
-            replist = []
+            if PROTOCOL == 'ASCII':
+                self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
+            elif PROTOCOL == 'RTU':
+                self._write(bytes(fullmessage))
+            else:
+                logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
+                raise ValueError
 
+            time.sleep(PACKET_WINDOW_TIME)
+
+            replist = []  # Entire message, including CRC, as a list of integers
+            datalist = []  # Message without CRC byte/s
             stime = time.time()
-            # Wait until the timeout trips, or until we have a packet with a valid CRC checksum
-            while (time.time() - stime < TIMEOUT) and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
-                try:
-                    reply = self._read(2)
-                    replist += list(map(int, reply))
-                except socket.timeout:
-                    pass
-                except:
-                    logger.exception('Exception in sock.recv()')
-                    return False
+            mstring = ''   # ASCII hex packet contents, in ASCII protocol. Empty string otherwise
+            crcgood = False
+            if PROTOCOL == 'ASCII':
+                # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
+                while (time.time() - stime < TIMEOUT) and (not mstring.endswith('\r\n')):
+                    try:
+                        reply = self._read(1).decode('ascii')
+                        if (not mstring) and reply != ':':   # Unexpected first character, ignore it and keep reading
+                            continue
+                        mstring += reply
+                    except socket.timeout:
+                        pass
+                    except:
+                        logger.exception('Exception in sock.recv()')
+                        return False
+                if len(mstring) > 3:
+                    replist = from_ascii(mstring[1:-2])
+                    if getcrc(message=replist[:-1]) == [replist[-1],]:
+                        crcgood = True
+                        datalist = replist[:-1]
+            elif PROTOCOL == 'RTU':
+                # Wait until the timeout trips, or until we have a packet with a valid CRC checksum
+                while (time.time() - stime < TIMEOUT) and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
+                    try:
+                        reply = self._read(2)
+                        replist += list(map(int, reply))
+                    except socket.timeout:
+                        pass
+                    except:
+                        logger.exception('Exception in sock.recv()')
+                        return False
+                if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
+                    crcgood = True
+                    datalist = replist[:-2]
+            else:
+                logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
+                raise ValueError
 
-            logger.debug("Recvd: %s" % str(replist))
-            if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
-                return replist[:-2]
+            logger.debug("Recvd: %s/%s" % (mstring, str(replist)))
+            if crcgood:
+                return datalist
             else:
                 logger.error('No valid reply - raw data received: %s' % str(replist))
                 return False
@@ -258,9 +294,15 @@ class Connection(object):
         """
         with self.lock:
             self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
-            message += getcrc(message)
+            fullmessage = message + getcrc(message)
             time.sleep(PACKET_WINDOW_TIME)
-            self._write(bytes(message))
+            if PROTOCOL == 'ASCII':
+                self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
+            elif PROTOCOL == 'RTU':
+                self._write(bytes(fullmessage))
+            else:
+                logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
+                raise ValueError
             time.sleep(PACKET_WINDOW_TIME)
 
     def listen_for_packet(self, listen_address, slave_registers, maxtime=10.0, validation_function=dummy_validate):
@@ -288,27 +330,55 @@ class Connection(object):
         start_time = time.time()
         with self.lock:
             while (time.time() - start_time) < maxtime:  # Wait for a good packet until we run out of time
-                msglist = []  # Start assembling a new packet
+                replist = []  # Entire message, including CRC, as a list of integers
+                msglist = []  # Message without CRC byte/s
+                mstring = ''  # ASCII hex packet contents, in ASCII protocol. Empty string otherwise
+                crcgood = False
                 packet_start_time = start_time + maxtime - TIMEOUT  # Don't wait after 'maxtime' for a new packet
                 # Wait until the timeout trips, or until we have a full packet with a valid CRC checksum
-                while (time.time() - packet_start_time) < TIMEOUT and ((len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
-                    try:
-                        data = self._read(2)
-                        msglist += list(map(int, data))
-                        if len(msglist) == 2:
-                            packet_start_time = time.time()
-                    except socket.timeout:
-                        pass
-                    except:
-                        logger.exception('Exception in sock.recv()')
-                        return set(), set()
+                if PROTOCOL == 'ASCII':
+                    # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
+                    while (time.time() - packet_start_time < TIMEOUT) and (not mstring.endswith('\r\n')):
+                        try:
+                            reply = self._read(1).decode('ascii')
+                            if (not mstring) and reply != ':':  # Unexpected first character, ignore it and keep reading
+                                continue
+                            mstring += reply
+                        except socket.timeout:
+                            pass
+                        except:
+                            logger.exception('Exception in sock.recv()')
+                            return False
+                    if len(mstring) > 3:
+                        replist = from_ascii(mstring[1:-2])
+                        if getcrc(message=replist[:-1]) == [replist[-1],]:
+                            crcgood = True
+                            msglist = replist[:-1]
+                elif PROTOCOL == 'RTU':
+                    while (time.time() - packet_start_time) < TIMEOUT and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
+                        try:
+                            data = self._read(2)
+                            replist += list(map(int, data))
+                            if len(replist) == 2:
+                                packet_start_time = time.time()
+                        except socket.timeout:
+                            pass
+                        except:
+                            logger.exception('Exception in sock.recv()')
+                            return set(), set()
+                    if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
+                        crcgood = True
+                        msglist = replist[:-2]
+                else:
+                    logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
+                    raise ValueError
 
                 if not msglist:
                     return set(), set()
 
-                logger.info('Received: %s' % (msglist,))
+                logger.debug("Received: %s=%s" % (mstring, str(msglist)))
 
-                if ((0 < len(msglist) < 4) or (getcrc(message=msglist[:-2]) != msglist[-2:])):
+                if ((0 < len(msglist) < 3) or (not crcgood)):
                     logger.warning('Packet fragment received: %s' % msglist)
                     self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                     continue    # Discard this packet fragment, keep waiting for a new valid packet
@@ -482,7 +552,7 @@ class Connection(object):
             errs += "Packet: %s\n" % str(reply)
             logger.error(errs)
             return None
-        if reply != packet[:-2]:  # The _send_as_master() method adds the CRC to the packet list, in place, so strip it
+        if reply != packet:  # The _send_as_master() method adds the CRC to the packet list, in place, so strip it
             logger.error('writeReg: %s != %s' % (reply, packet))
             return False  # Value returned is not equal to value written
         return True
@@ -612,15 +682,52 @@ def getcrc(message=None):
     :param message: A list of bytes, each in the range 0-255
     :return: A list of two integers, each in the range 0-255
     """
-    if not message:
-        return 0, 0
-    crc = 0xFFFF
+    if PROTOCOL == 'ASCII':
+        if not message:
+            return 0
+        lrc = (0 - sum(message)) & 0xFF   # Twos-complement of the sum of the message bytes, masked to 8 bits
+        return [lrc, ]
+    elif PROTOCOL == 'RTU':
+        if not message:
+            return 0, 0
+        crc = 0xFFFF
 
-    for byte in message:
-        crc = crc ^ byte
-        for bit in range(8):
-            b = crc & 0x0001
-            crc = (crc >> 1) & 0x7FFF
-            if b:
-                crc = crc ^ 0xA001
-    return [(crc & 0x00FF), ((crc >> 8) & 0x00FF)]
+        for byte in message:
+            crc = crc ^ byte
+            for bit in range(8):
+                b = crc & 0x0001
+                crc = (crc >> 1) & 0x7FFF
+                if b:
+                    crc = crc ^ 0xA001
+        return [(crc & 0x00FF), ((crc >> 8) & 0x00FF)]
+    else:
+        logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
+        raise ValueError
+
+def to_ascii(message=None):
+    """
+    Take a message list (a list of integers) and convert each integer to an a two-character ASCII hex value. Return
+    as a string.
+
+    :param message: A list of integers, each 0-255
+    :return: A string containing the ASCII hex representation of all the integers in the list.
+    """
+    if (min(message) < 0) or max(message) > 255:
+        raise ValueError
+
+    return ''.join(['%02X' % v for v in message])
+
+
+def from_ascii(mstring):
+    """
+    Take a string full of ASCII-hex values (and nothing else), and convert it to a list of integers, each 0-255.
+
+    :param mstring: A string of letters, each 0-9, or A-F, or a-f. String must have an even number of characters.
+    :return: A list of integers, each 0-255
+    """
+    data = mstring.upper()
+    numbytes, remainder = divmod(len(data), 2)
+    if remainder != 0:
+        raise ValueError
+
+    return [int(data[i] + data[i + 1], 16) for i in range(0, numbytes * 2, 2)]
