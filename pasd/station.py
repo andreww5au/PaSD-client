@@ -300,6 +300,8 @@ class Station(object):
             else:
                 log_message += chr(0)
             log_registers = {ANTNUM:self.servicelog_desired_antenna, LOGNUM:self.servicelog_desired_lognum}  # Initialise log entry registers
+            for i in range(8):
+                log_registers[CHIPID + i] = self.servicelog_desired_chipid[i]
             for i in range(MESSAGE_LEN - 2):  # Iterate over registers in the log message block
                 if (i * 2) < len(log_message):
                     log_registers[MESSAGE + i] = [ord(log_message[i * 2]), ord(log_message[i * 2 + 1])]
