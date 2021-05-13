@@ -428,7 +428,7 @@ class Connection(object):
                     regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
                     numreg = msglist[4] * 256 + msglist[5]
                     numbytes = msglist[6]
-                    bytelist = msglist[7:-2]
+                    bytelist = msglist[7:]
 
                     assert len(bytelist) == numbytes == (numreg * 2)
                     written_set = set()
