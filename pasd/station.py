@@ -310,7 +310,7 @@ class Station(object):
                     log_registers[MESSAGE + i] = ord(log_message[i * 2]) * 256 + ord(log_message[i * 2 + 1])
                 else:
                     log_registers[MESSAGE + i] = 0
-            log_registers[MESSAGE + MESSAGE_LEN + 1], log_registers[MESSAGE + MESSAGE_LEN + 2] = divmod(timestamp, 65536)
+            log_registers[MESSAGE + MESSAGE_LEN - 2], log_registers[MESSAGE + MESSAGE_LEN - 1] = divmod(timestamp, 65536)
 
             slave_registers.update(log_registers)    # log entry read/write registers
             read_set, written_set = self.conn.listen_for_packet(listen_address=SLAVE_MODBUS_ADDRESS,
