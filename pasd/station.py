@@ -342,7 +342,7 @@ class Station(object):
 
             if MESSAGE in written_set:
                 messagelist = []
-                for value in slave_registers[MESSAGE:MESSAGE + MESSAGE_LEN - 2]:  # Last two registers are timestamp
+                for value in [slave_registers[i] for i in range(MESSAGE, MESSAGE + MESSAGE_LEN - 2)]:  # Last two registers are timestamp
                     messagelist += list(divmod(value, 256))
                 save_log_entry(station_id=self.station_id,
                                desired_antenna=self.servicelog_desired_antenna,

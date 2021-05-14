@@ -124,9 +124,9 @@ class MCCS(transport.ModbusDevice):
         """
         Return a log entry for the given antenna, chipid, and station, by querying the MCCS over the serial link.
 
-        :param desired_antenna:  # Specifies a single physical antenna (1-256), or 0/None
-        :param desired_chipid:  # Specifies a single physical SMARTbox or FNDH serial number (bytes() object), or None.
-        :param desired_lognum:  # 0/None for the most recent log message, or larger numbers for older messages.
+        :param desired_antenna:  Specifies a single physical antenna (1-256), or 0/None
+        :param desired_chipid:  Specifies a single physical SMARTbox or FNDH serial number (bytes() object), or None.
+        :param desired_lognum:  0/None for the most recent log message, or larger numbers for older messages.
         :return: None if there was an error, or A tuple of the log entry text, and a unix timestamp for when it was created
         """
         if desired_antenna is None:
@@ -174,6 +174,46 @@ class MCCS(transport.ModbusDevice):
                 else:
                     break
         return bytes(charlist).decode('utf8'), message_timestamp
+
+    def write_log_message(self, desired_antenna=None, desired_chipid=None, log_message=''):
+        """
+        Write a log entry for the given antenna, chipid, and station, by sending it to the MCCS over the serial link.
+
+        :param desired_antenna:  Specifies a single physical antenna (1-256), or 0/None
+        :param desired_chipid:  Specifies a single physical SMARTbox or FNDH serial number (bytes() object), or None.
+        :param log_message: The text of the message, which will be truncated to fit in one packet
+        :return: True if there wasn't an error
+        """
+        if desired_antenna is None:
+            des_ant = 0
+        else:
+            des_ant = desired_antenna
+
+        if desired_chipid is None:
+            des_chip = [0] * 8
+        else:
+            des_chip = [desired_chipid[i * 2] * 256 + desired_chipid[i * 2 + 1] for i in range(8)]
+
+        # Truncate to fit in the packet, and add one or two nulls to make it an even number of bytes
+        log_message = log_message[:(MESSAGE_LEN - 2) * 2 - 1]  # Truncate to fit in one packet
+        if divmod(len(log_message), 2)[1] == 0:
+            log_message += chr(0) + chr(0)
+        else:
+            log_message += chr(0)
+
+        valuelist = [des_ant] + des_chip + [0]
+        ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=ANTNUM, valuelist=valuelist)
+
+        if ok:
+            valuelist = []
+            for i in range(MESSAGE_LEN - 2):  # Iterate over registers in the log message block
+                if (i * 2) < len(log_message):
+                    valuelist.append(ord(log_message[i * 2]) * 256 + ord(log_message[i * 2 + 1]))
+                else:
+                    valuelist.append(0)
+            ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=MESSAGE, valuelist=valuelist)
+
+        return ok
 
 
 """
