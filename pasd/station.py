@@ -331,8 +331,8 @@ class Station(object):
             if (ANTNUM in written_set) and (self.servicelog_desired_antenna != slave_registers[ANTNUM]):
                 self.servicelog_desired_antenna = slave_registers[ANTNUM]
                 self.servicelog_desired_lognum = 0   # New desired antenna, so reset the log message counter
-            if (CHIPID in written_set) and (self.servicelog_desired_chipid != slave_registers[CHIPID:CHIPID + 8]):
-                self.servicelog_desired_chipid = slave_registers[CHIPID:CHIPID + 8]
+            if (CHIPID in written_set) and (self.servicelog_desired_chipid != [slave_registers[i] for i in range(CHIPID, CHIPID + 8)]):
+                self.servicelog_desired_chipid = [slave_registers[i] for i in range(CHIPID, CHIPID + 8)]
                 self.servicelog_desired_lognum = 0   # New desired chipid, so reset the log message counter
             if (LOGNUM in written_set) and (self.servicelog_desired_lognum != slave_registers[LOGNUM]):
                 self.servicelog_desired_lognum = slave_registers[LOGNUM]   # New log message counter
