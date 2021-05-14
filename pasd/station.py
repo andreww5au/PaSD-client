@@ -307,7 +307,7 @@ class Station(object):
                     log_registers[CHIPID + i] = 0
             for i in range(MESSAGE_LEN - 2):  # Iterate over registers in the log message block
                 if (i * 2) < len(log_message):
-                    log_registers[MESSAGE + i] = [ord(log_message[i * 2]), ord(log_message[i * 2 + 1])]
+                    log_registers[MESSAGE + i] = ord(log_message[i * 2]) * 256 + ord(log_message[i * 2 + 1])
                 else:
                     log_registers[MESSAGE + i] = 0
             log_registers[MESSAGE + MESSAGE_LEN + 1], log_registers[MESSAGE + MESSAGE_LEN + 2] = divmod(timestamp, 65536)

@@ -704,6 +704,7 @@ def getcrc(message=None):
         logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
         raise ValueError
 
+
 def to_ascii(message=None):
     """
     Take a message list (a list of integers) and convert each integer to an a two-character ASCII hex value. Return
