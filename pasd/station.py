@@ -145,16 +145,23 @@ class Station(object):
             7) Finish by setting the real 'desired_state_online' and 'desired_state_offline' values for all of the PDoC
                ports, and writing that to the FNDH.
         """
+        ok = self.fndh.poll_data()
+        if not ok:
+            logger.error('No reply from FNDH - aborting station startup.')
+            return False
+
         ok = self.fndh.configure_all_off()   # Transition the FNDH to online, but with all PDoC ports turned off
         if not ok:
             logger.error('Could not configure FNDH - aborting station startup.')
             return False
+
         time.sleep(5)
 
         # Turn on all the ports, one by one, with a 10 second interval between each port
         port_on_times = {}   # Unix timestamp at which each port number was turned on
         for portnum in range(1, 29):
             self.fndh.ports[portnum].desire_enabled_online = True
+            logger.debug('Turning on PDoC port %d' % portnum)
             ok = self.fndh.write_portconfig()
             port_on_times[portnum] = int(time.time())
             if not ok:
@@ -172,6 +179,8 @@ class Station(object):
             uptime = smb.read_uptime()
             if uptime is None:
                 continue
+            else:
+                logger.info('Reply from SMARTbox at address %d' % sadd)
             address_on_times[sadd] = time.time() - uptime
             if sadd not in self.smartboxes:  # If this SMARTbox isn't in the antenna map, save it in the the smartbox dictionary
                 self.smartboxes[sadd] = smb
@@ -187,6 +196,7 @@ class Station(object):
                 sadd = diffs[0][0]   # Modbus address of the SMARTbox on this PDoC port number
                 self.smartboxes[sadd].pdoc_number = portnum
                 self.fndh.ports[portnum].smartbox_address = sadd
+                logger.info('Assigned SMARTbox %d to PDoC port %d' % (sadd, portnum))
 
         # Finish FNDH configuration, setting the default desired_state_online/offline flags (typically turning on all ports)
         ok = self.fndh.configure_final()
@@ -419,11 +429,28 @@ def save_log_entry(station_id=None, desired_antenna=None, desired_chipid=None, m
     return True
 
 
-# Testing usage
-"""
-from pasd import transport
-from pasd import station
-conn = transport.Connection(hostname='134.7.50.172', port=5000)
-s = station.Station(conn=conn, station_id=99)
-s.listen(900)
-"""
+if __name__ == '__main__':
+    import argparse
+    import sys
+    from pasd import transport
+    parser = argparse.ArgumentParser(description='Connect to a remote FNDH. Use "python -i %s" to stay at a Python prompt' % sys.argv[0])
+    parser.add_argument('--host', dest='host', default=None,
+                        help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
+    parser.add_argument('--device', dest='device', default=None,
+                        help='Serial port device name, eg /dev/ttyS0 or COM6')
+    parser.add_argument('--multidrop', dest='multidrop', action='store_true', default=False,
+                        help='If given, open the device in multidrop mode (useful with python -i ...)')
+    parser.add_argument('--address', dest='address', default=99,
+                        help='Modbus address to listen on in slave mode')
+    parser.add_argument('--listen', dest='listen', action='store_true', default=False,
+                        help='If given, listen for incoming SID packets for 900 sec (NOT useful with python -i ...)')
+    args = parser.parse_args()
+    if (args.host is None) and (args.device is None):
+        args.host = '134.7.50.185'
+    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=args.multidrop)
+
+    s = Station(conn=conn, station_id=args.address)
+    s.startup()
+    if args.listen:
+        print('Listening in slave mode for incoming SID requests')
+        s.listen(900)

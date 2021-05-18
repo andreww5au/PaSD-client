@@ -662,10 +662,21 @@ class SMARTbox(transport.ModbusDevice):
 
 
 if __name__ == '__main__':
+    import argparse
+    import sys
     from pasd import transport
-    conn = transport.Connection(devicename='COM6')  # Serial port
-    # conn = transport.Connection(hostname='134.7.50.172', port=5000)   # To a serial-over-Ethernet device
+    parser = argparse.ArgumentParser(description='Connect to a remote SMARTbox. Use "python -i %s" to stay at a Python prompt' % sys.argv[0])
+    parser.add_argument('--host', dest='host', default=None,
+                        help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
+    parser.add_argument('--device', dest='device', default=None,
+                        help='Serial port device name, eg /dev/ttyS0 or COM6')
+    parser.add_argument('--multidrop', dest='multidrop', action='store_true', default=False)
+    parser.add_argument('--address', dest='address', default=1)
+    args = parser.parse_args()
+    if (args.host is None) and (args.device is None):
+        args.host = '134.7.50.185'
+    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=args.multidrop)
 
-    s = SMARTbox(conn=conn, modbus_address=1)
+    s = SMARTbox(conn=conn, modbus_address=args.address)
     s.poll_data()
     s.configure()

@@ -77,6 +77,13 @@ class SimSMARTbox(smartbox.SMARTbox):
         """
         pass
 
+    def loophook(self):
+        """
+        Stub, overwrite if you subclass this to handle more complex simulation. Called every time a packet has
+        finished processing, or every few seconds if there haven't been any packets.
+        :return:
+        """
+
     def mainloop(self):
         """
         Listen on the socket for any incoming read/write register packets sent by an external bus master (eg, the MCCS).
@@ -237,9 +244,23 @@ class SimSMARTbox(smartbox.SMARTbox):
                         port.current = 50.0
                     port.power_state = port_on
 
+            self.loophook()
+
 
 if __name__ == '__main__':
+    import argparse
     from pasd import transport
-    conn = transport.Connection(devicename='COM6')
-    s = SimSMARTbox(conn=conn, modbus_address=1)
+    parser = argparse.ArgumentParser(description='Simulate a SMARTbox, listen forever for packets')
+    parser.add_argument('--host', dest='host', default=None,
+                        help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
+    parser.add_argument('--device', dest='device', default=None,
+                        help='Serial port device name, eg /dev/ttyS0 or COM6')
+    parser.add_argument('--multidrop', dest='multidrop', action='store_true', default=False)
+    parser.add_argument('--address', dest='address', default=1)
+    args = parser.parse_args()
+    if (args.host is None) and (args.device is None):
+        args.host = '134.7.50.185'
+    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=args.multidrop)
+
+    s = SimSMARTbox(conn=conn, modbus_address=args.address)
     s.mainloop()
