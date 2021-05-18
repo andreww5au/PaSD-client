@@ -190,14 +190,15 @@ class Connection(object):
             elif self.ser is not None:
                 self.ser.write(data)
 
-            if self.multidrop:
-                # Add any data sent to the end of the OTHER local buffers, so that other threads will see it
-                thread_id = threading.get_ident()
-                if thread_id not in self.buffers:
-                    self.buffers[thread_id] = bytes([])
-                for tid in self.buffers.keys():
-                    if tid != thread_id:   # Don't add it to my read buffer, because I sent it.
-                        self.buffers[tid] += data
+            # Commented out - we don't share written data with other threads, because smartboxes and the FNDH can't talk to each other
+            # if self.multidrop:
+            #     # Add any data sent to the end of the OTHER local buffers, so that other threads will see it
+            #     thread_id = threading.get_ident()
+            #     if thread_id not in self.buffers:
+            #         self.buffers[thread_id] = bytes([])
+            #     for tid in self.buffers.keys():
+            #         if tid != thread_id:   # Don't add it to my read buffer, because I sent it.
+            #             self.buffers[tid] += data
 
         return None
 
