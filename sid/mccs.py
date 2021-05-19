@@ -216,20 +216,16 @@ class MCCS(transport.ModbusDevice):
         return ok
 
 
-if __name__ == '__main__':
-    import argparse
-    import sys
-    from pasd import transport
-    parser = argparse.ArgumentParser(description='Connect to the remote MCCS as a master device. Use "python -i %s" to stay at a Python prompt' % sys.argv[0])
-    parser.add_argument('--host', dest='host', default=None,
-                        help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
-    parser.add_argument('--device', dest='device', default=None,
-                        help='Serial port device name, eg /dev/ttyS0 or COM6')
-    parser.add_argument('--multidrop', dest='multidrop', action='store_true', default=False)
-    args = parser.parse_args()
-    if (args.host is None) and (args.device is None):
-        args.host = '134.7.50.185'
-    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=args.multidrop)
+"""
+Use as 'communicate.py mccs', or:
 
-    m = MCCS(conn=conn)
-    m.read_antennae()
+from pasd import transport
+from sid import mccs
+conn = transport.Connection(hostname='134.7.50.185)  # address of ethernet-serial bridge
+# or
+conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
+
+m = MCCS(conn=conn)
+m.read_antennae()
+"""
+

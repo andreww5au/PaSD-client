@@ -12,7 +12,7 @@ logging.basicConfig()
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 
-from ..pasd import fndh
+from pasd import fndh
 
 
 class SimFNDH(fndh.FNDH):
@@ -246,20 +246,16 @@ class SimFNDH(fndh.FNDH):
             self.loophook()
 
 
-if __name__ == '__main__':
-    import argparse
-    from pasd import transport
-    parser = argparse.ArgumentParser(description='Simulate an FNDH, listen forever for packets')
-    parser.add_argument('--host', dest='host', default=None,
-                        help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
-    parser.add_argument('--device', dest='device', default=None,
-                        help='Serial port device name, eg /dev/ttyS0 or COM6')
-    parser.add_argument('--multidrop', dest='multidrop', action='store_true', default=False)
-    parser.add_argument('--address', dest='address', default=31)
-    args = parser.parse_args()
-    if (args.host is None) and (args.device is None):
-        args.host = '134.7.50.185'
-    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=args.multidrop)
+"""
+Use as 'simulate.py fndh', or:
 
-    f = SimFNDH(conn=conn, modbus_address=args.address)
-    f.mainloop()
+from pasd import transport
+from simulate import sim_fndh
+conn = transport.Connection(hostname='134.7.50.185)  # address of ethernet-serial bridge
+# or
+conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
+
+f = sim_fndh.SimFNDH(conn=conn, modbus_address=31)
+f.mainloop()
+"""
+

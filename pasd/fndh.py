@@ -470,23 +470,18 @@ class FNDH(transport.ModbusDevice):
         return ok
 
 
-if __name__ == '__main__':
-    import argparse
-    import sys
-    from ..pasd import transport
-    parser = argparse.ArgumentParser(description='Connect to a remote FNDH. Use "python -i %s" to stay at a Python prompt' % sys.argv[0])
-    parser.add_argument('--host', dest='host', default=None,
-                        help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
-    parser.add_argument('--device', dest='device', default=None,
-                        help='Serial port device name, eg /dev/ttyS0 or COM6')
-    parser.add_argument('--multidrop', dest='multidrop', action='store_true', default=False)
-    parser.add_argument('--address', dest='address', default=31)
-    args = parser.parse_args()
-    if (args.host is None) and (args.device is None):
-        args.host = '134.7.50.185'
-    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=args.multidrop)
+"""
+Use as 'communicate.py fndh', or:
 
-    f = FNDH(conn=conn, modbus_address=args.address)
-    f.poll_data()
-    f.configure_all_off()
-    f.configure_final()
+from pasd import transport
+from pasd import fndh
+conn = transport.Connection(hostname='134.7.50.185)  # address of ethernet-serial bridge
+# or
+conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
+
+f = fndh.FNDH(conn=conn, modbus_address=31)
+f.poll_data()
+f.configure_all_off()
+f.configure_final()
+"""
+

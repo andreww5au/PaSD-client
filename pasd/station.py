@@ -429,28 +429,16 @@ def save_log_entry(station_id=None, desired_antenna=None, desired_chipid=None, m
     return True
 
 
-if __name__ == '__main__':
-    import argparse
-    import sys
-    from pasd import transport
-    parser = argparse.ArgumentParser(description='Connect to a remote FNDH. Use "python -i %s" to stay at a Python prompt' % sys.argv[0])
-    parser.add_argument('--host', dest='host', default=None,
-                        help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
-    parser.add_argument('--device', dest='device', default=None,
-                        help='Serial port device name, eg /dev/ttyS0 or COM6')
-    parser.add_argument('--multidrop', dest='multidrop', action='store_true', default=False,
-                        help='If given, open the device in multidrop mode (useful with python -i ...)')
-    parser.add_argument('--address', dest='address', default=99,
-                        help='Modbus address to listen on in slave mode')
-    parser.add_argument('--listen', dest='listen', action='store_true', default=False,
-                        help='If given, listen for incoming SID packets for 900 sec (NOT useful with python -i ...)')
-    args = parser.parse_args()
-    if (args.host is None) and (args.device is None):
-        args.host = '134.7.50.185'
-    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=args.multidrop)
+"""
+Use as 'communicate.py station', or:
 
-    s = Station(conn=conn, station_id=args.address)
-    s.startup()
-    if args.listen:
-        print('Listening in slave mode for incoming SID requests')
-        s.listen(900)
+from pasd import transport
+from pasd import station
+conn = transport.Connection(hostname='134.7.50.185)  # address of ethernet-serial bridge
+# or
+conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
+
+s = Station(conn=conn, station_id=1)
+s.startup()
+"""
+

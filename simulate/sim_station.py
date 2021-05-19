@@ -6,7 +6,6 @@ Simulates a full PaSD station, including an FNDH and 24 SMARTboxes. Used for tes
 
 import logging
 import threading
-import time
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -14,13 +13,11 @@ logger.level = logging.DEBUG
 
 import sim_smartbox
 import sim_fndh
-from pasd import transport
 
 
-class Sim_FNDH(sim_fndh.SimFNDH):
+class Sim_Station(sim_fndh.SimFNDH):
     def __init__(self, conn=None, modbus_address=None):
         sim_fndh.SimFNDH.__init__(self, conn=conn, modbus_address=modbus_address)
-        self.conn = conn
         self.smartboxes = {}
         self.threads = {}
         for port in self.ports.values():
@@ -39,17 +36,15 @@ class Sim_FNDH(sim_fndh.SimFNDH):
                 port.old_power_state = port.power_state
 
 
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description='Simulate an entire PASD station, listen forever for packets')
-    parser.add_argument('--host', dest='host', default=None,
-                        help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
-    parser.add_argument('--device', dest='device', default=None,
-                        help='Serial port device name, eg /dev/ttyS0 or COM6')
-    args = parser.parse_args()
-    if (args.host is None) and (args.device is None):
-        args.host = '134.7.50.185'
-    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=True)
+"""
+Use as 'simulate.py station', or:
 
-    s = Sim_FNDH(conn=conn, modbus_address=31)
-    s.mainloop()
+from pasd import transport
+from simulate import sim_station
+conn = transport.Connection(hostname='134.7.50.185)  # address of ethernet-serial bridge
+# or
+conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
+
+s = sim_station.Sim_Station(conn=conn, modbus_address=31)
+s.mainloop()
+"""
