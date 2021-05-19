@@ -12,7 +12,7 @@ logging.basicConfig()
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 
-from pasd import fndh
+from ..pasd import fndh
 
 
 class SimFNDH(fndh.FNDH):

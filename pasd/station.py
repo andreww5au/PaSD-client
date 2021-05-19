@@ -13,8 +13,8 @@ logging.basicConfig()
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 
-from pasd import fndh
-from pasd import smartbox
+import fndh
+import smartbox
 
 SLAVE_MODBUS_ADDRESS = 63   # Address that technician's SID devices use to reach the MCCS as a slave device
 FNDH_ADDRESS = 31   # Modbus address of the FNDH controller

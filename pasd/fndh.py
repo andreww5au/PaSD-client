@@ -14,9 +14,9 @@ logging.basicConfig()
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 
-from pasd import conversion
-from pasd import smartbox
-from pasd import transport
+import conversion
+import smartbox
+import transport
 
 
 # Dicts with register name as key, and a tuple of (register_number, number_of_registers, name, scaling_function) as value
@@ -473,7 +473,7 @@ class FNDH(transport.ModbusDevice):
 if __name__ == '__main__':
     import argparse
     import sys
-    from pasd import transport
+    from ..pasd import transport
     parser = argparse.ArgumentParser(description='Connect to a remote FNDH. Use "python -i %s" to stay at a Python prompt' % sys.argv[0])
     parser.add_argument('--host', dest='host', default=None,
                         help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')

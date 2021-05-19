@@ -11,7 +11,7 @@ logging.basicConfig()
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 
-from pasd import transport
+from ..pasd import transport
 
 MCCS_ADDRESS = 63
 

@@ -12,7 +12,7 @@ logging.basicConfig()
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 
-from pasd import smartbox
+from ..pasd import smartbox
 
 
 class SimSMARTbox(smartbox.SMARTbox):
