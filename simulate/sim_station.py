@@ -11,8 +11,8 @@ logging.basicConfig()
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 
-import sim_smartbox
-import sim_fndh
+from simulate import sim_smartbox
+from simulate import sim_fndh
 
 
 class Sim_Station(sim_fndh.SimFNDH):

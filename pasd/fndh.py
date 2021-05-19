@@ -14,9 +14,9 @@ logging.basicConfig()
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 
-import conversion
-import smartbox
-import transport
+from pasd import conversion
+from pasd import smartbox
+from pasd import transport
 
 
 # Dicts with register name as key, and a tuple of (register_number, number_of_registers, name, scaling_function) as value
