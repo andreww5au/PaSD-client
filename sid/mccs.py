@@ -221,11 +221,11 @@ Use as 'communicate.py mccs', or:
 
 from pasd import transport
 from sid import mccs
-conn = transport.Connection(hostname='134.7.50.185)  # address of ethernet-serial bridge
+conn = transport.Connection(hostname='134.7.50.185')  # address of ethernet-serial bridge
 # or
 conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
 
-m = MCCS(conn=conn)
+m = mccs.MCCS(conn=conn)
 m.read_antennae()
 """
 

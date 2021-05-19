@@ -475,7 +475,7 @@ Use as 'communicate.py fndh', or:
 
 from pasd import transport
 from pasd import fndh
-conn = transport.Connection(hostname='134.7.50.185)  # address of ethernet-serial bridge
+conn = transport.Connection(hostname='134.7.50.185')  # address of ethernet-serial bridge
 # or
 conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
 
