@@ -377,6 +377,10 @@ class FNDH(transport.ModbusDevice):
         if self.thresholds is None:
             return None
 
+        if not self.register_map:
+            logger.error('No register map, call poll_data() first')
+            return None
+
         # Count how many system threshold registers there are, and create an empty list of register values
         conf_reglist = self.register_map['CONF'].keys()
         vlist = [0] * sum(x[1] for x in self.register_map['CONF'].values())
@@ -401,6 +405,10 @@ class FNDH(transport.ModbusDevice):
 
         :return: True if successful, False on failure
         """
+        if not self.register_map:
+            logger.error('No register map, call poll_data() first')
+            return None
+
         vlist = [0] * 24
         startreg = self.register_map['POLL']['P01_STATE'][0]
         for portnum in range(1, 13):
@@ -436,6 +444,10 @@ class FNDH(transport.ModbusDevice):
         if portconfig:
             self.portconfig = portconfig
 
+        if not self.register_map:
+            logger.error('No register map, call poll_data() first')
+            return None
+
         ok = self.write_thresholds()
         if not ok:
             logger.error('Could not load and write threshold data.')
@@ -462,6 +474,10 @@ class FNDH(transport.ModbusDevice):
         This is called after the power-on procedure, which turns on all of the ports, one by one, to determine
         which SMARTbox is connected to which PDoC port.
         """
+        if not self.register_map:
+            logger.error('No register map, call poll_data() first')
+            return None
+
         # Startup finished, now set all the port states as per the saved port configuration:
         for portnum in range(1, 29):
             self.ports[portnum].desire_enabled_online = bool(self.portconfig[str(portnum)][0])

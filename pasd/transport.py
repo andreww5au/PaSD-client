@@ -211,7 +211,9 @@ class Connection(object):
             try:
                 while self._read(1000):
                     pass
-            except (socket.error, serial.serialutil.SerialException):
+            except:
+                logger.exception('Exception while flushing input buffer, re-opening comms object')
+                time.sleep(1.0)
                 self._open()
 
     def _send_as_master(self, message):
@@ -219,6 +221,12 @@ class Connection(object):
         Calculate the CRC and send it and the message (a list of bytes) to the socket 'self.sock'.
         Return a bytelist containing any valid reply (without the CRC), or 'False' if there was no
         reply within TIMEOUT seconds, or if the reply had an invalid CRC.
+
+        This method will always either return a list of bytes, or throw an exception.
+
+        If the wrong protocol is defined in the PROTOCOL global, it will throw ValueError.
+        If a socket or serial exception is thrown by the underlaying communications layer, that exception will be logged and re-raised.
+        If no reply is received in TIMEOUT seconds, an IOError is raised.
 
         :param message: A list of integers, each in the range 0-255
         :return: A list of integers, each in the range 0-255, or False if no valid reply was received
@@ -250,13 +258,15 @@ class Connection(object):
                         if (not mstring) and reply != ':':   # Unexpected first character, ignore it and keep reading
                             continue
                         mstring += reply
-                    except socket.timeout:
-                        pass
                     except:
                         logger.exception('Exception in sock.recv()')
-                        return False
+                        raise
                 if len(mstring) > 3:
-                    replist = from_ascii(mstring[1:-2])
+                    try:
+                        replist = from_ascii(mstring[1:-2])
+                    except ValueError:   # Non ASCII-hex characters in reply
+                        logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
+                        raise IOError
                     if getcrc(message=replist[:-1]) == [replist[-1],]:
                         crcgood = True
                         datalist = replist[:-1]
@@ -266,11 +276,9 @@ class Connection(object):
                     try:
                         reply = self._read(2)
                         replist += list(map(int, reply))
-                    except socket.timeout:
-                        pass
                     except:
                         logger.exception('Exception in sock.recv()')
-                        return False
+                        raise
                 if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
                     crcgood = True
                     datalist = replist[:-2]
@@ -283,7 +291,7 @@ class Connection(object):
                 return datalist
             else:
                 logger.error('No valid reply - raw data received: %s' % str(replist))
-                return False
+                raise IOError
 
     def _send_reply(self, message):
         """
@@ -345,11 +353,9 @@ class Connection(object):
                             if (not mstring) and reply != ':':  # Unexpected first character, ignore it and keep reading
                                 continue
                             mstring += reply
-                        except socket.timeout:
-                            pass
                         except:
                             logger.exception('Exception in sock.recv()')
-                            return False
+                            return set(), set()
                     if len(mstring) > 3:
                         replist = from_ascii(mstring[1:-2])
                         if getcrc(message=replist[:-1]) == [replist[-1],]:
@@ -362,8 +368,6 @@ class Connection(object):
                             replist += list(map(int, data))
                             if len(replist) == 2:
                                 packet_start_time = time.time()
-                        except socket.timeout:
-                            pass
                         except:
                             logger.exception('Exception in sock.recv()')
                             return set(), set()
@@ -474,6 +478,14 @@ class Connection(object):
         Given a register number and the number of registers to read, return the raw register contents
         of the desired register/s.
 
+        This function will always either return a list of register value tuples from a validated packet, or throw an exception.
+
+        If a validated packet is received, but that packet is a Modbus exception, then ValueError is raised, indicating
+        a problem with the packet contents, as parsed by the remote device.
+
+        If no reply is received after retrying, or only a corrupted reply was received, then IOError is raised,
+        indicating a communications problem with the remote device.
+
         :param modbus_address: MODBUS station number, 0-255
         :param regnum: Register number to read
         :param numreg: Number of registers to read (default 1)
@@ -481,31 +493,59 @@ class Connection(object):
         """
 
         packet = [modbus_address, 0x03] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
-        reply = self._send_as_master(packet)
-        if not reply:
-            return None
-        if reply[0] != modbus_address:
-            errs = "Sent to station %d, but station %d responded.\n" % (modbus_address, reply[0])
-            errs += "Packet: %s\n" % str(reply)
-            logger.error(errs)
-            return None
-        if reply[1] != 3:
-            if reply[1] == 0x83:
-                excode = reply[2]
-                if excode == 2:
-                    logger.error("Exception 0x8302: Invalid register address")
-                elif excode == 3:
-                    logger.error("Exception 0x8303: Register count <1 or >123")
-                elif excode == 4:
-                    logger.error("Exception 0x8304: Read error on one or more registers")
-                else:
-                    logger.error("Exception %s: Unknown exception" % (hex(excode + 0x83 * 256),))
-            errs = "Unexpected reply received.\n"
-            errs += "Packet: %s\n" % str(reply)
-            logger.error(errs)
-            return None
-        blist = reply[3:]
-        return [(blist[i], blist[i+1]) for i in range(0, len(blist), 2)]
+        stime = time.time()  # When we started trying to read the register
+        while (time.time() - stime) < (TIMEOUT * 4):
+            try:
+                reply = self._send_as_master(packet)
+            except ValueError:  # Bad protocol global
+                raise
+            except:  # No reply, or error from the communications layer
+                logger.error('Communications error in send_as_master, resending.')
+                self._flush()
+                continue
+
+            if not reply:
+                logger.error('No reply to readReg from initial packet, resending.')
+                self._flush()
+                continue
+
+            if reply[0] != modbus_address:
+                errs = "Sent to station %d, but station %d responded. Resending.\n" % (modbus_address, reply[0])
+                errs += "Packet: %s\n" % str(reply)
+                logger.error(errs)
+                self._flush()
+                continue
+
+            if reply[1] != 3:
+                if reply[1] == 0x83:
+                    excode = reply[2]
+                    if excode == 2:
+                        logger.error("Exception 0x8302: Invalid register address. Aborting.")
+                    elif excode == 3:
+                        logger.error("Exception 0x8303: Register count <1 or >123. Aborting.")
+                    elif excode == 4:
+                        logger.error("Exception 0x8304: Read error on one or more registers. Aborting.")
+                    else:
+                        logger.error("Exception %s: Unknown exception. Aborting." % (hex(excode + 0x83 * 256),))
+                    raise ValueError
+                errs = "Unexpected reply received. Resending.\n"
+                errs += "Packet: %s\n" % str(reply)
+                logger.error(errs)
+                self._flush()
+                continue
+
+            if len(reply) > 4:
+                blist = reply[3:]
+                return [(blist[i], blist[i+1]) for i in range(0, len(blist), 2)]
+            else:
+                errs = "Short reply received. Resending.\n"
+                errs += "Packet: %s\n" % str(reply)
+                logger.error(errs)
+                self._flush()
+                continue
+
+        logger.error('No valid reply received for readReg(). Giving up.')
+        raise IOError
 
     def writeReg(self, modbus_address, regnum, value):
         """

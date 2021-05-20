@@ -60,6 +60,10 @@ class MCCS(transport.ModbusDevice):
         # Get a list of 28 tuples, where each tuple is a two-byte register value, eg (0,255)
         try:
             valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=PDOC_REGSTART + 1, numreg=28)
+            if valuelist is None:
+                logger.error('Error reading register %d..%d from modbus address %d' % (PDOC_REGSTART + 1,
+                                                                                       PDOC_REGSTART + 1 + 28,
+                                                                                       self.modbus_address))
         except Exception:
             logger.exception('Exception in readReg in poll_data for pdoc mapping from MCCS')
             return None

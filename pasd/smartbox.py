@@ -580,6 +580,11 @@ class SMARTbox(transport.ModbusDevice):
         :return: True if successful, False on failure, None if self.thresholds is empty
         """
         if self.thresholds is None:
+            logger.error('No thresholds, exiting')
+            return None
+
+        if not self.register_map:
+            logger.error('No register map, call poll_data() first')
             return None
 
         # Count how many system threshold registers there are, and create an empty list of register values
@@ -608,6 +613,10 @@ class SMARTbox(transport.ModbusDevice):
 
         :return: True if successful, False on failure
         """
+        if not self.register_map:
+            logger.error('No register map, call poll_data() first')
+            return None
+
         vlist = [0] * 24
         startreg = self.register_map['POLL']['P01_STATE'][0]
         for portnum in range(1, 13):
@@ -644,6 +653,10 @@ class SMARTbox(transport.ModbusDevice):
 
         if portconfig:
             self.portconfig = portconfig
+
+        if not self.register_map:
+            logger.error('No register map, call poll_data() first')
+            return None
 
         ok = self.write_thresholds()
 
