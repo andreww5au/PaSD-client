@@ -30,9 +30,11 @@ class Sim_Station(sim_fndh.SimFNDH):
                     self.smartboxes[portnum] = sim_smartbox.SimSMARTbox(conn=self.conn, modbus_address=portnum)
                     self.threads[portnum] = threading.Thread(target=self.smartboxes[portnum].mainloop)
                     self.threads[portnum].start()
+                    logger.info('Started a new comms thread for smartbox %d' % portnum)
                 else:
                     self.smartboxes[portnum].wants_exit = True   # Signal the comms thread on that SMARTbox to exit
                     del self.smartboxes[portnum]
+                    logger.info('Killed the comms thread for smartbox %d' % portnum)
                 port.old_power_state = port.power_state
 
 

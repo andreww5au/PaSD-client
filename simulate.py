@@ -29,6 +29,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if (args.host is None) and (args.device is None):
         args.host = '134.7.50.185'
+    if args.task.upper() == 'STATION':
+        args.multidrop = True
     conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=args.multidrop)
 
     if args.debug:
