@@ -110,16 +110,26 @@ class MCCS(transport.ModbusDevice):
 
         ok = True
         if unmapped_regnum:
-            ok = self.conn.writeMultReg(modbus_address=self.modbus_address,
-                                        regnum=unmapped_regnum,
-                                        valuelist=[0])
+            try:
+                ok = self.conn.writeMultReg(modbus_address=self.modbus_address,
+                                            regnum=unmapped_regnum,
+                                            valuelist=[0])
+            except:
+                logger.exception('Exception in transport.writeMultReg():')
+                return False
+
             if ok:
                 logger.info('Disconnected antenna %d from port %d on SMARTbox %d.' % (unmapped_regnum, smartbox_address, port_number))
 
         if mapped_regnum and ok:
-            ok = self.conn.writeMultReg(modbus_address=self.modbus_address,
-                                        regnum=mapped_regnum,
-                                        valuelist=[smartbox_address * 256 + port_number])
+            try:
+                ok = self.conn.writeMultReg(modbus_address=self.modbus_address,
+                                            regnum=mapped_regnum,
+                                            valuelist=[smartbox_address * 256 + port_number])
+            except:
+                logger.exception('Exception in transport.writeMultReg():')
+                return False
+
             if ok:
                 logger.info('Connected antenna %d to port %d on SMARTbox %d.' % (mapped_regnum, smartbox_address, port_number))
         return ok
@@ -149,7 +159,11 @@ class MCCS(transport.ModbusDevice):
             des_log = desired_lognum
 
         valuelist = [des_ant] + des_chip + [des_log]
-        ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=ANTNUM, valuelist=valuelist)
+        try:
+            ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=ANTNUM, valuelist=valuelist)
+        except:
+            logger.exception('Exception in transport.writeMultReg():')
+            return False
 
         if ok:
             return self.get_next_log_message()
@@ -163,7 +177,12 @@ class MCCS(transport.ModbusDevice):
 
         :return: None if there was an error, or A tuple of the log entry text, and a unix timestamp for when it was created
         """
-        messagelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=MESSAGE, numreg=MESSAGE_LEN)
+        try:
+            messagelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=MESSAGE, numreg=MESSAGE_LEN)
+        except:
+            logger.exception('Exception in transport.readReg():')
+            return None
+
         if messagelist is None:
             return None
 
@@ -206,7 +225,11 @@ class MCCS(transport.ModbusDevice):
             log_message += chr(0)
 
         valuelist = [des_ant] + des_chip + [0]
-        ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=ANTNUM, valuelist=valuelist)
+        try:
+            ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=ANTNUM, valuelist=valuelist)
+        except:
+            logger.exception('Exception in transport.writeMultReg():')
+            return None
 
         if ok:
             valuelist = []
@@ -215,7 +238,11 @@ class MCCS(transport.ModbusDevice):
                     valuelist.append(ord(log_message[i * 2]) * 256 + ord(log_message[i * 2 + 1]))
                 else:
                     valuelist.append(0)
-            ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=MESSAGE, valuelist=valuelist)
+            try:
+                ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=MESSAGE, valuelist=valuelist)
+            except:
+                logger.exception('Exception in transport.writeMultReg():')
+                return None
 
         return ok
 
@@ -232,4 +259,3 @@ conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, u
 m = mccs.MCCS(conn=conn)
 m.read_antennae()
 """
-

@@ -501,11 +501,13 @@ class Connection(object):
                 raise
             except:  # No reply, or error from the communications layer
                 logger.error('Communications error in send_as_master, resending.')
+                time.sleep(1)
                 self._flush()
                 continue
 
             if not reply:
                 logger.error('No reply to readReg from initial packet, resending.')
+                time.sleep(1)
                 self._flush()
                 continue
 
@@ -513,6 +515,7 @@ class Connection(object):
                 errs = "Sent to station %d, but station %d responded. Resending.\n" % (modbus_address, reply[0])
                 errs += "Packet: %s\n" % str(reply)
                 logger.error(errs)
+                time.sleep(1)
                 self._flush()
                 continue
 
@@ -531,6 +534,7 @@ class Connection(object):
                 errs = "Unexpected reply received. Resending.\n"
                 errs += "Packet: %s\n" % str(reply)
                 logger.error(errs)
+                time.sleep(1)
                 self._flush()
                 continue
 
@@ -541,6 +545,7 @@ class Connection(object):
                 errs = "Short reply received. Resending.\n"
                 errs += "Packet: %s\n" % str(reply)
                 logger.error(errs)
+                time.sleep(1)
                 self._flush()
                 continue
 
@@ -570,33 +575,62 @@ class Connection(object):
             return False
 
         packet = [modbus_address, 0x06] + NtoBytes(regnum - 1, 2) + valuelist
-        reply = self._send_as_master(packet)
-        if not reply:
-            return None
-        if reply[0] != modbus_address:
-            errs = "Sent to station %d, but station %d responded.\n" % (modbus_address, reply[0])
-            errs += "Packet: %s\n" % str(reply)
-            logger.error(errs)
-            return None
-        if reply[1] != 6:
-            if reply[1] == 0x86:
-                excode = reply[2]
-                if excode == 2:
-                    logger.error("Exception 0x8602: Invalid register address")
-                elif excode == 3:
-                    logger.error("Exception 0x8603: Register value out of range")
-                elif excode == 4:
-                    logger.error("Exception 0x8604: Write error on one or more registers")
-                else:
-                    logger.error("Exception %s: Unknown exception" % (hex(excode + 0x86 * 256),))
-            errs = "Unexpected reply received.\n"
-            errs += "Packet: %s\n" % str(reply)
-            logger.error(errs)
-            return None
-        if reply != packet:  # The _send_as_master() method adds the CRC to the packet list, in place, so strip it
-            logger.error('writeReg: %s != %s' % (reply, packet))
-            return False  # Value returned is not equal to value written
-        return True
+
+        stime = time.time()
+        while (time.time() - stime) < (TIMEOUT * 4):
+            try:
+                reply = self._send_as_master(packet)
+            except ValueError:  # Bad protocol global
+                raise
+            except:  # No reply, or error from the communications layer
+                logger.error('Communications error in send_as_master, resending.')
+                time.sleep(1)
+                self._flush()
+                continue
+
+            if not reply:
+                logger.error('No reply from send_as_master, resending.')
+                time.sleep(1)
+                self._flush()
+                continue
+
+            if reply[0] != modbus_address:
+                errs = "Sent to station %d, but station %d responded.\n" % (modbus_address, reply[0])
+                errs += "Packet: %s\n" % str(reply)
+                logger.error(errs)
+                time.sleep(1)
+                self._flush()
+                continue
+
+            if reply[1] != 6:
+                if reply[1] == 0x86:
+                    excode = reply[2]
+                    if excode == 2:
+                        logger.error("Exception 0x8602: Invalid register address")
+                    elif excode == 3:
+                        logger.error("Exception 0x8603: Register value out of range")
+                    elif excode == 4:
+                        logger.error("Exception 0x8604: Write error on one or more registers")
+                    else:
+                        logger.error("Exception %s: Unknown exception" % (hex(excode + 0x86 * 256),))
+                    raise ValueError
+                errs = "Unexpected reply received.\n"
+                errs += "Packet: %s\n" % str(reply)
+                logger.error(errs)
+                time.sleep(1)
+                self._flush()
+                continue
+
+            if reply != packet:  # The _send_as_master() method adds the CRC to the packet list, in place, so strip it
+                logger.error('writeReg: %s != %s' % (reply, packet))
+                time.sleep(1)
+                self._flush()
+                continue   # Value returned is not equal to value written
+
+            return True
+
+        logger.error('Too many errors in writeReg, giving up.')
+        return False
 
     def writeMultReg(self, modbus_address, regnum, valuelist):
         """
@@ -623,32 +657,61 @@ class Connection(object):
 
         rlen = len(data) // 2
         packet = [modbus_address, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(rlen, 2) + NtoBytes(rlen * 2, 1) + data
-        reply = self._send_as_master(packet)
-        if not reply:
-            return None
-        if reply[0] != modbus_address:
-            errs = "Sent to station %d, but station %d responded.\n" % (modbus_address, reply[0])
-            errs += "Packet: %s\n" % str(reply)
-            logger.error(errs)
-            return None
-        if reply[1] != 0x10:
-            if reply[1] == 0x90:
-                excode = reply[2]
-                if excode == 2:
-                    logger.error("Exception 0x9002: Starting or ending register address invalid")
-                elif excode == 3:
-                    logger.error("Exception 0x9003: Register count <1 or >123, or bytecount<>rlen*2")
-                elif excode == 4:
-                    logger.error("Exception 0x9004: Write error on one or more registers")
-                else:
-                    logger.error("Exception %s: Unknown exception" % (hex(excode + 0x90 * 256),))
-            errs = "Unexpected reply received.\n"
-            errs += "Packet: %s\n" % str(reply)
-            logger.error(errs)
-            return None
-        if (reply[2:4] != NtoBytes(regnum - 1, 2)) or (reply[4:6] != NtoBytes(rlen, 2)):
-            return False  # start/number returned is not equal to regnum/rlen written
-        return True
+
+        stime = time.time()
+        while (time.time() - stime) < (TIMEOUT * 4):
+            try:
+                reply = self._send_as_master(packet)
+            except ValueError:  # Bad protocol global
+                raise
+            except:  # No reply, or error from the communications layer
+                logger.error('Communications error in send_as_master, resending.')
+                time.sleep(1)
+                self._flush()
+                continue
+
+            if not reply:
+                logger.error('No reply from send_as_master, resending.')
+                time.sleep(1)
+                self._flush()
+                continue
+
+            if reply[0] != modbus_address:
+                errs = "Sent to station %d, but station %d responded.\n" % (modbus_address, reply[0])
+                errs += "Packet: %s\n" % str(reply)
+                logger.error(errs)
+                time.sleep(1)
+                self._flush()
+                continue
+
+            if reply[1] != 0x10:
+                if reply[1] == 0x90:
+                    excode = reply[2]
+                    if excode == 2:
+                        logger.error("Exception 0x9002: Starting or ending register address invalid")
+                    elif excode == 3:
+                        logger.error("Exception 0x9003: Register count <1 or >123, or bytecount<>rlen*2")
+                    elif excode == 4:
+                        logger.error("Exception 0x9004: Write error on one or more registers")
+                    else:
+                        logger.error("Exception %s: Unknown exception" % (hex(excode + 0x90 * 256),))
+                    raise ValueError
+                errs = "Unexpected reply received.\n"
+                errs += "Packet: %s\n" % str(reply)
+                logger.error(errs)
+                time.sleep(1)
+                self._flush()
+                continue
+
+            if (reply[2:4] != NtoBytes(regnum - 1, 2)) or (reply[4:6] != NtoBytes(rlen, 2)):
+                time.sleep(1)
+                self._flush()
+                continue  # start/number returned is not equal to regnum/rlen written
+
+            return True
+
+        logger.error('Too many errors in writeMultReg, giving up.')
+        return False
 
 
 class ModbusDevice(object):

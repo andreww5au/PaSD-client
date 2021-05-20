@@ -150,10 +150,15 @@ class SimSMARTbox(smartbox.SMARTbox):
             for regnum in range(1001, 1081):   # Zero all the threshold registers
                 slave_registers[regnum] = 0
 
-            read_set, written_set = self.conn.listen_for_packet(listen_address=self.modbus_address,
-                                                                slave_registers=slave_registers,
-                                                                maxtime=5.0,
-                                                                validation_function=None)
+            try:
+                read_set, written_set = self.conn.listen_for_packet(listen_address=self.modbus_address,
+                                                                    slave_registers=slave_registers,
+                                                                    maxtime=5.0,
+                                                                    validation_function=None)
+            except:
+                logger.exception('Exception in transport.listen_for_packet():')
+                time.sleep(1)
+                continue
 
             if read_set or written_set:  # The MCCS has talked to us, update the last_readtime timestamp
                 self.readtime = time.time()

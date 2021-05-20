@@ -598,7 +598,12 @@ class SMARTbox(transport.ModbusDevice):
             assert len(values) == numreg
             vlist[(regnum - startreg):(regnum - startreg) + numreg] = values
 
-        res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
+        try:
+            res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
+        except:
+            logger.exception('Exception in transport.writeMultReg():')
+            return False
+
         if res:
             logger.info('Wrote thresholds.')
             return True
@@ -623,7 +628,12 @@ class SMARTbox(transport.ModbusDevice):
             vlist[(portnum - 1) * 2] = self.ports[portnum].status_to_integer(write_state=True)
             vlist[(portnum - 1) * 2 + 1] = self.ports[portnum].current_raw
 
-        res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
+        try:
+            res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
+        except:
+            logger.exception('Exception in transport.writeMultReg():')
+            return False
+
         if res:
             logger.info('Wrote portconfig.')
             return True
@@ -666,7 +676,11 @@ class SMARTbox(transport.ModbusDevice):
                 self.ports[portnum].desire_enabled_offline = bool(self.portconfig[str(portnum)][1])
             ok = self.write_portconfig()
             if ok:
-                return self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
+                try:
+                    return self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
+                except:
+                    logger.exception('Exception in transport.writeReg():')
+                    return False
             else:
                 logger.error('Could not load and write port state configuration.')
         else:

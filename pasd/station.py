@@ -323,10 +323,16 @@ class Station(object):
             log_registers[MESSAGE + MESSAGE_LEN - 2], log_registers[MESSAGE + MESSAGE_LEN - 1] = divmod(timestamp, 65536)
 
             slave_registers.update(log_registers)    # log entry read/write registers
-            read_set, written_set = self.conn.listen_for_packet(listen_address=SLAVE_MODBUS_ADDRESS,
-                                                                slave_registers=slave_registers,
-                                                                maxtime=(end_time - time.time()),
-                                                                validation_function=validate_mapping)
+            try:
+                read_set, written_set = self.conn.listen_for_packet(listen_address=SLAVE_MODBUS_ADDRESS,
+                                                                    slave_registers=slave_registers,
+                                                                    maxtime=(end_time - time.time()),
+                                                                    validation_function=validate_mapping)
+            except:
+                logger.exception('Exception in transport.listen_for_packet():')
+                time.sleep(1)
+                continue
+
             for regnum in written_set:
                 if 1 <= regnum <= 256:
                     sadd, portnum = divmod(slave_registers[regnum], 256)
@@ -441,4 +447,3 @@ conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, u
 s = station.Station(conn=conn, station_id=1)
 s.startup()
 """
-

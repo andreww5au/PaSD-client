@@ -392,7 +392,12 @@ class FNDH(transport.ModbusDevice):
             assert len(values) == numreg
             vlist[(regnum - startreg):(regnum - startreg) + numreg] = values
 
-        res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
+        try:
+            res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
+        except:
+            logger.exception('Exception in transport.writeMultReg():')
+            return False
+
         if res:
             return True
         else:
@@ -415,7 +420,12 @@ class FNDH(transport.ModbusDevice):
             vlist[(portnum - 1) * 2] = self.ports[portnum].status_to_integer(write_state=True)
             vlist[(portnum - 1) * 2 + 1] = self.ports[portnum].current_raw
 
-        res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
+        try:
+            res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
+        except:
+            logger.exception('Exception in transport.writeMultReg():')
+            return False
+
         if res:
             return True
         else:
@@ -463,7 +473,12 @@ class FNDH(transport.ModbusDevice):
             return False
 
         # Write state register so the FNDH will transition to 'online'
-        self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
+        try:
+            self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
+        except:
+            logger.exception('Exception in transport.writeReg():')
+            return False
+
         return True
 
     def configure_final(self):
@@ -500,4 +515,3 @@ f.poll_data()
 f.configure_all_off()
 f.configure_final()
 """
-
