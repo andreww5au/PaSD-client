@@ -398,8 +398,6 @@ class Connection(object):
                 # Handle the packet contents here
                 if msglist[0] != listen_address:
                     logger.info('Packet received, but it was addressed to station %d' % msglist[0])
-                    time.sleep(0.2)
-                    self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                     continue
 
                 if msglist[1] == 0x03:   # Reading one or more registers
