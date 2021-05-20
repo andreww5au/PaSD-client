@@ -418,7 +418,7 @@ class Connection(object):
                     value = msglist[4] * 256 + msglist[5]
                     if regnum in slave_registers:
                         slave_registers[regnum] = value
-                        replylist = msglist[:-2]   # For success, reply with the same packet: CRC re-added in send_reply()
+                        replylist = msglist   # For success, reply with the same packet
                     else:
                         replylist = [listen_address, 0x86, 0x02]   # 0x02 is 'Illegal Data Address'
                         logger.error('Writing register %d not allowed, returned exception packet %s.' % (regnum, replylist))
