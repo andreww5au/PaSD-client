@@ -361,11 +361,13 @@ class Connection(object):
                         if getcrc(message=replist[:-1]) == [replist[-1],]:
                             crcgood = True
                             msglist = replist[:-1]
-                    else:
+                    elif mstring:
                         logger.warning('Packet fragment received: %s' % msglist)
                         time.sleep(0.2)
                         self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                         continue  # Discard this packet fragment, keep waiting for a new valid packet
+                    else:
+                        continue
 
                 elif PROTOCOL == 'RTU':
                     while (time.time() - packet_start_time) < TIMEOUT and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
