@@ -356,13 +356,14 @@ class Connection(object):
                         except:
                             logger.exception('Exception in sock.recv()')
                             return set(), set()
+
                     if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
                         replist = from_ascii(mstring[1:-2])
                         if getcrc(message=replist[:-1]) == [replist[-1],]:
                             crcgood = True
                             msglist = replist[:-1]
                     elif mstring:
-                        logger.warning('Packet fragment received: %s' % msglist)
+                        logger.warning('Packet fragment received: %s' % mstring)
                         time.sleep(0.2)
                         self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                         continue  # Discard this packet fragment, keep waiting for a new valid packet
@@ -392,7 +393,7 @@ class Connection(object):
                 logger.debug("Received: %s=%s" % (mstring, str(msglist)))
 
                 if ((0 < len(msglist) < 3) or (not crcgood)):
-                    logger.warning('Packet fragment received: %s' % msglist)
+                    logger.warning('Packet Fragment received: %s' % msglist)
                     time.sleep(0.2)
                     self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                     continue    # Discard this packet fragment, keep waiting for a new valid packet
