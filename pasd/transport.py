@@ -338,16 +338,18 @@ class Connection(object):
         registers_backup = slave_registers.copy()   # store a copy of all the slave registers passed in on entry
         start_time = time.time()
         with self.lock:
-            while (time.time() - start_time) < maxtime:  # Wait for a good packet until we run out of time
+            while time.time() < (start_time + maxtime):  # Wait for a good packet until we run out of time
                 replist = []  # Entire message, including CRC, as a list of integers
                 msglist = []  # Message without CRC byte/s
                 mstring = ''  # ASCII hex packet contents, in ASCII protocol. Empty string otherwise
                 crcgood = False
-                packet_start_time = start_time + maxtime - TIMEOUT  # Don't wait after 'maxtime' for a new packet
+                packet_start_time = time.time()  # When we started waiting for this packet
                 # Wait until the timeout trips, or until we have a full packet with a valid CRC checksum
                 if PROTOCOL == 'ASCII':
                     # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
-                    while (time.time() - packet_start_time < TIMEOUT) and (not mstring.endswith('\r\n')):
+                    while ( ( ((time.time() < (start_time + maxtime + 1)) and mstring) or
+                              ((time.time() < (start_time + maxtime)) and not mstring)) and
+                            (not mstring.endswith('\r\n') ) ):
                         try:
                             reply = self._read(1).decode('ascii')
                             if (not mstring) and reply != ':':  # Unexpected first character, ignore it and keep reading
