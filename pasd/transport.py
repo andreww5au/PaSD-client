@@ -165,9 +165,11 @@ class Connection(object):
                 for tid in self.buffers.keys():
                     self.buffers[tid] += remote_data
 
+                print(thread_id, self.buffers)
                 # Pull the first 'nbytes' characters from the head of our local buffer
                 data = self.buffers[thread_id][:nbytes]
                 self.buffers[thread_id] = self.buffers[thread_id][nbytes:]
+                print(thread_id, self.buffers, data)
 
                 return data
 
