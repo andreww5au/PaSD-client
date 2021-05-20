@@ -356,11 +356,17 @@ class Connection(object):
                         except:
                             logger.exception('Exception in sock.recv()')
                             return set(), set()
-                    if len(mstring) > 3:
+                    if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
                         replist = from_ascii(mstring[1:-2])
                         if getcrc(message=replist[:-1]) == [replist[-1],]:
                             crcgood = True
                             msglist = replist[:-1]
+                    else:
+                        logger.warning('Packet fragment received: %s' % msglist)
+                        time.sleep(0.2)
+                        self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
+                        continue  # Discard this packet fragment, keep waiting for a new valid packet
+
                 elif PROTOCOL == 'RTU':
                     while (time.time() - packet_start_time) < TIMEOUT and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
                         try:
@@ -385,12 +391,15 @@ class Connection(object):
 
                 if ((0 < len(msglist) < 3) or (not crcgood)):
                     logger.warning('Packet fragment received: %s' % msglist)
+                    time.sleep(0.2)
                     self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                     continue    # Discard this packet fragment, keep waiting for a new valid packet
 
                 # Handle the packet contents here
                 if msglist[0] != listen_address:
                     logger.info('Packet received, but it was addressed to station %d' % msglist[0])
+                    time.sleep(0.2)
+                    self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                     continue
 
                 if msglist[1] == 0x03:   # Reading one or more registers
