@@ -237,67 +237,66 @@ class Connection(object):
         :param message: A list of integers, each in the range 0-255
         :return: A list of integers, each in the range 0-255, or False if no valid reply was received
         """
-        with self.lock:
-            self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
-            fullmessage = message + getcrc(message)
-            time.sleep(PACKET_WINDOW_TIME)
-            if PROTOCOL == 'ASCII':
-                self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
-            elif PROTOCOL == 'RTU':
-                self._write(bytes(fullmessage))
-            else:
-                logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
-                raise ValueError
+        self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
+        fullmessage = message + getcrc(message)
+        time.sleep(PACKET_WINDOW_TIME)
+        if PROTOCOL == 'ASCII':
+            self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
+        elif PROTOCOL == 'RTU':
+            self._write(bytes(fullmessage))
+        else:
+            logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
+            raise ValueError
 
-            time.sleep(PACKET_WINDOW_TIME)
+        time.sleep(PACKET_WINDOW_TIME)
 
-            replist = []  # Entire message, including CRC, as a list of integers
-            datalist = []  # Message without CRC byte/s
-            stime = time.time()
-            mstring = ''   # ASCII hex packet contents, in ASCII protocol. Empty string otherwise
-            crcgood = False
-            if PROTOCOL == 'ASCII':
-                # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
-                while (time.time() - stime < TIMEOUT) and (not mstring.endswith('\r\n')):
-                    try:
-                        reply = self._read(1).decode('ascii')
-                        if (not mstring) and reply != ':':   # Unexpected first character, ignore it and keep reading
-                            continue
-                        mstring += reply
-                    except:
-                        logger.exception('Exception in sock.recv()')
-                        raise
-                if len(mstring) > 3:
-                    try:
-                        replist = from_ascii(mstring[1:-2])
-                    except ValueError:   # Non ASCII-hex characters in reply
-                        logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
-                        raise IOError
-                    if getcrc(message=replist[:-1]) == [replist[-1],]:
-                        crcgood = True
-                        datalist = replist[:-1]
-            elif PROTOCOL == 'RTU':
-                # Wait until the timeout trips, or until we have a packet with a valid CRC checksum
-                while (time.time() - stime < TIMEOUT) and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
-                    try:
-                        reply = self._read(2)
-                        replist += list(map(int, reply))
-                    except:
-                        logger.exception('Exception in sock.recv()')
-                        raise
-                if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
+        replist = []  # Entire message, including CRC, as a list of integers
+        datalist = []  # Message without CRC byte/s
+        stime = time.time()
+        mstring = ''   # ASCII hex packet contents, in ASCII protocol. Empty string otherwise
+        crcgood = False
+        if PROTOCOL == 'ASCII':
+            # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
+            while (time.time() - stime < TIMEOUT) and (not mstring.endswith('\r\n')):
+                try:
+                    reply = self._read(1).decode('ascii')
+                    if (not mstring) and reply != ':':   # Unexpected first character, ignore it and keep reading
+                        continue
+                    mstring += reply
+                except:
+                    logger.exception('Exception in sock.recv()')
+                    raise
+            if len(mstring) > 3:
+                try:
+                    replist = from_ascii(mstring[1:-2])
+                except ValueError:   # Non ASCII-hex characters in reply
+                    logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
+                    raise IOError
+                if getcrc(message=replist[:-1]) == [replist[-1],]:
                     crcgood = True
-                    datalist = replist[:-2]
-            else:
-                logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
-                raise ValueError
+                    datalist = replist[:-1]
+        elif PROTOCOL == 'RTU':
+            # Wait until the timeout trips, or until we have a packet with a valid CRC checksum
+            while (time.time() - stime < TIMEOUT) and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
+                try:
+                    reply = self._read(2)
+                    replist += list(map(int, reply))
+                except:
+                    logger.exception('Exception in sock.recv()')
+                    raise
+            if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
+                crcgood = True
+                datalist = replist[:-2]
+        else:
+            logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
+            raise ValueError
 
-            logger.debug("Recvd: %s/%s" % (mstring, str(replist)))
-            if crcgood:
-                return datalist
-            else:
-                logger.error('No valid reply - raw data received: %s' % str(replist))
-                raise IOError
+        logger.debug("Recvd: %s/%s" % (mstring, str(replist)))
+        if crcgood:
+            return datalist
+        else:
+            logger.error('No valid reply - raw data received: %s' % str(replist))
+            raise IOError
 
     def _send_reply(self, message):
         """
@@ -307,18 +306,17 @@ class Connection(object):
         :param message: A list of bytes, each in the range 0-255
         :return: None
         """
-        with self.lock:
-            self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
-            fullmessage = message + getcrc(message)
-            time.sleep(PACKET_WINDOW_TIME)
-            if PROTOCOL == 'ASCII':
-                self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
-            elif PROTOCOL == 'RTU':
-                self._write(bytes(fullmessage))
-            else:
-                logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
-                raise ValueError
-            time.sleep(PACKET_WINDOW_TIME)
+        self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
+        fullmessage = message + getcrc(message)
+        time.sleep(PACKET_WINDOW_TIME)
+        if PROTOCOL == 'ASCII':
+            self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
+        elif PROTOCOL == 'RTU':
+            self._write(bytes(fullmessage))
+        else:
+            logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
+            raise ValueError
+        time.sleep(PACKET_WINDOW_TIME)
 
     def listen_for_packet(self, listen_address, slave_registers, maxtime=10.0, validation_function=dummy_validate):
         """
@@ -343,151 +341,151 @@ class Connection(object):
         """
         registers_backup = slave_registers.copy()   # store a copy of all the slave registers passed in on entry
         start_time = time.time()
-        with self.lock:
-            while time.time() < (start_time + maxtime):  # Wait for a good packet until we run out of time
-                replist = []  # Entire message, including CRC, as a list of integers
-                msglist = []  # Message without CRC byte/s
-                mstring = ''  # ASCII hex packet contents, in ASCII protocol. Empty string otherwise
-                crcgood = False
-                packet_start_time = time.time()  # When we started waiting for this packet
-                # Wait until the timeout trips, or until we have a full packet with a valid CRC checksum
-                if PROTOCOL == 'ASCII':
-                    # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
-                    while ( ( ((time.time() < (start_time + maxtime + 1)) and mstring) or
-                              ((time.time() < (start_time + maxtime)) and not mstring)) and
-                            (not mstring.endswith('\r\n') ) ):
-                        try:
-                            reply = self._read(1).decode('ascii')
-                            if (not mstring) and reply != ':':  # Unexpected first character, ignore it and keep reading
-                                continue
-                            mstring += reply
-                        except:
-                            logger.exception('Exception in sock.recv()')
-                            return set(), set()
 
-                    if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
-                        replist = from_ascii(mstring[1:-2])
-                        if getcrc(message=replist[:-1]) == [replist[-1],]:
-                            crcgood = True
-                            msglist = replist[:-1]
-                    elif mstring:
-                        logger.warning('Packet fragment received: %s' % mstring)
-                        time.sleep(0.2)
-                        self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
-                        continue  # Discard this packet fragment, keep waiting for a new valid packet
-                    else:
-                        continue
+        while time.time() < (start_time + maxtime):  # Wait for a good packet until we run out of time
+            replist = []  # Entire message, including CRC, as a list of integers
+            msglist = []  # Message without CRC byte/s
+            mstring = ''  # ASCII hex packet contents, in ASCII protocol. Empty string otherwise
+            crcgood = False
+            packet_start_time = time.time()  # When we started waiting for this packet
+            # Wait until the timeout trips, or until we have a full packet with a valid CRC checksum
+            if PROTOCOL == 'ASCII':
+                # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
+                while ( ( ((time.time() < (start_time + maxtime + 1)) and mstring) or
+                          ((time.time() < (start_time + maxtime)) and not mstring)) and
+                        (not mstring.endswith('\r\n') ) ):
+                    try:
+                        reply = self._read(1).decode('ascii')
+                        if (not mstring) and reply != ':':  # Unexpected first character, ignore it and keep reading
+                            continue
+                        mstring += reply
+                    except:
+                        logger.exception('Exception in sock.recv()')
+                        return set(), set()
 
-                elif PROTOCOL == 'RTU':
-                    while (time.time() - packet_start_time) < TIMEOUT and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
-                        try:
-                            data = self._read(2)
-                            replist += list(map(int, data))
-                            if len(replist) == 2:
-                                packet_start_time = time.time()
-                        except:
-                            logger.exception('Exception in sock.recv()')
-                            return set(), set()
-                    if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
+                if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
+                    replist = from_ascii(mstring[1:-2])
+                    if getcrc(message=replist[:-1]) == [replist[-1],]:
                         crcgood = True
-                        msglist = replist[:-2]
-                else:
-                    logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
-                    raise ValueError
-
-                if not msglist:
-                    return set(), set()
-
-                logger.debug("Received: %s=%s" % (mstring, str(msglist)))
-
-                if ((0 < len(msglist) < 3) or (not crcgood)):
-                    logger.warning('Packet Fragment received: %s' % msglist)
+                        msglist = replist[:-1]
+                elif mstring:
+                    logger.warning('Packet fragment received: %s' % mstring)
                     time.sleep(0.2)
                     self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
-                    continue    # Discard this packet fragment, keep waiting for a new valid packet
-
-                # Handle the packet contents here
-                if msglist[0] != listen_address:
-                    logger.info('Packet received, but it was addressed to station %d' % msglist[0])
+                    continue  # Discard this packet fragment, keep waiting for a new valid packet
+                else:
                     continue
 
-                if msglist[1] == 0x03:   # Reading one or more registers
-                    regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
-                    numreg = msglist[4] * 256 + msglist[5]
-                    replylist = [listen_address, 0x03, numreg * 2]
-                    read_set = set()
-                    read_error = False
-                    for r in range(regnum, regnum + numreg):   # Iterate over all requested registers
-                        if r not in slave_registers:
-                            read_error = True
-                            logger.error('Bad read register: %d' % r)
-                        else:
-                            replylist += list(divmod(slave_registers[r], 256))
-                            read_set.add(r)
-                    if read_error:
-                        replylist = [listen_address, 0x83, 0x02]  # 0x02 is 'Illegal Data Address'
-                        self._send_reply(replylist)
-                        logger.error('Reading unknown register not allowed, returned exception packet %s' % (replylist,))
-                        continue
+            elif PROTOCOL == 'RTU':
+                while (time.time() - packet_start_time) < TIMEOUT and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
+                    try:
+                        data = self._read(2)
+                        replist += list(map(int, data))
+                        if len(replist) == 2:
+                            packet_start_time = time.time()
+                    except:
+                        logger.exception('Exception in sock.recv()')
+                        return set(), set()
+                if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
+                    crcgood = True
+                    msglist = replist[:-2]
+            else:
+                logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
+                raise ValueError
+
+            if not msglist:
+                return set(), set()
+
+            logger.debug("Received: %s=%s" % (mstring, str(msglist)))
+
+            if ((0 < len(msglist) < 3) or (not crcgood)):
+                logger.warning('Packet Fragment received: %s' % msglist)
+                time.sleep(0.2)
+                self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
+                continue    # Discard this packet fragment, keep waiting for a new valid packet
+
+            # Handle the packet contents here
+            if msglist[0] != listen_address:
+                logger.info('Packet received, but it was addressed to station %d' % msglist[0])
+                continue
+
+            if msglist[1] == 0x03:   # Reading one or more registers
+                regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
+                numreg = msglist[4] * 256 + msglist[5]
+                replylist = [listen_address, 0x03, numreg * 2]
+                read_set = set()
+                read_error = False
+                for r in range(regnum, regnum + numreg):   # Iterate over all requested registers
+                    if r not in slave_registers:
+                        read_error = True
+                        logger.error('Bad read register: %d' % r)
+                    else:
+                        replylist += list(divmod(slave_registers[r], 256))
+                        read_set.add(r)
+                if read_error:
+                    replylist = [listen_address, 0x83, 0x02]  # 0x02 is 'Illegal Data Address'
                     self._send_reply(replylist)
-                    return read_set, set()
-                elif msglist[1] == 0x06:  # Writing a single register
-                    regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
-                    value = msglist[4] * 256 + msglist[5]
-                    if regnum in slave_registers:
-                        slave_registers[regnum] = value
-                        replylist = msglist   # For success, reply with the same packet
-                    else:
-                        replylist = [listen_address, 0x86, 0x02]   # 0x02 is 'Illegal Data Address'
-                        logger.error('Writing register %d not allowed, returned exception packet %s.' % (regnum, replylist))
-                    if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
-                        slave_registers[regnum] = registers_backup[regnum]   # Put back the original contents of that register
-                        replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
-                        logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
-                    else:
-                        self._send_reply(replylist)
-                        return set(), {regnum}
-                elif msglist[1] == 0x10:  # Writing multiple registers
-                    regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
-                    numreg = msglist[4] * 256 + msglist[5]
-                    numbytes = msglist[6]
-                    bytelist = msglist[7:]
-
-                    assert len(bytelist) == numbytes == (numreg * 2)
-                    written_set = set()
-                    write_error = False
-                    for r in range(regnum, regnum + numreg):
-                        if r not in slave_registers:
-                            write_error = True
-                            logger.error('Bad write register: %d' % r)
-                        else:
-                            value = bytelist[0] * 256 + bytelist[1]
-                            bytelist = bytelist[2:]   # Use, then pop off, the first two bytes
-                            slave_registers[r] = value
-                            written_set.add(r)
-                    if write_error:
-                        for r2 in range(regnum, regnum + numreg):
-                            if r2 in slave_registers:
-                                slave_registers[r2] = registers_backup[r2]
-                        replylist = [listen_address, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
-                        self._send_reply(replylist)
-                        logger.error('Writing unknown register/s not allowed, returned exception packet %s.' % (replylist,))
-                        continue
-
-                    if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
-                        for r in range(regnum, regnum + numreg):
-                            slave_registers[r] = registers_backup[r]
-                        replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
-                        self._send_reply(replylist)
-                        logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
-                    else:
-                        replylist = [listen_address, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
-                        self._send_reply(replylist)
-                        return set(), written_set
+                    logger.error('Reading unknown register not allowed, returned exception packet %s' % (replylist,))
+                    continue
+                self._send_reply(replylist)
+                return read_set, set()
+            elif msglist[1] == 0x06:  # Writing a single register
+                regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
+                value = msglist[4] * 256 + msglist[5]
+                if regnum in slave_registers:
+                    slave_registers[regnum] = value
+                    replylist = msglist   # For success, reply with the same packet
                 else:
-                    logger.error('Received modbus packet for function %d - not supported.' % msglist[1])
-                    replylist = [listen_address, msglist[1] + 0x80, 0x01]
+                    replylist = [listen_address, 0x86, 0x02]   # 0x02 is 'Illegal Data Address'
+                    logger.error('Writing register %d not allowed, returned exception packet %s.' % (regnum, replylist))
+                if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
+                    slave_registers[regnum] = registers_backup[regnum]   # Put back the original contents of that register
+                    replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
+                    logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
+                else:
                     self._send_reply(replylist)
+                    return set(), {regnum}
+            elif msglist[1] == 0x10:  # Writing multiple registers
+                regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
+                numreg = msglist[4] * 256 + msglist[5]
+                numbytes = msglist[6]
+                bytelist = msglist[7:]
+
+                assert len(bytelist) == numbytes == (numreg * 2)
+                written_set = set()
+                write_error = False
+                for r in range(regnum, regnum + numreg):
+                    if r not in slave_registers:
+                        write_error = True
+                        logger.error('Bad write register: %d' % r)
+                    else:
+                        value = bytelist[0] * 256 + bytelist[1]
+                        bytelist = bytelist[2:]   # Use, then pop off, the first two bytes
+                        slave_registers[r] = value
+                        written_set.add(r)
+                if write_error:
+                    for r2 in range(regnum, regnum + numreg):
+                        if r2 in slave_registers:
+                            slave_registers[r2] = registers_backup[r2]
+                    replylist = [listen_address, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
+                    self._send_reply(replylist)
+                    logger.error('Writing unknown register/s not allowed, returned exception packet %s.' % (replylist,))
+                    continue
+
+                if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
+                    for r in range(regnum, regnum + numreg):
+                        slave_registers[r] = registers_backup[r]
+                    replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
+                    self._send_reply(replylist)
+                    logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
+                else:
+                    replylist = [listen_address, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
+                    self._send_reply(replylist)
+                    return set(), written_set
+            else:
+                logger.error('Received modbus packet for function %d - not supported.' % msglist[1])
+                replylist = [listen_address, msglist[1] + 0x80, 0x01]
+                self._send_reply(replylist)
 
         return set(), set()
 
