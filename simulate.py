@@ -47,17 +47,17 @@ if __name__ == '__main__':
         if args.address is None:
             args.address = 1
         s = sim_smartbox.SimSMARTbox(conn=conn, modbus_address=args.address)
-        simthread = threading.Thread(target=s.mainloop, daemon=False)
+        simthread = threading.Thread(target=s.sim_loop, daemon=False)
         print('Simulating SMARTbox as "s" on address %d.' % args.address)
     elif args.task.upper() == 'FNDH':
         if args.address is None:
             args.address = 31
         f = sim_fndh.SimFNDH(conn=conn, modbus_address=args.address)
-        simthread = threading.Thread(target=f.mainloop, daemon=False)
+        simthread = threading.Thread(target=f.sim_loop, daemon=False)
         print('Simulating FNDH as "f" on address %d.' % args.address)
     elif args.task.upper() == 'STATION':
         s = sim_station.Sim_Station(conn=conn, modbus_address=31)
-        simthread = threading.Thread(target=s.mainloop, daemon=False)
+        simthread = threading.Thread(target=s.sim_loop, daemon=False)
         print('Simulating entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
     elif args.task.upper() == 'MCCS':
         if args.address is None:

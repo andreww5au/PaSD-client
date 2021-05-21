@@ -6,6 +6,7 @@ to read and write registers. Used for testing PaSD code.
 """
 
 import logging
+import threading
 import time
 
 logging.basicConfig()
@@ -47,6 +48,7 @@ class SimFNDH(fndh.FNDH):
         self.indicator_code = 0  # LED status value, used as a key for self.codes['led']
         self.indicator_state = 'OFF'   # LED status, obtained from self.codes['led']
         self.readtime = 0    # Unix timestamp for the last successful polled data from this FNDH
+        self.start_time = 0   # Unix timestamp when this instance started processing
         self.wants_exit = False  # Set to True externally to kill self.mainloop if the box is pseudo-powered-off
 
     def poll_data(self):
@@ -86,7 +88,7 @@ class SimFNDH(fndh.FNDH):
         :return:
         """
 
-    def mainloop(self):
+    def listen_loop(self):
         """
         Listen on the socket for any incoming read/write register packets sent by an external bus master (eg, the MCCS).
 
@@ -100,13 +102,14 @@ class SimFNDH(fndh.FNDH):
         4) Uses the list of written registers to update the box state, and update the 'heard from MCCS' timestamp.
         5) If any registers are in the 'read' list, update the 'heard from MCCS' timestamp.
 
+        Note that we only traverse around the loop whenever we process an incoming packet
+
         :return: None
         """
-        start_time = time.time()
         while not self.wants_exit:  # Process packets until we are told to die
             # Set up the registers for the physical->smartbox/port mapping:
             slave_registers = {}
-            self.uptime = int(time.time() - start_time)  # Set the current uptime value
+            self.uptime = int(time.time() - self.start_time)  # Set the current uptime value
 
             for regname in self.register_map['POLL']:
                 regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
@@ -155,7 +158,7 @@ class SimFNDH(fndh.FNDH):
             try:
                 read_set, written_set = self.conn.listen_for_packet(listen_address=self.modbus_address,
                                                                     slave_registers=slave_registers,
-                                                                    maxtime=5.0,
+                                                                    maxtime=99999999,
                                                                     validation_function=None)
             except:
                 logger.exception('Exception in transport.listen_for_packet():')
@@ -164,15 +167,6 @@ class SimFNDH(fndh.FNDH):
 
             if read_set or written_set:  # The MCCS has talked to us, update the last_readtime timestamp
                 self.readtime = time.time()
-
-            if (time.time() - self.readtime >= 300) and self.online:   # More than 5 minutes since we heard from MCCS, go offline
-                self.online = False
-                for port in self.ports.values():
-                    port.system_online = False
-            elif (time.time() - self.readtime < 300) and (not self.online):   # Less than 5 minutes since we heard from MCCS, go online
-                self.online = True
-                for port in self.ports.values():
-                    port.system_online = True
 
             for regnum in range(self.register_map['POLL']['P01_STATE'][0], self.register_map['POLL']['P28_STATE'][0] + 1, 2):
                 if regnum in written_set:
@@ -250,6 +244,31 @@ class SimFNDH(fndh.FNDH):
 
             self.loophook()
 
+    def sim_loop(self):
+        """
+        Runs continuously, simulating hardware processes independent of the communications packet handler
+        :return:
+        """
+        self.start_time = time.time()
+
+        logger.info('Started comms thread for FNDH')
+        listen_thread = threading.Thread(target=self.listen_loop, daemon=False)
+        listen_thread.start()
+
+        logger.info('Started simulation loop for fndh')
+        while not self.wants_exit:  # Process packets until we are told to die
+            self.uptime = int(time.time() - self.start_time)  # Set the current uptime value
+
+            if (time.time() - self.readtime >= 300) and self.online:  # More than 5 minutes since we heard from MCCS, go offline
+                self.online = False
+                for port in self.ports.values():
+                    port.system_online = False
+            elif (time.time() - self.readtime < 300) and (not self.online):  # Less than 5 minutes since we heard from MCCS, go online
+                self.online = True
+                for port in self.ports.values():
+                    port.system_online = True
+
+            time.sleep(0.5)
 
 """
 Use as 'simulate.py fndh', or:
@@ -261,6 +280,6 @@ conn = transport.Connection(hostname='134.7.50.185')  # address of ethernet-seri
 conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
 
 f = sim_fndh.SimFNDH(conn=conn, modbus_address=31)
-f.mainloop()
+f.sim_loop()
 """
 

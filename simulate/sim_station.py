@@ -28,7 +28,7 @@ class Sim_Station(sim_fndh.SimFNDH):
             if port.power_state != port.old_power_state:
                 if port.power_state:
                     self.smartboxes[portnum] = sim_smartbox.SimSMARTbox(conn=self.conn, modbus_address=portnum)
-                    self.threads[portnum] = threading.Thread(target=self.smartboxes[portnum].mainloop)
+                    self.threads[portnum] = threading.Thread(target=self.smartboxes[portnum].sim_loop)
                     self.threads[portnum].start()
                     logger.info('Started a new comms thread for smartbox %d' % portnum)
                 else:
