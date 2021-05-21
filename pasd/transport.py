@@ -165,15 +165,11 @@ class Connection(object):
                 for tid in self.buffers.keys():
                     self.buffers[tid] += remote_data
 
-                do_debug = False
-                if self.buffers[thread_id]:   # If there's any data in our thread's buffer
-                    do_debug = True
-                    print(thread_id, self.buffers)
                 # Pull the first 'nbytes' characters from the head of our local buffer
                 data = self.buffers[thread_id][:nbytes]
                 self.buffers[thread_id] = self.buffers[thread_id][nbytes:]
-                if do_debug:
-                    print(thread_id, self.buffers, data)
+#                if data:
+#                    print(thread_id, self.buffers, data)
 
                 return data
 
@@ -257,16 +253,21 @@ class Connection(object):
         crcgood = False
         if PROTOCOL == 'ASCII':
             # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
-            while (time.time() - stime < TIMEOUT) and (not mstring.endswith('\r\n')):
+            while ( ( ((time.time() - stime < TIMEOUT + 1) and mstring) or
+                      ((time.time() - stime < TIMEOUT) and not mstring) ) and
+                    (not mstring.endswith('\r\n')) ):
                 try:
                     reply = self._read(1).decode('ascii')
                     if (not mstring) and reply != ':':   # Unexpected first character, ignore it and keep reading
                         continue
                     mstring += reply
+                except UnicodeDecodeError:
+                    pass  # Ignore non-ascii characters
                 except:
                     logger.exception('Exception in sock.recv()')
                     raise
-            if len(mstring) > 3:
+
+            if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
                 try:
                     replist = from_ascii(mstring[1:-2])
                 except ValueError:   # Non ASCII-hex characters in reply
@@ -275,6 +276,9 @@ class Connection(object):
                 if getcrc(message=replist[:-1]) == [replist[-1],]:
                     crcgood = True
                     datalist = replist[:-1]
+            elif mstring:
+                logger.warning('Packet fragment received by send_as_master(): %s' % mstring)
+
         elif PROTOCOL == 'RTU':
             # Wait until the timeout trips, or until we have a packet with a valid CRC checksum
             while (time.time() - stime < TIMEOUT) and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
@@ -352,19 +356,25 @@ class Connection(object):
             if PROTOCOL == 'ASCII':
                 # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
                 while ( ( ((time.time() < (start_time + maxtime + 1)) and mstring) or
-                          ((time.time() < (start_time + maxtime)) and not mstring)) and
-                        (not mstring.endswith('\r\n') ) ):
+                          ((time.time() < (start_time + maxtime)) and not mstring) ) and
+                        (not mstring.endswith('\r\n')) ):
                     try:
                         reply = self._read(1).decode('ascii')
                         if (not mstring) and reply != ':':  # Unexpected first character, ignore it and keep reading
                             continue
                         mstring += reply
+                    except UnicodeDecodeError:
+                        pass   # Ignore non-ascii characters
                     except:
                         logger.exception('Exception in sock.recv()')
                         return set(), set()
 
                 if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
-                    replist = from_ascii(mstring[1:-2])
+                    try:
+                        replist = from_ascii(mstring[1:-2])
+                    except ValueError:  # Non ASCII-hex characters in reply
+                        logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
+                        raise IOError
                     if getcrc(message=replist[:-1]) == [replist[-1],]:
                         crcgood = True
                         msglist = replist[:-1]
@@ -406,7 +416,7 @@ class Connection(object):
 
             # Handle the packet contents here
             if msglist[0] != listen_address:
-                logger.info('Packet received, but it was addressed to station %d' % msglist[0])
+                logger.info('Packet received by %d, but it was addressed to station %d' % (listen_address, msglist[0]))
                 continue
 
             if msglist[1] == 0x03:   # Reading one or more registers
