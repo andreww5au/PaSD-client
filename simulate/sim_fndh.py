@@ -244,6 +244,8 @@ class SimFNDH(fndh.FNDH):
 
             self.loophook()
 
+        logger.info('Ending listen_loop() in SimFNDH')
+
     def sim_loop(self):
         """
         Runs continuously, simulating hardware processes independent of the communications packet handler
@@ -269,6 +271,9 @@ class SimFNDH(fndh.FNDH):
                     port.system_online = True
 
             time.sleep(0.5)
+
+        logger.info('Ending sim_loop() in SimFNDH')
+
 
 """
 Use as 'simulate.py fndh', or:

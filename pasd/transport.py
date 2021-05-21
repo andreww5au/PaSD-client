@@ -414,12 +414,12 @@ class Connection(object):
                 logger.warning('Packet Fragment received: %s' % msglist)
                 time.sleep(0.2)
                 self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
-                continue    # Discard this packet fragment, keep waiting for a new valid packet
+                return set(), set()    # Discard this packet fragment, return control to the caller
 
             # Handle the packet contents here
             if msglist[0] != listen_address:
                 logger.info('Packet received by %d, but it was addressed to station %d' % (listen_address, msglist[0]))
-                continue
+                return set(), set()    # Discard this packet, return control to the caller
 
             if msglist[1] == 0x03:   # Reading one or more registers
                 regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
@@ -438,7 +438,7 @@ class Connection(object):
                     replylist = [listen_address, 0x83, 0x02]  # 0x02 is 'Illegal Data Address'
                     self._send_reply(replylist)
                     logger.error('Reading unknown register not allowed, returned exception packet %s' % (replylist,))
-                    continue
+                    return set(), set()    # Discard this packet, return control to the caller
                 self._send_reply(replylist)
                 return read_set, set()
             elif msglist[1] == 0x06:  # Writing a single register
@@ -446,17 +446,22 @@ class Connection(object):
                 value = msglist[4] * 256 + msglist[5]
                 if regnum in slave_registers:
                     slave_registers[regnum] = value
-                    replylist = msglist   # For success, reply with the same packet
                 else:
                     replylist = [listen_address, 0x86, 0x02]   # 0x02 is 'Illegal Data Address'
                     logger.error('Writing register %d not allowed, returned exception packet %s.' % (regnum, replylist))
+                    self._send_reply(replylist)
+                    return set(), set()    # Return, indicating that the packet did nothing
+
                 if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
                     slave_registers[regnum] = registers_backup[regnum]   # Put back the original contents of that register
                     replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
                     logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
-                else:
                     self._send_reply(replylist)
+                    return set(), set()  # Return, indicating that the packet did nothing
+                else:
+                    self._send_reply(msglist)    # For success, reply with the same packet
                     return set(), {regnum}
+
             elif msglist[1] == 0x10:  # Writing multiple registers
                 regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
                 numreg = msglist[4] * 256 + msglist[5]
@@ -475,6 +480,7 @@ class Connection(object):
                         bytelist = bytelist[2:]   # Use, then pop off, the first two bytes
                         slave_registers[r] = value
                         written_set.add(r)
+
                 if write_error:
                     for r2 in range(regnum, regnum + numreg):
                         if r2 in slave_registers:
@@ -482,7 +488,7 @@ class Connection(object):
                     replylist = [listen_address, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
                     self._send_reply(replylist)
                     logger.error('Writing unknown register/s not allowed, returned exception packet %s.' % (replylist,))
-                    continue
+                    return set(), set()    # Return, indicating that the packet did nothing
 
                 if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
                     for r in range(regnum, regnum + numreg):
@@ -490,6 +496,7 @@ class Connection(object):
                     replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
                     self._send_reply(replylist)
                     logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
+                    return set(), set()  # Return, indicating that the packet did nothing
                 else:
                     replylist = [listen_address, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
                     self._send_reply(replylist)
@@ -498,6 +505,7 @@ class Connection(object):
                 logger.error('Received modbus packet for function %d - not supported.' % msglist[1])
                 replylist = [listen_address, msglist[1] + 0x80, 0x01]
                 self._send_reply(replylist)
+                return set(), set()  # Return, indicating that the packet did nothing
 
         return set(), set()
 
