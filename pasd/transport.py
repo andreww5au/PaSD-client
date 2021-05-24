@@ -279,9 +279,9 @@ class Connection(object):
                     crcgood = True
                     datalist = replist[:-1]
             elif mstring:
-                logger.warning('Packet fragment received by send_as_master() after %f: %s' % (mstring, time.time() - stime))
+                logger.warning('Packet fragment received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
             else:
-                logger.warning('No data received by send_as_master() after %f: %s' % (mstring, time.time() - stime))
+                logger.warning('No data received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
 
         elif PROTOCOL == 'RTU':
             # Wait until the timeout trips, or until we have a packet with a valid CRC checksum
@@ -317,15 +317,15 @@ class Connection(object):
         logger.debug('_send_reply: %s' % message)
         self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
         fullmessage = message + getcrc(message)
-        time.sleep(PACKET_WINDOW_TIME)
         if PROTOCOL == 'ASCII':
             self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
         elif PROTOCOL == 'RTU':
+            time.sleep(PACKET_WINDOW_TIME)
             self._write(bytes(fullmessage))
+            time.sleep(PACKET_WINDOW_TIME)
         else:
             logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
             raise ValueError
-        time.sleep(PACKET_WINDOW_TIME)
 
     def listen_for_packet(self, listen_address, slave_registers, maxtime=10.0, validation_function=dummy_validate):
         """
