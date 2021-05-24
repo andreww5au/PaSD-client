@@ -236,16 +236,15 @@ class Connection(object):
         self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
         logger.debug('_send_as_master(): %s' % message)
         fullmessage = message + getcrc(message)
-        time.sleep(PACKET_WINDOW_TIME)
         if PROTOCOL == 'ASCII':
             self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
         elif PROTOCOL == 'RTU':
+            time.sleep(PACKET_WINDOW_TIME)
             self._write(bytes(fullmessage))
+            time.sleep(PACKET_WINDOW_TIME)
         else:
             logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
             raise ValueError
-
-        time.sleep(PACKET_WINDOW_TIME)
 
         replist = []  # Entire message, including CRC, as a list of integers
         datalist = []  # Message without CRC byte/s
@@ -260,9 +259,11 @@ class Connection(object):
                 try:
                     reply = self._read(1).decode('ascii')
                     if (not mstring) and reply != ':':   # Unexpected first character, ignore it and keep reading
+                        print('?"%s"' % reply, end=' ')
                         continue
                     mstring += reply
                 except UnicodeDecodeError:
+                    print('!"?"', end=' ')
                     pass  # Ignore non-ascii characters
                 except:
                     logger.exception('Exception in sock.recv()')
@@ -278,7 +279,9 @@ class Connection(object):
                     crcgood = True
                     datalist = replist[:-1]
             elif mstring:
-                logger.warning('Packet fragment received by send_as_master(): %s' % mstring)
+                logger.warning('Packet fragment received by send_as_master() after %f: %s' % (mstring, time.time() - stime))
+            else:
+                logger.warning('No data received by send_as_master() after %f: %s' % (mstring, time.time() - stime))
 
         elif PROTOCOL == 'RTU':
             # Wait until the timeout trips, or until we have a packet with a valid CRC checksum
@@ -701,7 +704,7 @@ class Connection(object):
             except ValueError:  # Bad protocol global
                 raise
             except:  # No reply, or error from the communications layer
-                logger.error('Communications error in send_as_master, resending.')
+                logger.exception('Communications error in send_as_master, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
