@@ -30,6 +30,12 @@ TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
 COMMS_TIMEOUT = 0.001  # Low-level timeout for each call to socket.socket().recv or serial.Serial.write()
 PROTOCOL = 'ASCII'  # Either 'ASCII' (Modbus-ASCII) or 'RTU' (Modbus-RTU)
 
+# PCLOG = None
+PCLOG = open('./physical.log', 'w')
+
+# LCLOG = None
+LCLOG = open('./logical.log', 'w')
+
 
 # noinspection PyUnusedLocal
 def dummy_validate(slave_registers=None):
@@ -96,6 +102,8 @@ class Connection(object):
         a devicename is supplied).
         """
         with self.lock:
+            if PCLOG:
+                PCLOG.write('%14.3f %d: Transport opened\n' % (time.time(), threading.get_ident()))
             if self.hostname:  # We want a Socket.socket() connection
                 if self.sock is not None:
                     try:
@@ -129,7 +137,7 @@ class Connection(object):
                     logger.error("No hostname or devicename, can't open socket or TCP connection")
 
             # Clear all the shared buffers, if they exist
-            for threadid, buffer in self.buffers:
+            for threadid, buffer in self.buffers.items():
                 self.buffers[threadid] = bytes([])
 
     def _read(self, nbytes=1000):
@@ -155,6 +163,11 @@ class Connection(object):
             else:
                 remote_data = bytes([])
 
+            if remote_data and PCLOG:
+                PCLOG.write('%14.3f %d: Read "%s"\n' % (time.time(),
+                                                        threading.get_ident(),
+                                                        remote_data))
+
             if not self.multidrop:  # single remote connection only
                 return remote_data
             else:
@@ -168,8 +181,11 @@ class Connection(object):
                 # Pull the first 'nbytes' characters from the head of our local buffer
                 data = self.buffers[thread_id][:nbytes]
                 self.buffers[thread_id] = self.buffers[thread_id][nbytes:]
-#                if data:
-#                    print(thread_id, self.buffers, data)
+
+                if data and LCLOG:
+                    LCLOG.write('%14.3f %d: Read "%s"\n' % (time.time(),
+                                                            threading.get_ident(),
+                                                            data))
 
                 return data
 
@@ -202,6 +218,10 @@ class Connection(object):
             #         if tid != thread_id:   # Don't add it to my read buffer, because I sent it.
             #             self.buffers[tid] += data
 
+        if PCLOG:
+            PCLOG.write('%14.3f %d: Write "%s"\n' % (time.time(),
+                                                     threading.get_ident(),
+                                                     data))
         return None
 
     def _flush(self):
@@ -210,13 +230,21 @@ class Connection(object):
         communications error, then close and re-open the socket.
         """
         with self.lock:
+            data = b''
+            newdata = b'X'
             try:
-                while self._read(1000):
-                    pass
+                while newdata:
+                    newdata = self._read(1000)
+                    data += newdata
             except:
                 logger.exception('Exception while flushing input buffer, re-opening comms object')
                 time.sleep(1.0)
                 self._open()
+
+        if PCLOG:
+            PCLOG.write('%14.3f %d: Flushed %s."\n' % (time.time(),
+                                                       threading.get_ident(),
+                                                       data))
 
     def _send_as_master(self, message):
         """
@@ -233,7 +261,7 @@ class Connection(object):
         :param message: A list of integers, each in the range 0-255
         :return: A list of integers, each in the range 0-255, or False if no valid reply was received
         """
-        self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
+        # self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
         logger.debug('_send_as_master(): %s' % message)
         fullmessage = message + getcrc(message)
         if PROTOCOL == 'ASCII':
@@ -315,7 +343,7 @@ class Connection(object):
         :return: None
         """
         logger.debug('_send_reply: %s' % message)
-        self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
+        # self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
         fullmessage = message + getcrc(message)
         if PROTOCOL == 'ASCII':
             self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
