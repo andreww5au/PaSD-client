@@ -104,6 +104,7 @@ class Connection(object):
         with self.lock:
             if PCLOG:
                 PCLOG.write('%14.3f %d: Transport opened\n' % (time.time(), threading.get_ident()))
+                PCLOG.flush()
             if self.hostname:  # We want a Socket.socket() connection
                 if self.sock is not None:
                     try:
@@ -167,6 +168,7 @@ class Connection(object):
                 PCLOG.write('%14.3f %d: Read "%s"\n' % (time.time(),
                                                         threading.get_ident(),
                                                         remote_data))
+                PCLOG.flush()
 
             if not self.multidrop:  # single remote connection only
                 return remote_data
@@ -186,6 +188,7 @@ class Connection(object):
                     LCLOG.write('%14.3f %d: Read "%s"\n' % (time.time(),
                                                             threading.get_ident(),
                                                             data))
+                    LCLOG.flush()
 
                 return data
 
@@ -222,6 +225,8 @@ class Connection(object):
             PCLOG.write('%14.3f %d: Write "%s"\n' % (time.time(),
                                                      threading.get_ident(),
                                                      data))
+            PCLOG.flush()
+
         return None
 
     def _flush(self):
@@ -245,6 +250,7 @@ class Connection(object):
             PCLOG.write('%14.3f %d: Flushed %s."\n' % (time.time(),
                                                        threading.get_ident(),
                                                        data))
+            PCLOG.flush()
 
     def _send_as_master(self, message):
         """
