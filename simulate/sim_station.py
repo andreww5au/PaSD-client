@@ -6,6 +6,7 @@ Simulates a full PaSD station, including an FNDH and 24 SMARTboxes. Used for tes
 
 import logging
 import threading
+import time
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -24,6 +25,7 @@ class Sim_Station(sim_fndh.SimFNDH):
             port.old_power_state = False   # Used to detect PDoC port state changes
 
     def loophook(self):
+        logger.debug("%14.3f %d: start loophook" % (time.time(), threading.get_ident()))
         for portnum, port in self.ports.items():
             if port.power_state != port.old_power_state:
                 if port.power_state:
@@ -36,6 +38,7 @@ class Sim_Station(sim_fndh.SimFNDH):
                     del self.smartboxes[portnum]
                     logger.info('Killed the comms thread for smartbox %d' % portnum)
                 port.old_power_state = port.power_state
+        logger.debug("%14.3f %d: end loophook" % (time.time(), threading.get_ident()))
 
 
 """

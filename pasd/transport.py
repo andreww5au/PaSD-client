@@ -84,7 +84,8 @@ class Connection(object):
                           any traffic written by any other thread, as well as that coming in from the (optional)
                           remote device, if specified.
         """
-        self.lock = threading.RLock()
+        self.readlock = threading.RLock()
+        self.writelock = threading.RLock()
         self.sock = None  # socket.socket() object, for an ethernet-serial bridge, or None
         self.ser = None  # serial.Serial() object, for a physical serial port, or None
         self.hostname = hostname   # Hostname (or IP address as a string) of a remote ethernet-serial bridge
@@ -101,45 +102,54 @@ class Connection(object):
         Opens either a socket.socket connection (if hostname is supplied), or a serial.Serial connection (if
         a devicename is supplied).
         """
-        with self.lock:
-            if PCLOG:
-                PCLOG.write('%14.3f %d: Transport opened\n' % (time.time(), threading.get_ident()))
-                PCLOG.flush()
-            if self.hostname:  # We want a Socket.socket() connection
-                if self.sock is not None:
-                    try:
-                        self.sock.close()  # Close any existing socket, ignoring any errors (it might already be closed, or dead)
-                    except socket.error:
-                        pass
+        with self.readlock:
+            with self.writelock:
+                if PCLOG:
+                    PCLOG.write('%14.3f %d: Transport opened\n' % (time.time(), threading.get_ident()))
+                    PCLOG.flush()
 
-                try:
-                    # Open TCP connect to specified port on the specified IP address for the WIZNet board in the FNDH
-                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
-                    self.sock.settimeout(COMMS_TIMEOUT)
-                    self.sock.connect((self.hostname, self.port))
-                except socket.error:
-                    logging.exception('Error opening socket to %s' % self.hostname)
-            elif self.devicename is not None:
-                if self.ser is not None:
-                    try:
-                        self.ser.close()  # Close any existing serial connection, ignoring any errors (it might already be closed, or dead)
-                    except serial.serialutil.SerialException:
-                        pass
-
-                try:
-                    # Open serial port for the specified device and speed
-                    self.ser = serial.Serial(self.devicename, timeout=COMMS_TIMEOUT, baudrate=self.baudrate)
-                except serial.serialutil.SerialException:
-                    logging.exception('Error opening serial port to %s' % self.devicename)
-            else:
                 if self.multidrop:
-                    logger.info('No remote device, emulating a multi-drop serial bus between threads.')
+                    phys_timeout = 0
                 else:
-                    logger.error("No hostname or devicename, can't open socket or TCP connection")
+                    phys_timeout = COMMS_TIMEOUT
 
-            # Clear all the shared buffers, if they exist
-            for threadid, buffer in self.buffers.items():
-                self.buffers[threadid] = bytes([])
+                if self.hostname:  # We want a Socket.socket() connection
+                    if self.sock is not None:
+                        try:
+                            self.sock.close()  # Close any existing socket, ignoring any errors (it might already be closed, or dead)
+                        except socket.error:
+                            pass
+
+                    try:
+                        # Open TCP connect to specified port on the specified IP address for the WIZNet board in the FNDH
+                        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
+                        self.sock.connect((self.hostname, self.port))
+                        time.sleep(0.1)
+                        self.sock.settimeout(phys_timeout)
+                        time.sleep(0.1)
+                    except socket.error:
+                        logging.exception('Error opening socket to %s' % self.hostname)
+                elif self.devicename is not None:
+                    if self.ser is not None:
+                        try:
+                            self.ser.close()  # Close any existing serial connection, ignoring any errors (it might already be closed, or dead)
+                        except serial.serialutil.SerialException:
+                            pass
+
+                    try:
+                        # Open serial port for the specified device and speed
+                        self.ser = serial.Serial(self.devicename, timeout=phys_timeout, baudrate=self.baudrate)
+                    except serial.serialutil.SerialException:
+                        logging.exception('Error opening serial port to %s' % self.devicename)
+                else:
+                    if self.multidrop:
+                        logger.info('No remote device, emulating a multi-drop serial bus between threads.')
+                    else:
+                        logger.error("No hostname or devicename, can't open socket or TCP connection")
+
+                # Clear all the shared buffers, if they exist
+                for threadid, buffer in self.buffers.items():
+                    self.buffers[threadid] = bytes([])
 
     def _read(self, nbytes=1000):
         """
@@ -153,14 +163,25 @@ class Connection(object):
 
         :return: A bytes() object containing up to 'bytes' characters.
         """
-        with self.lock:
+        ltime = time.time()
+        with self.readlock:
+            gtime = time.time()
+            if gtime - ltime > 0.05:
+                logger.warning('%14.3f %d: %5.3f seconds to get readlock in _read' % (time.time(),
+                                                                                      threading.get_ident(),
+                                                                                      gtime - ltime))
+            if self.multidrop:
+                phys_bytes = 1000   # Read all we can from the physical port, and stuff it into the per-thread input buffers
+            else:
+                phys_bytes = nbytes
+
             if self.sock is not None:
                 try:
-                    remote_data = self.sock.recv(nbytes)
-                except socket.timeout:
+                    remote_data = self.sock.recv(phys_bytes)
+                except (BlockingIOError, socket.timeout):
                     remote_data = b''
             elif self.ser is not None:
-                remote_data = self.ser.read(nbytes)
+                remote_data = self.ser.read(phys_bytes)
             else:
                 remote_data = bytes([])
 
@@ -190,6 +211,11 @@ class Connection(object):
                                                             data))
                     LCLOG.flush()
 
+                etime = time.time()
+                if etime - gtime > 0.002:
+                    logger.warning('%14.3f %d: Spent %5.3f sec holding readlock in _read' % (time.time(),
+                                                                                             threading.get_ident(),
+                                                                                             etime - gtime))
                 return data
 
     def _write(self, data):
@@ -205,7 +231,13 @@ class Connection(object):
         :param data: A bytes() object containing the data to write
         :return: None
         """
-        with self.lock:
+        ltime = time.time()
+        with self.writelock:
+            gtime = time.time()
+            if gtime - ltime > 0.05:
+                logger.warning('%14.3f %d: %5.3f seconds to get lock in _write' % (time.time(),
+                                                                                   threading.get_ident(),
+                                                                                   gtime - ltime))
             if self.sock is not None:
                 self.sock.sendall(data)
             elif self.ser is not None:
@@ -234,7 +266,13 @@ class Connection(object):
         Flush the input buffer by calling self._read() until no data is returned. If there's a socket error, or a serial
         communications error, then close and re-open the socket.
         """
-        with self.lock:
+        ltime = time.time()
+        with self.readlock:
+            gtime = time.time()
+            if gtime - ltime > 0.05:
+                logger.warning('%14.3f %d: %5.3f seconds to get lock in _flush' % (time.time(),
+                                                                                   threading.get_ident(),
+                                                                                   gtime - ltime))
             data = b''
             newdata = b'X'
             try:
@@ -294,6 +332,7 @@ class Connection(object):
                     reply = self._read(1).decode('ascii')
                     if (not mstring) and reply != ':':   # Unexpected first character, ignore it and keep reading
                         print('?"%s"' % reply, end=' ')
+                        time.sleep(0.001)
                         continue
                     mstring += reply
                 except UnicodeDecodeError:
@@ -302,6 +341,7 @@ class Connection(object):
                 except:
                     logger.exception('Exception in sock.recv()')
                     raise
+                time.sleep(0.001)
 
             if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
                 try:
@@ -348,7 +388,7 @@ class Connection(object):
         :param message: A list of bytes, each in the range 0-255
         :return: None
         """
-        logger.debug('_send_reply: %s' % message)
+        logger.debug("%14.3f %d: _send_reply: %s" % (time.time(), threading.get_ident(), message))
         # self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
         fullmessage = message + getcrc(message)
         if PROTOCOL == 'ASCII':
@@ -360,6 +400,7 @@ class Connection(object):
         else:
             logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
             raise ValueError
+        logger.debug("%14.3f %d: _send_reply finished" % (time.time(), threading.get_ident()))
 
     def listen_for_packet(self, listen_address, slave_registers, maxtime=10.0, validation_function=dummy_validate):
         """
@@ -400,6 +441,7 @@ class Connection(object):
                     try:
                         reply = self._read(1).decode('ascii')
                         if (not mstring) and reply != ':':  # Unexpected first character, ignore it and keep reading
+                            time.sleep(0.001)
                             continue
                         mstring += reply
                     except UnicodeDecodeError:
@@ -407,6 +449,7 @@ class Connection(object):
                     except:
                         logger.exception('Exception in sock.recv()')
                         return set(), set()
+                    time.sleep(0.001)
 
                 if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
                     try:
@@ -445,7 +488,7 @@ class Connection(object):
             if not msglist:
                 return set(), set()
 
-            logger.debug("Received: %s=%s" % (mstring, str(msglist)))
+            logger.debug("%14.3f %d: Received: %s=%s" % (time.time(), threading.get_ident(), mstring, str(msglist)))
 
             if ((0 < len(msglist) < 3) or (not crcgood)):
                 logger.warning('Packet Fragment received: %s' % msglist)
@@ -500,6 +543,7 @@ class Connection(object):
                     return set(), {regnum}
 
             elif msglist[1] == 0x10:  # Writing multiple registers
+                logger.debug("%14.3f %d: Write-mult 1" % (time.time(), threading.get_ident()))
                 regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
                 numreg = msglist[4] * 256 + msglist[5]
                 numbytes = msglist[6]
@@ -518,6 +562,8 @@ class Connection(object):
                         slave_registers[r] = value
                         written_set.add(r)
 
+                logger.debug("%14.3f %d: Write-mult 2" % (time.time(), threading.get_ident()))
+
                 if write_error:
                     for r2 in range(regnum, regnum + numreg):
                         if r2 in slave_registers:
@@ -527,6 +573,8 @@ class Connection(object):
                     logger.error('Writing unknown register/s not allowed, returned exception packet %s.' % (replylist,))
                     return set(), set()    # Return, indicating that the packet did nothing
 
+                logger.debug("%14.3f %d: Write-mult 3" % (time.time(), threading.get_ident()))
+
                 if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
                     for r in range(regnum, regnum + numreg):
                         slave_registers[r] = registers_backup[r]
@@ -535,8 +583,10 @@ class Connection(object):
                     logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
                     return set(), set()  # Return, indicating that the packet did nothing
                 else:
+                    logger.debug("%14.3f %d: Write-mult 4" % (time.time(), threading.get_ident()))
                     replylist = [listen_address, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
                     self._send_reply(replylist)
+                    logger.debug("%14.3f %d: Write-mult 5" % (time.time(), threading.get_ident()))
                     return set(), written_set
             else:
                 logger.error('Received modbus packet for function %d - not supported.' % msglist[1])
