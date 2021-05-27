@@ -179,7 +179,7 @@ class Connection(object):
                 try:
                     remote_data = self.sock.recv(phys_bytes)
                 except (BlockingIOError, socket.timeout):
-                    remote_data = b''
+                    remote_data = bytes([])
             elif self.ser is not None:
                 remote_data = self.ser.read(phys_bytes)
             else:
@@ -330,13 +330,16 @@ class Connection(object):
                     (not mstring.endswith('\r\n')) ):
                 try:
                     reply = self._read(1).decode('ascii')
-                    if (not mstring) and reply != ':':   # Unexpected first character, ignore it and keep reading
-                        print('?"%s"' % reply, end=' ')
+                    if (not mstring) and reply and reply != ':':   # Unexpected first character, ignore it and keep reading
+                        logger.debug('%14.3f %d: ?"%s"' % (time.time(),
+                                     threading.get_ident(),
+                                     reply))
                         time.sleep(0.001)
                         continue
                     mstring += reply
                 except UnicodeDecodeError:
-                    print('!"?"', end=' ')
+                    logger.debug('%14.3f %d: ??' % (time.time(),
+                                                    threading.get_ident()))
                     pass  # Ignore non-ascii characters
                 except:
                     logger.exception('Exception in sock.recv()')
@@ -435,20 +438,26 @@ class Connection(object):
             # Wait until the timeout trips, or until we have a full packet with a valid CRC checksum
             if PROTOCOL == 'ASCII':
                 # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
-                while ( ( ((time.time() < (start_time + maxtime + 1)) and mstring) or
-                          ((time.time() < (start_time + maxtime)) and not mstring) ) and
+                while ( ( ((time.time() - start_time < maxtime + 1) and mstring) or
+                          ((time.time() - start_time < maxtime) and not mstring) ) and
                         (not mstring.endswith('\r\n')) ):
                     try:
                         reply = self._read(1).decode('ascii')
-                        if (not mstring) and reply != ':':  # Unexpected first character, ignore it and keep reading
+                        if (not mstring) and reply and reply != ':':  # Unexpected first character, ignore it and keep reading
+                            logger.debug('%14.3f %d: ?"%s"' % (time.time(),
+                                                               threading.get_ident(),
+                                                               reply))
                             time.sleep(0.001)
                             continue
                         mstring += reply
                     except UnicodeDecodeError:
+                        logger.debug('%14.3f %d: ??' % (time.time(),
+                                                        threading.get_ident()))
+                        time.sleep(0.001)
                         pass   # Ignore non-ascii characters
                     except:
                         logger.exception('Exception in sock.recv()')
-                        return set(), set()
+                        raise
                     time.sleep(0.001)
 
                 if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
@@ -466,7 +475,7 @@ class Connection(object):
                     self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                     continue  # Discard this packet fragment, keep waiting for a new valid packet
                 else:
-                    continue
+                    continue   # It's not an error to not receive a packet, because we're in slave mode
 
             elif PROTOCOL == 'RTU':
                 while (time.time() - packet_start_time) < TIMEOUT and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
