@@ -113,31 +113,22 @@ class Connection(object):
                 else:
                     phys_timeout = COMMS_TIMEOUT
 
-                if self.hostname:  # We want a Socket.socket() connection
-                    if self.sock is not None:
-                        try:
-                            self.sock.close()  # Close any existing socket, ignoring any errors (it might already be closed, or dead)
-                        except socket.error:
-                            pass
-
+                if self.ser is not None:
                     try:
-                        # Open TCP connect to specified port on the specified IP address for the WIZNet board in the FNDH
-                        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
-                        self.sock.connect((self.hostname, self.port))
-                        time.sleep(0.1)
-                        self.sock.settimeout(phys_timeout)
-                        time.sleep(0.1)
+                        self.ser.close()  # Close any existing socket, ignoring any errors (it might already be closed, or dead)
                     except socket.error:
+                        pass
+
+                if self.hostname:  # We want a Socket.socket() connection
+                    try:
+                        # Open a socket to the ethernet-serial converter
+                        self.ser = serial.serial_for_url('socket://%s:%d' % (self.hostname, self.port))
+                        self.ser.timeout = phys_timeout
+                    except serial.serialutil.SerialException:
                         logging.exception('Error opening socket to %s' % self.hostname)
                 elif self.devicename is not None:
-                    if self.ser is not None:
-                        try:
-                            self.ser.close()  # Close any existing serial connection, ignoring any errors (it might already be closed, or dead)
-                        except serial.serialutil.SerialException:
-                            pass
-
                     try:
-                        # Open serial port for the specified device and speed
+                        # Open physical serial port for the specified device and speed
                         self.ser = serial.Serial(self.devicename, timeout=phys_timeout, baudrate=self.baudrate)
                     except serial.serialutil.SerialException:
                         logging.exception('Error opening serial port to %s' % self.devicename)
@@ -151,17 +142,25 @@ class Connection(object):
                 for threadid, buffer in self.buffers.items():
                     self.buffers[threadid] = bytes([])
 
-    def _read(self, nbytes=1000):
+    def _read(self, until=None, nbytes=None):
         """
-        Accepts the number of bytes to read, and returns that many bytes of data.
+        Accepts the number of bytes to read, or an end of packet sequence, and returns that many bytes of data.
+
+        This function will always return almost immediately (after one physical layer timeout - COMMS_TIMOUT, typically
+        1 ms. It will return some number of bytes, up to nbytes (if provided), or up to and including the 'until'
+        sequence (if provided), if they are available in the buffer. It will never return more than 'nbytes' bytes,
+        or past the 'until' sequence, if either are provided. If neither are provided, it will return all of the bytes
+        available right now in the input buffer.
 
         If multidrop is False, this simply calls self.sock.recv(bytes) or self.ser.read(nbytes), and returns the result.
 
-        If multidrop is True, when any thread calls ._read(), the specified number of bytes is read from the remote
-        device and appended to the input buffers for all threads. Then the first 'nbytes' of characters are removed
+        If multidrop is True, when any thread calls ._read(), all data currently in the hardware buffer is read from the
+        remote device and appended to the input buffers for all threads. Then the requested characters are removed
         from that thread's input buffer, and returned.
 
-        :return: A bytes() object containing up to 'bytes' characters.
+        :param until: A bytes() object containing one or more bytes to read up-to (and including)
+        :param nbytes: Maximum number of bytes to return.
+        :return: A bytes() object containing up to 'bytes' characters, or up to and including the 'until' pattern.
         """
         ltime = time.time()
         with self.readlock:
@@ -175,12 +174,7 @@ class Connection(object):
             else:
                 phys_bytes = nbytes
 
-            if self.sock is not None:
-                try:
-                    remote_data = self.sock.recv(phys_bytes)
-                except (BlockingIOError, socket.timeout):
-                    remote_data = bytes([])
-            elif self.ser is not None:
+            if self.ser is not None:
                 remote_data = self.ser.read(phys_bytes)
             else:
                 remote_data = bytes([])
@@ -238,9 +232,7 @@ class Connection(object):
                 logger.warning('%14.3f %d: %5.3f seconds to get lock in _write' % (time.time(),
                                                                                    threading.get_ident(),
                                                                                    gtime - ltime))
-            if self.sock is not None:
-                self.sock.sendall(data)
-            elif self.ser is not None:
+            if self.ser is not None:
                 self.ser.write(data)
 
             # Commented out - we don't share written data with other threads, because smartboxes and the FNDH can't talk to each other
