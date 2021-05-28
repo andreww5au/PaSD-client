@@ -172,7 +172,7 @@ class Connection(object):
                 if self.multidrop:
                     remote_data = self.ser.read(1000)
                 else:
-                    remote_data = self.ser.read_until(terminator=until, size=nbytes)
+                    remote_data = self.ser.read_until(expected=until, size=nbytes)
             else:
                 remote_data = bytes([])
 
