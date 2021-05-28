@@ -172,7 +172,10 @@ class Connection(object):
                 if self.multidrop:
                     remote_data = self.ser.read(1000)
                 else:
-                    remote_data = self.ser.read_until(expected=until, size=nbytes)
+                    if until:
+                        remote_data = self.ser.read_until(expected=until, size=nbytes)
+                    else:
+                        remote_data = self.ser.read(size=nbytes)
             else:
                 remote_data = bytes([])
 
@@ -320,7 +323,7 @@ class Connection(object):
                 (not mstring.endswith('\r\n')) ):
             try:
                 reply = self._read(until=b'\r\n', nbytes=1000).decode('ascii')
-                if (not mstring) and reply and reply != ':':   # Unexpected first character, ignore it and keep reading
+                if (not mstring) and reply and not (reply.startswith(':')):   # Unexpected first character, ignore it and keep reading
                     logger.debug('%14.3f %d: ?"%s"' % (time.time(),
                                  threading.get_ident(),
                                  reply))
@@ -405,7 +408,7 @@ class Connection(object):
                     (not mstring.endswith('\r\n')) ):
                 try:
                     reply = self._read(until=b'\r\n', nbytes=1000).decode('ascii')
-                    if (not mstring) and reply and reply != ':':  # Unexpected first character, ignore it and keep reading
+                    if (not mstring) and reply and not (reply.startswith(':')):  # Unexpected first character, ignore it and keep reading
                         logger.debug('%14.3f %d: ?"%s"' % (time.time(),
                                                            threading.get_ident(),
                                                            reply))
