@@ -21,7 +21,7 @@ if __name__ == '__main__':
                         help='Serial port device name, eg /dev/ttyS0 or COM6')
     parser.add_argument('--multidrop', dest='multidrop', action='store_true', default=False,
                         help='Open connection in multidrop mode, so you can attach extra devices in "python -i ..." mode')
-    parser.add_argument('--address', dest='address', default=1,
+    parser.add_argument('--address', dest='address', default=None,
                         help='Modbus address (ignored when talking to an entire station)')
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
@@ -41,26 +41,32 @@ if __name__ == '__main__':
     mccs.logger.level = loglevel
 
     if args.task.upper() == 'SMARTBOX':
-        s = smartbox.SMARTbox(conn=conn, modbus_address=args.address)
-        print('Polling SMARTbox as "s" on address %d.' % args.address)
+        if args.address is None:
+            args.address = 1
+        s = smartbox.SMARTbox(conn=conn, modbus_address=int(args.address))
+        print('Polling SMARTbox as "s" on address %d.' % int(args.address))
         s.poll_data()
-        print('Configuring SMARTbox as "s" on address %d.' % args.address)
+        print('Configuring SMARTbox as "s" on address %d.' % int(args.address))
         s.configure()
     elif args.task.upper() == 'FNDH':
-        f = fndh.FNDH(conn=conn, modbus_address=args.address)
-        print('Polling FNDH as "f" on address %d.' % args.address)
+        if args.address is None:
+            args.address = 31
+        f = fndh.FNDH(conn=conn, modbus_address=int(args.address))
+        print('Polling FNDH as "f" on address %d.' % int(args.address))
         f.poll_data()
-        print('Configuring all-off on FNDH as "f" on address %d.' % args.address)
+        print('Configuring all-off on FNDH as "f" on address %d.' % int(args.address))
         f.configure_all_off()
-        print('Final configuring FNDH as "f" on address %d.' % args.address)
+        print('Final configuring FNDH as "f" on address %d.' % int(args.address))
         f.configure_final()
     elif args.task.upper() == 'STATION':
         s = station.Station(conn=conn, station_id=1)
         print('Starting up entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
         s.startup()
     elif args.task.upper() == 'MCCS':
-        m = mccs.MCCS(conn=conn, modbus_address=args.address)
-        print('Reading antenna configuration from MCCS as "m" on address %d.' % args.address)
+        if args.address is None:
+            args.address = 99
+        m = mccs.MCCS(conn=conn, modbus_address=int(args.address))
+        print('Reading antenna configuration from MCCS as "m" on address %d.' % int(args.address))
         m.read_antennae()
     else:
         print('Task must be one of smartbox, fndh, station or mccs - not %s. Exiting.' % args.task)

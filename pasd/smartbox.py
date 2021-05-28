@@ -570,7 +570,7 @@ class SMARTbox(transport.ModbusDevice):
         self.pcbrv = valuelist[1][0] * 256 + valuelist[1][1]
         self.register_map = SMARTBOX_REGISTERS[self.mbrv]
         self.codes = SMARTBOX_CODES[self.mbrv]
-        self.uptime = valuelist[self.register_map['SYS_UPTIME'][0] - 1][0] * 256 + valuelist[self.register_map['SYS_UPTIME'][0] - 1][1]
+        self.uptime = valuelist[self.register_map['POLL']['SYS_UPTIME'][0] - 1][0] * 256 + valuelist[self.register_map['POLL']['SYS_UPTIME'][0] - 1][1]
         return self.uptime
 
     def write_thresholds(self):

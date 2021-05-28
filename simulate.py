@@ -46,25 +46,27 @@ if __name__ == '__main__':
     if args.task.upper() == 'SMARTBOX':
         if args.address is None:
             args.address = 1
-        s = sim_smartbox.SimSMARTbox(conn=conn, modbus_address=args.address)
+        s = sim_smartbox.SimSMARTbox(conn=conn, modbus_address=int(args.address))
         simthread = threading.Thread(target=s.sim_loop, daemon=False)
-        print('Simulating SMARTbox as "s" on address %d.' % args.address)
+        print('Simulating SMARTbox as "s" on address %d.' % int(args.address))
     elif args.task.upper() == 'FNDH':
         if args.address is None:
             args.address = 31
-        f = sim_fndh.SimFNDH(conn=conn, modbus_address=args.address)
+        f = sim_fndh.SimFNDH(conn=conn, modbus_address=int(args.address))
         simthread = threading.Thread(target=f.sim_loop, daemon=False)
         print('Simulating FNDH as "f" on address %d.' % args.address)
     elif args.task.upper() == 'STATION':
+        if args.address is None:
+            args.address = 31
         s = sim_station.Sim_Station(conn=conn, modbus_address=31)
         simthread = threading.Thread(target=s.sim_loop, daemon=False)
         print('Simulating entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
     elif args.task.upper() == 'MCCS':
         if args.address is None:
             args.address = 99
-        s = station.Station(conn=conn, station_id=args.address)
+        s = station.Station(conn=conn, station_id=int(args.address))
         simthread = threading.Thread(target=s.listen, kwargs={'maxtime':999999})
-        print('Simulating the MCCS as "s" in slave mode, listening on address %d' % args.address)
+        print('Simulating the MCCS as "s" in slave mode, listening on address %d' % int(args.address))
     else:
         print('Task must be one of smartbox, fndh, station or mccs - not %s. Exiting.' % args.task)
         sys.exit(-1)
