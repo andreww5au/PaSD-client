@@ -28,7 +28,6 @@ logger.level = logging.DEBUG
 PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
 TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
 COMMS_TIMEOUT = 0.001  # Low-level timeout for each call to socket.socket().recv or serial.Serial.write()
-PROTOCOL = 'ASCII'  # Either 'ASCII' (Modbus-ASCII) or 'RTU' (Modbus-RTU)
 
 # PCLOG = None
 PCLOG = open('./physical.log', 'w')
@@ -142,15 +141,15 @@ class Connection(object):
                 for threadid, buffer in self.buffers.items():
                     self.buffers[threadid] = bytes([])
 
-    def _read(self, until=None, nbytes=None):
+    def _read(self, until=None, nbytes=1000):
         """
         Accepts the number of bytes to read, or an end of packet sequence, and returns that many bytes of data.
 
         This function will always return almost immediately (after one physical layer timeout - COMMS_TIMOUT, typically
         1 ms. It will return some number of bytes, up to nbytes (if provided), or up to and including the 'until'
         sequence (if provided), if they are available in the buffer. It will never return more than 'nbytes' bytes,
-        or past the 'until' sequence, if either are provided. If neither are provided, it will return all of the bytes
-        available right now in the input buffer.
+        or past the 'until' sequence, if either are provided. If neither are provided, it will return all the bytes
+        available right now in the input buffer (up to a maximum of 1000 bytes).
 
         If multidrop is False, this simply calls self.sock.recv(bytes) or self.ser.read(nbytes), and returns the result.
 
@@ -169,13 +168,11 @@ class Connection(object):
                 logger.warning('%14.3f %d: %5.3f seconds to get readlock in _read' % (time.time(),
                                                                                       threading.get_ident(),
                                                                                       gtime - ltime))
-            if self.multidrop:
-                phys_bytes = 1000   # Read all we can from the physical port, and stuff it into the per-thread input buffers
-            else:
-                phys_bytes = nbytes
-
             if self.ser is not None:
-                remote_data = self.ser.read(phys_bytes)
+                if self.multidrop:
+                    remote_data = self.ser.read(1000)
+                else:
+                    remote_data = self.ser.read_until(terminator=until, size=nbytes)
             else:
                 remote_data = bytes([])
 
@@ -195,9 +192,18 @@ class Connection(object):
                 for tid in self.buffers.keys():
                     self.buffers[tid] += remote_data
 
-                # Pull the first 'nbytes' characters from the head of our local buffer
-                data = self.buffers[thread_id][:nbytes]
-                self.buffers[thread_id] = self.buffers[thread_id][nbytes:]
+                if until:   # Return up to and including the pattern given, or nbytes, whichever is smaller
+                    upos = self.buffers[thread_id].find(until)
+                    if upos >= 0:
+                        returnto = min(nbytes, upos + len(until))
+                    else:
+                        returnto = nbytes
+                    data = self.buffers[thread_id][:returnto]
+                    self.buffers[thread_id] = self.buffers[thread_id][returnto:]
+                else:
+                    # Pull the first 'nbytes' characters from the head of our local buffer
+                    data = self.buffers[thread_id][:nbytes]
+                    self.buffers[thread_id] = self.buffers[thread_id][nbytes:]
 
                 if data and LCLOG:
                     LCLOG.write('%14.3f %d: Read "%s"\n' % (time.time(),
@@ -269,7 +275,7 @@ class Connection(object):
             newdata = b'X'
             try:
                 while newdata:
-                    newdata = self._read(1000)
+                    newdata = self._read(nbytes=1000)
                     data += newdata
             except:
                 logger.exception('Exception while flushing input buffer, re-opening comms object')
@@ -300,73 +306,49 @@ class Connection(object):
         # self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
         logger.debug('_send_as_master(): %s' % message)
         fullmessage = message + getcrc(message)
-        if PROTOCOL == 'ASCII':
-            self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
-        elif PROTOCOL == 'RTU':
-            time.sleep(PACKET_WINDOW_TIME)
-            self._write(bytes(fullmessage))
-            time.sleep(PACKET_WINDOW_TIME)
-        else:
-            logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
-            raise ValueError
+        self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
 
         replist = []  # Entire message, including CRC, as a list of integers
         datalist = []  # Message without CRC byte/s
         stime = time.time()
         mstring = ''   # ASCII hex packet contents, in ASCII protocol. Empty string otherwise
         crcgood = False
-        if PROTOCOL == 'ASCII':
-            # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
-            while ( ( ((time.time() - stime < TIMEOUT + 1) and mstring) or
-                      ((time.time() - stime < TIMEOUT) and not mstring) ) and
-                    (not mstring.endswith('\r\n')) ):
-                try:
-                    reply = self._read(1).decode('ascii')
-                    if (not mstring) and reply and reply != ':':   # Unexpected first character, ignore it and keep reading
-                        logger.debug('%14.3f %d: ?"%s"' % (time.time(),
-                                     threading.get_ident(),
-                                     reply))
-                        time.sleep(0.001)
-                        continue
-                    mstring += reply
-                except UnicodeDecodeError:
-                    logger.debug('%14.3f %d: ??' % (time.time(),
-                                                    threading.get_ident()))
-                    pass  # Ignore non-ascii characters
-                except:
-                    logger.exception('Exception in sock.recv()')
-                    raise
-                time.sleep(0.001)
 
-            if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
-                try:
-                    replist = from_ascii(mstring[1:-2])
-                except ValueError:   # Non ASCII-hex characters in reply
-                    logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
-                    raise IOError
-                if getcrc(message=replist[:-1]) == [replist[-1],]:
-                    crcgood = True
-                    datalist = replist[:-1]
-            elif mstring:
-                logger.warning('Packet fragment received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
-            else:
-                logger.warning('No data received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
+        # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
+        while ( ( ((time.time() - stime < TIMEOUT + 1) and mstring) or
+                  ((time.time() - stime < TIMEOUT) and not mstring) ) and
+                (not mstring.endswith('\r\n')) ):
+            try:
+                reply = self._read(until=b'\r\n', nbytes=1000).decode('ascii')
+                if (not mstring) and reply and reply != ':':   # Unexpected first character, ignore it and keep reading
+                    logger.debug('%14.3f %d: ?"%s"' % (time.time(),
+                                 threading.get_ident(),
+                                 reply))
+                    time.sleep(0.001)
+                    continue
+                mstring += reply
+            except UnicodeDecodeError:
+                logger.debug('%14.3f %d: ??' % (time.time(),
+                                                threading.get_ident()))
+                pass  # Ignore non-ascii characters
+            except:
+                logger.exception('Exception in sock.recv()')
+                raise
+            time.sleep(0.001)
 
-        elif PROTOCOL == 'RTU':
-            # Wait until the timeout trips, or until we have a packet with a valid CRC checksum
-            while (time.time() - stime < TIMEOUT) and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
-                try:
-                    reply = self._read(2)
-                    replist += list(map(int, reply))
-                except:
-                    logger.exception('Exception in sock.recv()')
-                    raise
-            if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
+        if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
+            try:
+                replist = from_ascii(mstring[1:-2])
+            except ValueError:   # Non ASCII-hex characters in reply
+                logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
+                raise IOError
+            if getcrc(message=replist[:-1]) == [replist[-1],]:
                 crcgood = True
-                datalist = replist[:-2]
+                datalist = replist[:-1]
+        elif mstring:
+            logger.warning('Packet fragment received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
         else:
-            logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
-            raise ValueError
+            logger.warning('No data received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
 
         logger.debug("Recvd: %s/%s" % (mstring, str(replist)))
         if crcgood:
@@ -386,15 +368,7 @@ class Connection(object):
         logger.debug("%14.3f %d: _send_reply: %s" % (time.time(), threading.get_ident(), message))
         # self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
         fullmessage = message + getcrc(message)
-        if PROTOCOL == 'ASCII':
-            self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
-        elif PROTOCOL == 'RTU':
-            time.sleep(PACKET_WINDOW_TIME)
-            self._write(bytes(fullmessage))
-            time.sleep(PACKET_WINDOW_TIME)
-        else:
-            logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
-            raise ValueError
+        self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
         logger.debug("%14.3f %d: _send_reply finished" % (time.time(), threading.get_ident()))
 
     def listen_for_packet(self, listen_address, slave_registers, maxtime=10.0, validation_function=dummy_validate):
@@ -422,69 +396,48 @@ class Connection(object):
         start_time = time.time()
 
         while time.time() < (start_time + maxtime):  # Wait for a good packet until we run out of time
-            replist = []  # Entire message, including CRC, as a list of integers
             msglist = []  # Message without CRC byte/s
             mstring = ''  # ASCII hex packet contents, in ASCII protocol. Empty string otherwise
             crcgood = False
-            packet_start_time = time.time()  # When we started waiting for this packet
-            # Wait until the timeout trips, or until we have a full packet with a valid CRC checksum
-            if PROTOCOL == 'ASCII':
-                # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
-                while ( ( ((time.time() - start_time < maxtime + 1) and mstring) or
-                          ((time.time() - start_time < maxtime) and not mstring) ) and
-                        (not mstring.endswith('\r\n')) ):
-                    try:
-                        reply = self._read(1).decode('ascii')
-                        if (not mstring) and reply and reply != ':':  # Unexpected first character, ignore it and keep reading
-                            logger.debug('%14.3f %d: ?"%s"' % (time.time(),
-                                                               threading.get_ident(),
-                                                               reply))
-                            time.sleep(0.001)
-                            continue
-                        mstring += reply
-                    except UnicodeDecodeError:
-                        logger.debug('%14.3f %d: ??' % (time.time(),
-                                                        threading.get_ident()))
+            # Wait until the timeout trips, or until we have a packet delimited by ':' and '\r\n'
+            while ( ( ((time.time() - start_time < maxtime + 1) and mstring) or
+                      ((time.time() - start_time < maxtime) and not mstring) ) and
+                    (not mstring.endswith('\r\n')) ):
+                try:
+                    reply = self._read(until=b'\r\n', nbytes=1000).decode('ascii')
+                    if (not mstring) and reply and reply != ':':  # Unexpected first character, ignore it and keep reading
+                        logger.debug('%14.3f %d: ?"%s"' % (time.time(),
+                                                           threading.get_ident(),
+                                                           reply))
                         time.sleep(0.001)
-                        pass   # Ignore non-ascii characters
-                    except:
-                        logger.exception('Exception in sock.recv()')
-                        raise
+                        continue
+                    mstring += reply
+                except UnicodeDecodeError:
+                    logger.debug('%14.3f %d: ??' % (time.time(),
+                                                    threading.get_ident()))
                     time.sleep(0.001)
+                    pass   # Ignore non-ascii characters
+                except:
+                    logger.exception('Exception in sock.recv()')
+                    raise
+                time.sleep(0.001)
 
-                if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
-                    try:
-                        replist = from_ascii(mstring[1:-2])
-                    except ValueError:  # Non ASCII-hex characters in reply
-                        logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
-                        raise IOError
-                    if getcrc(message=replist[:-1]) == [replist[-1],]:
-                        crcgood = True
-                        msglist = replist[:-1]
-                elif mstring:
-                    logger.warning('Packet fragment received: %s' % mstring)
-                    time.sleep(0.2)
-                    self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
-                    continue  # Discard this packet fragment, keep waiting for a new valid packet
-                else:
-                    continue   # It's not an error to not receive a packet, because we're in slave mode
-
-            elif PROTOCOL == 'RTU':
-                while (time.time() - packet_start_time) < TIMEOUT and ((len(replist) < 4) or (getcrc(message=replist[:-2]) != replist[-2:])):
-                    try:
-                        data = self._read(2)
-                        replist += list(map(int, data))
-                        if len(replist) == 2:
-                            packet_start_time = time.time()
-                    except:
-                        logger.exception('Exception in sock.recv()')
-                        return set(), set()
-                if (len(replist) >= 4) and getcrc(message=replist[:-2]) == replist[-2:]:
+            if len(mstring) > 3 and mstring.startswith(':') and mstring.endswith('\r\n'):
+                try:
+                    replist = from_ascii(mstring[1:-2])
+                except ValueError:  # Non ASCII-hex characters in reply
+                    logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
+                    raise IOError
+                if getcrc(message=replist[:-1]) == [replist[-1],]:
                     crcgood = True
-                    msglist = replist[:-2]
+                    msglist = replist[:-1]
+            elif mstring:
+                logger.warning('Packet fragment received: %s' % mstring)
+                time.sleep(0.2)
+                self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
+                continue  # Discard this packet fragment, keep waiting for a new valid packet
             else:
-                logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
-                raise ValueError
+                continue   # It's not an error to not receive a packet, because we're in slave mode
 
             if not msglist:
                 return set(), set()
@@ -910,27 +863,10 @@ def getcrc(message=None):
     :param message: A list of bytes, each in the range 0-255
     :return: A list of two integers, each in the range 0-255
     """
-    if PROTOCOL == 'ASCII':
-        if not message:
-            return 0
-        lrc = (0 - sum(message)) & 0xFF   # Twos-complement of the sum of the message bytes, masked to 8 bits
-        return [lrc, ]
-    elif PROTOCOL == 'RTU':
-        if not message:
-            return 0, 0
-        crc = 0xFFFF
-
-        for byte in message:
-            crc = crc ^ byte
-            for bit in range(8):
-                b = crc & 0x0001
-                crc = (crc >> 1) & 0x7FFF
-                if b:
-                    crc = crc ^ 0xA001
-        return [(crc & 0x00FF), ((crc >> 8) & 0x00FF)]
-    else:
-        logger.error('Invalid Modbus protocol "%s"' % PROTOCOL)
-        raise ValueError
+    if not message:
+        return 0
+    lrc = (0 - sum(message)) & 0xFF   # Twos-complement of the sum of the message bytes, masked to 8 bits
+    return [lrc, ]
 
 
 def to_ascii(message=None):
