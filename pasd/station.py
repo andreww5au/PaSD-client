@@ -161,7 +161,7 @@ class Station(object):
         port_on_times = {}   # Unix timestamp at which each port number was turned on
         for portnum in range(1, 29):
             self.fndh.ports[portnum].desire_enabled_online = True
-            logger.debug('Turning on PDoC port %d' % portnum)
+            logger.info('Turning on PDoC port %d' % portnum)
             ok = self.fndh.write_portconfig()
             port_on_times[portnum] = int(time.time())
             if not ok:

@@ -455,7 +455,10 @@ class Connection(object):
 
             # Handle the packet contents here
             if msglist[0] != listen_address:
-                logger.info('Packet received by %d, but it was addressed to station %d' % (listen_address, msglist[0]))
+                if self.multidrop:
+                    logger.debug('Packet received by %d, but it was addressed to station %d' % (listen_address, msglist[0]))
+                else:
+                    logger.info('Packet received by %d, but it was addressed to station %d' % (listen_address, msglist[0]))
                 return set(), set()    # Discard this packet, return control to the caller
 
             if msglist[1] == 0x03:   # Reading one or more registers

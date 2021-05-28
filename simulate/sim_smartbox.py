@@ -252,11 +252,11 @@ class SimSMARTbox(smartbox.SMARTbox):
         """
         self.start_time = time.time()
 
-        logger.info('Started comms thread for FNDH')
+        logger.info('Started comms thread for Smartbox')
         listen_thread = threading.Thread(target=self.listen_loop, daemon=False)
         listen_thread.start()
 
-        logger.info('Started simulation loop for fndh')
+        logger.info('Started simulation loop for smartbox')
         while not self.wants_exit:  # Process packets until we are told to die
             self.uptime = int(time.time() - self.start_time)  # Set the current uptime value
 

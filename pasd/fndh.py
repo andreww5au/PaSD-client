@@ -414,11 +414,10 @@ class FNDH(transport.ModbusDevice):
             logger.error('No register map, call poll_data() first')
             return None
 
-        vlist = [0] * 24
+        vlist = [0] * 28
         startreg = self.register_map['POLL']['P01_STATE'][0]
-        for portnum in range(1, 13):
-            vlist[(portnum - 1) * 2] = self.ports[portnum].status_to_integer(write_state=True)
-            vlist[(portnum - 1) * 2 + 1] = self.ports[portnum].current_raw
+        for portnum in range(1, 29):
+            vlist[(portnum - 1)] = self.ports[portnum].status_to_integer(write_state=True)
 
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)

@@ -26,6 +26,7 @@ class Sim_Station(sim_fndh.SimFNDH):
 
     def loophook(self):
         logger.debug("%14.3f %d: start loophook" % (time.time(), threading.get_ident()))
+        logger.debug({pnum:(self.ports[pnum].power_state, self.ports[pnum].old_power_state) for pnum in self.ports.keys()})
         for portnum, port in self.ports.items():
             if port.power_state != port.old_power_state:
                 if port.power_state:
