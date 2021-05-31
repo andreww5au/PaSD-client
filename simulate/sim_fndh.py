@@ -10,8 +10,6 @@ import threading
 import time
 
 logging.basicConfig()
-logger = logging.getLogger()
-logger.level = logging.DEBUG
 
 from pasd import fndh
 
@@ -21,8 +19,8 @@ class SimFNDH(fndh.FNDH):
     An instance of this class simulates a single FNDH, acting as a Modbus slave and responding to 0x03, 0x06 and
     0x10 Modbus commands to read and write registers.
     """
-    def __init__(self, conn=None, modbus_address=None):
-        fndh.FNDH.__init__(self, conn=conn, modbus_address=modbus_address)
+    def __init__(self, conn=None, modbus_address=None, logger=None):
+        fndh.FNDH.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
         self.online = False   # Will be True if we've heard from the MCCS in the last 300 seconds.
         self.register_map = fndh.FNDH_REGISTERS[1]  # Assume register map version 1
         self.codes = fndh.FNDH_CODES[1]
@@ -108,7 +106,7 @@ class SimFNDH(fndh.FNDH):
         """
         while not self.wants_exit:  # Process packets until we are told to die
             # Set up the registers for the physical->smartbox/port mapping:
-            logger.debug("%14.3f %d: listen 1" % (time.time(), threading.get_ident()))
+            self.logger.debug("%14.3f %d: listen 1" % (time.time(), threading.get_ident()))
             slave_registers = {}
             self.uptime = int(time.time() - self.start_time)  # Set the current uptime value
 
@@ -153,7 +151,7 @@ class SimFNDH(fndh.FNDH):
                     pnum = int(regname[1:-6])
                     slave_registers[regnum] = self.ports[pnum].status_to_integer(write_state=True, write_to=True)
 
-            logger.debug("%14.3f %d: listen 2" % (time.time(), threading.get_ident()))
+            self.logger.debug("%14.3f %d: listen 2" % (time.time(), threading.get_ident()))
 
             for regnum in range(1001, 1033):   # Zero all the threshold registers
                 slave_registers[regnum] = 0
@@ -164,11 +162,11 @@ class SimFNDH(fndh.FNDH):
                                                                     maxtime=99999999,
                                                                     validation_function=None)
             except:
-                logger.exception('Exception in transport.listen_for_packet():')
+                self.logger.exception('Exception in transport.listen_for_packet():')
                 time.sleep(1)
                 continue
 
-            logger.debug("%14.3f %d: listen 3" % (time.time(), threading.get_ident()))
+            self.logger.debug("%14.3f %d: listen 3" % (time.time(), threading.get_ident()))
 
             if read_set or written_set:  # The MCCS has talked to us, update the last_readtime timestamp
                 self.readtime = time.time()
@@ -187,7 +185,7 @@ class SimFNDH(fndh.FNDH):
                     elif (bitstring[2:4] == '00'):
                         pass
                     else:
-                        logger.warning('Unknown desire enabled online flag: %s' % bitstring[2:4])
+                        self.logger.warning('Unknown desire enabled online flag: %s' % bitstring[2:4])
                         port.desire_enabled_online = None
 
                     # Desired state offline - R/W, write 00 if no change to current value
@@ -198,7 +196,7 @@ class SimFNDH(fndh.FNDH):
                     elif (bitstring[4:6] == '00'):
                         pass
                     else:
-                        logger.warning('Unknown desired state offline flag: %s' % bitstring[4:6])
+                        self.logger.warning('Unknown desired state offline flag: %s' % bitstring[4:6])
                         port.desire_enabled_offline = None
 
                     # Technician override - R/W, write 00 if no change to current value
@@ -214,7 +212,7 @@ class SimFNDH(fndh.FNDH):
                     else:
                         pass
 
-            logger.debug("%14.3f %d: listen 4" % (time.time(), threading.get_ident()))
+            self.logger.debug("%14.3f %d: listen 4" % (time.time(), threading.get_ident()))
 
             if self.register_map['POLL']['SYS_LIGHTS'][0] in written_set:  # Wrote to SYS_LIGHTS, so set light attributes
                 msb, lsb = divmod(slave_registers[self.register_map['POLL']['SYS_LIGHTS'][0]], 256)
@@ -249,11 +247,11 @@ class SimFNDH(fndh.FNDH):
                         port.current = 50.0
                     port.power_state = port_on
 
-            logger.debug("%14.3f %d: listen 5" % (time.time(), threading.get_ident()))
+            self.logger.debug("%14.3f %d: listen 5" % (time.time(), threading.get_ident()))
 
             self.loophook()
 
-        logger.info('Ending listen_loop() in SimFNDH')
+        self.logger.info('Ending listen_loop() in SimFNDH')
 
     def sim_loop(self):
         """
@@ -262,11 +260,11 @@ class SimFNDH(fndh.FNDH):
         """
         self.start_time = time.time()
 
-        logger.info('Started comms thread for FNDH')
+        self.logger.info('Started comms thread for FNDH')
         listen_thread = threading.Thread(target=self.listen_loop, daemon=False)
         listen_thread.start()
 
-        logger.info('Started simulation loop for fndh')
+        self.logger.info('Started simulation loop for fndh')
         while not self.wants_exit:  # Process packets until we are told to die
             self.uptime = int(time.time() - self.start_time)  # Set the current uptime value
 
@@ -281,7 +279,7 @@ class SimFNDH(fndh.FNDH):
 
             time.sleep(0.5)
 
-        logger.info('Ending sim_loop() in SimFNDH')
+        self.logger.info('Ending sim_loop() in SimFNDH')
 
 
 """
@@ -296,4 +294,3 @@ conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, u
 f = sim_fndh.SimFNDH(conn=conn, modbus_address=31)
 f.sim_loop()
 """
-

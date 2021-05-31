@@ -9,37 +9,37 @@ import threading
 import time
 
 logging.basicConfig()
-logger = logging.getLogger()
-logger.level = logging.DEBUG
 
 from simulate import sim_smartbox
 from simulate import sim_fndh
 
 
 class Sim_Station(sim_fndh.SimFNDH):
-    def __init__(self, conn=None, modbus_address=None):
-        sim_fndh.SimFNDH.__init__(self, conn=conn, modbus_address=modbus_address)
+    def __init__(self, conn=None, modbus_address=None, logger=None):
+        sim_fndh.SimFNDH.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
         self.smartboxes = {}
         self.threads = {}
         for port in self.ports.values():
             port.old_power_state = False   # Used to detect PDoC port state changes
 
     def loophook(self):
-        logger.debug("%14.3f %d: start loophook" % (time.time(), threading.get_ident()))
-        logger.debug({pnum:(self.ports[pnum].power_state, self.ports[pnum].old_power_state) for pnum in self.ports.keys()})
+        self.logger.debug("%14.3f %d: start loophook" % (time.time(), threading.get_ident()))
+        self.logger.debug({pnum:(self.ports[pnum].power_state, self.ports[pnum].old_power_state) for pnum in self.ports.keys()})
         for portnum, port in self.ports.items():
             if port.power_state != port.old_power_state:
                 if port.power_state:
-                    self.smartboxes[portnum] = sim_smartbox.SimSMARTbox(conn=self.conn, modbus_address=portnum)
+                    self.smartboxes[portnum] = sim_smartbox.SimSMARTbox(conn=self.conn,
+                                                                        modbus_address=portnum,
+                                                                        logger=logging.getLogger('SB:%d' % portnum))
                     self.threads[portnum] = threading.Thread(target=self.smartboxes[portnum].sim_loop)
                     self.threads[portnum].start()
-                    logger.info('Started a new comms thread for smartbox %d' % portnum)
+                    self.logger.info('Started a new comms thread for smartbox %d' % portnum)
                 else:
                     self.smartboxes[portnum].wants_exit = True   # Signal the comms thread on that SMARTbox to exit
                     del self.smartboxes[portnum]
-                    logger.info('Killed the comms thread for smartbox %d' % portnum)
+                    self.logger.info('Killed the comms thread for smartbox %d' % portnum)
                 port.old_power_state = port.power_state
-        logger.debug("%14.3f %d: end loophook" % (time.time(), threading.get_ident()))
+        self.logger.debug("%14.3f %d: end loophook" % (time.time(), threading.get_ident()))
 
 
 """

@@ -4,11 +4,7 @@ import argparse
 import logging
 import sys
 
-from pasd import transport
-from pasd import fndh
-from pasd import smartbox
-from pasd import station
-from sid import mccs
+LOGFILE = 'communicate.log'
 
 
 if __name__ == '__main__':
@@ -28,22 +24,31 @@ if __name__ == '__main__':
     args = parser.parse_args()
     if (args.host is None) and (args.device is None):
         args.host = '134.7.50.185'
-    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=args.multidrop)
 
     if args.debug:
         loglevel = logging.DEBUG
     else:
         loglevel = logging.INFO
-    transport.logger.level = loglevel
-    fndh.logger.level = loglevel
-    smartbox.logger.level = loglevel
-    station.logger.level = loglevel
-    mccs.logger.level = loglevel
+
+    logging.basicConfig(filename=LOGFILE,
+                        filemode='w',
+                        level=loglevel,
+                        format='%(levelname)s:%(name)s %(created)14.3f - %(message)s')
+
+    from pasd import transport
+    from pasd import fndh
+    from pasd import smartbox
+    from pasd import station
+    from sid import mccs
+
+    tlogger = logging.getLogger('T')
+    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=args.multidrop, logger=tlogger)
 
     if args.task.upper() == 'SMARTBOX':
         if args.address is None:
             args.address = 1
-        s = smartbox.SMARTbox(conn=conn, modbus_address=int(args.address))
+        slogger = logging.getLogger('SB:%d' % int(args.address))
+        s = smartbox.SMARTbox(conn=conn, modbus_address=int(args.address), logger=slogger)
         print('Polling SMARTbox as "s" on address %d.' % int(args.address))
         s.poll_data()
         print('Configuring SMARTbox as "s" on address %d.' % int(args.address))
@@ -51,7 +56,8 @@ if __name__ == '__main__':
     elif args.task.upper() == 'FNDH':
         if args.address is None:
             args.address = 31
-        f = fndh.FNDH(conn=conn, modbus_address=int(args.address))
+        flogger = logging.getLogger('FNDH:%d' % int(args.address))
+        f = fndh.FNDH(conn=conn, modbus_address=int(args.address), logger=flogger)
         print('Polling FNDH as "f" on address %d.' % int(args.address))
         f.poll_data()
         print('Configuring all-off on FNDH as "f" on address %d.' % int(args.address))
@@ -59,16 +65,17 @@ if __name__ == '__main__':
         print('Final configuring FNDH as "f" on address %d.' % int(args.address))
         f.configure_final()
     elif args.task.upper() == 'STATION':
-        s = station.Station(conn=conn, station_id=1)
+        slogger = logging.getLogger('ST')
+        s = station.Station(conn=conn, station_id=1, logger=slogger)
         print('Starting up entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
         s.startup()
     elif args.task.upper() == 'MCCS':
         if args.address is None:
             args.address = 99
-        m = mccs.MCCS(conn=conn, modbus_address=int(args.address))
+        mlogger = logging.getLogger('MCCS:%d' % int(args.address))
+        m = mccs.MCCS(conn=conn, modbus_address=int(args.address), logger=mlogger)
         print('Reading antenna configuration from MCCS as "m" on address %d.' % int(args.address))
         m.read_antennae()
     else:
         print('Task must be one of smartbox, fndh, station or mccs - not %s. Exiting.' % args.task)
         sys.exit(-1)
-

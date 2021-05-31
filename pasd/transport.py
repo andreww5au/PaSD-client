@@ -21,8 +21,6 @@ import threading
 import serial
 
 logging.basicConfig()
-logger = logging.getLogger()
-logger.level = logging.DEBUG
 
 
 PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
@@ -64,7 +62,7 @@ class Connection(object):
     And for acting as a Modbus slave, and listening for commands from a bus master device (the Technician's SID):
         listen_for_packet
     """
-    def __init__(self, hostname=None, devicename=None, port=5000, baudrate=9600, multidrop=False):
+    def __init__(self, hostname=None, devicename=None, port=5000, baudrate=9600, multidrop=False, logger=None):
         """
         Create a new instance, using either a socket connection to a serial bridge hostname, or a physical serial port,
         or neither
@@ -82,7 +80,12 @@ class Connection(object):
         :param multidrop: If True, and this connection is shared between multiple threads, each thread will read()
                           any traffic written by any other thread, as well as that coming in from the (optional)
                           remote device, if specified.
+        :param logger: A logging.Logger object to use for all log messages, or None (in which case one will be created)
         """
+        if logger is None:
+            self.logger = logging.getLogger('T')
+        else:
+            self.logger = logger
         self.readlock = threading.RLock()
         self.writelock = threading.RLock()
         self.sock = None  # socket.socket() object, for an ethernet-serial bridge, or None
@@ -133,9 +136,9 @@ class Connection(object):
                         logging.exception('Error opening serial port to %s' % self.devicename)
                 else:
                     if self.multidrop:
-                        logger.info('No remote device, emulating a multi-drop serial bus between threads.')
+                        self.logger.info('No remote device, emulating a multi-drop serial bus between threads.')
                     else:
-                        logger.error("No hostname or devicename, can't open socket or TCP connection")
+                        self.logger.error("No hostname or devicename, can't open socket or TCP connection")
 
                 # Clear all the shared buffers, if they exist
                 for threadid, buffer in self.buffers.items():
@@ -165,9 +168,9 @@ class Connection(object):
         with self.readlock:
             gtime = time.time()
             if gtime - ltime > 0.05:
-                logger.warning('%14.3f %d: %5.3f seconds to get readlock in _read' % (time.time(),
-                                                                                      threading.get_ident(),
-                                                                                      gtime - ltime))
+                self.logger.warning('%14.3f %d: %5.3f seconds to get readlock in _read' % (time.time(),
+                                                                                           threading.get_ident(),
+                                                                                           gtime - ltime))
             if self.ser is not None:
                 if self.multidrop:
                     remote_data = self.ser.read(1000)
@@ -216,9 +219,9 @@ class Connection(object):
 
                 etime = time.time()
                 if etime - gtime > 0.002:
-                    logger.warning('%14.3f %d: Spent %5.3f sec holding readlock in _read' % (time.time(),
-                                                                                             threading.get_ident(),
-                                                                                             etime - gtime))
+                    self.logger.warning('%14.3f %d: Spent %5.3f sec holding readlock in _read' % (time.time(),
+                                                                                                  threading.get_ident(),
+                                                                                                  etime - gtime))
                 return data
 
     def _write(self, data):
@@ -238,9 +241,9 @@ class Connection(object):
         with self.writelock:
             gtime = time.time()
             if gtime - ltime > 0.05:
-                logger.warning('%14.3f %d: %5.3f seconds to get lock in _write' % (time.time(),
-                                                                                   threading.get_ident(),
-                                                                                   gtime - ltime))
+                self.logger.warning('%14.3f %d: %5.3f seconds to get lock in _write' % (time.time(),
+                                                                                        threading.get_ident(),
+                                                                                        gtime - ltime))
             if self.ser is not None:
                 self.ser.write(data)
 
@@ -271,9 +274,9 @@ class Connection(object):
         with self.readlock:
             gtime = time.time()
             if gtime - ltime > 0.05:
-                logger.warning('%14.3f %d: %5.3f seconds to get lock in _flush' % (time.time(),
-                                                                                   threading.get_ident(),
-                                                                                   gtime - ltime))
+                self.logger.warning('%14.3f %d: %5.3f seconds to get lock in _flush' % (time.time(),
+                                                                                        threading.get_ident(),
+                                                                                        gtime - ltime))
             data = b''
             newdata = b'X'
             try:
@@ -281,7 +284,7 @@ class Connection(object):
                     newdata = self._read(nbytes=1000)
                     data += newdata
             except:
-                logger.exception('Exception while flushing input buffer, re-opening comms object')
+                self.logger.exception('Exception while flushing input buffer, re-opening comms object')
                 time.sleep(1.0)
                 self._open()
 
@@ -307,7 +310,7 @@ class Connection(object):
         :return: A list of integers, each in the range 0-255, or False if no valid reply was received
         """
         # self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
-        logger.debug('_send_as_master(): %s' % message)
+        self.logger.debug('_send_as_master(): %s' % message)
         fullmessage = message + getcrc(message)
         self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
 
@@ -324,18 +327,18 @@ class Connection(object):
             try:
                 reply = self._read(until=b'\r\n', nbytes=1000).decode('ascii')
                 if (not mstring) and reply and not (reply.startswith(':')):   # Unexpected first character, ignore it and keep reading
-                    logger.debug('%14.3f %d: ?"%s"' % (time.time(),
-                                 threading.get_ident(),
-                                 reply))
+                    self.logger.debug('%14.3f %d: ?"%s"' % (time.time(),
+                                      threading.get_ident(),
+                                      reply))
                     time.sleep(0.001)
                     continue
                 mstring += reply
             except UnicodeDecodeError:
-                logger.debug('%14.3f %d: ??' % (time.time(),
-                                                threading.get_ident()))
+                self.logger.debug('%14.3f %d: ??' % (time.time(),
+                                                     threading.get_ident()))
                 pass  # Ignore non-ascii characters
             except:
-                logger.exception('Exception in sock.recv()')
+                self.logger.exception('Exception in sock.recv()')
                 raise
             time.sleep(0.001)
 
@@ -343,21 +346,21 @@ class Connection(object):
             try:
                 replist = from_ascii(mstring[1:-2])
             except ValueError:   # Non ASCII-hex characters in reply
-                logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
+                self.logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
                 raise IOError
             if getcrc(message=replist[:-1]) == [replist[-1],]:
                 crcgood = True
                 datalist = replist[:-1]
         elif mstring:
-            logger.warning('Packet fragment received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
+            self.logger.warning('Packet fragment received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
         else:
-            logger.warning('No data received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
+            self.logger.warning('No data received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
 
-        logger.debug("Recvd: %s/%s" % (mstring, str(replist)))
+        self.logger.debug("Recvd: %s/%s" % (mstring, str(replist)))
         if crcgood:
             return datalist
         else:
-            logger.error('No valid reply - raw data received: %s' % str(replist))
+            self.logger.error('No valid reply - raw data received: %s' % str(replist))
             raise IOError
 
     def _send_reply(self, message):
@@ -368,11 +371,11 @@ class Connection(object):
         :param message: A list of bytes, each in the range 0-255
         :return: None
         """
-        logger.debug("%14.3f %d: _send_reply: %s" % (time.time(), threading.get_ident(), message))
+        self.logger.debug("%14.3f %d: _send_reply: %s" % (time.time(), threading.get_ident(), message))
         # self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
         fullmessage = message + getcrc(message)
         self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
-        logger.debug("%14.3f %d: _send_reply finished" % (time.time(), threading.get_ident()))
+        self.logger.debug("%14.3f %d: _send_reply finished" % (time.time(), threading.get_ident()))
 
     def listen_for_packet(self, listen_address, slave_registers, maxtime=10.0, validation_function=dummy_validate):
         """
@@ -409,19 +412,19 @@ class Connection(object):
                 try:
                     reply = self._read(until=b'\r\n', nbytes=1000).decode('ascii')
                     if (not mstring) and reply and not (reply.startswith(':')):  # Unexpected first character, ignore it and keep reading
-                        logger.debug('%14.3f %d: ?"%s"' % (time.time(),
-                                                           threading.get_ident(),
-                                                           reply))
+                        self.logger.debug('%14.3f %d: ?"%s"' % (time.time(),
+                                                                threading.get_ident(),
+                                                                reply))
                         time.sleep(0.001)
                         continue
                     mstring += reply
                 except UnicodeDecodeError:
-                    logger.debug('%14.3f %d: ??' % (time.time(),
-                                                    threading.get_ident()))
+                    self.logger.debug('%14.3f %d: ??' % (time.time(),
+                                                         threading.get_ident()))
                     time.sleep(0.001)
                     pass   # Ignore non-ascii characters
                 except:
-                    logger.exception('Exception in sock.recv()')
+                    self.logger.exception('Exception in sock.recv()')
                     raise
                 time.sleep(0.001)
 
@@ -429,13 +432,13 @@ class Connection(object):
                 try:
                     replist = from_ascii(mstring[1:-2])
                 except ValueError:  # Non ASCII-hex characters in reply
-                    logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
+                    self.logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
                     raise IOError
                 if getcrc(message=replist[:-1]) == [replist[-1],]:
                     crcgood = True
                     msglist = replist[:-1]
             elif mstring:
-                logger.warning('Packet fragment received: %s' % mstring)
+                self.logger.warning('Packet fragment received: %s' % mstring)
                 time.sleep(0.2)
                 self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                 continue  # Discard this packet fragment, keep waiting for a new valid packet
@@ -445,10 +448,10 @@ class Connection(object):
             if not msglist:
                 return set(), set()
 
-            logger.debug("%14.3f %d: Received: %s=%s" % (time.time(), threading.get_ident(), mstring, str(msglist)))
+            self.logger.debug("%14.3f %d: Received: %s=%s" % (time.time(), threading.get_ident(), mstring, str(msglist)))
 
             if ((0 < len(msglist) < 3) or (not crcgood)):
-                logger.warning('Packet Fragment received: %s' % msglist)
+                self.logger.warning('Packet Fragment received: %s' % msglist)
                 time.sleep(0.2)
                 self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                 return set(), set()    # Discard this packet fragment, return control to the caller
@@ -456,9 +459,9 @@ class Connection(object):
             # Handle the packet contents here
             if msglist[0] != listen_address:
                 if self.multidrop:
-                    logger.debug('Packet received by %d, but it was addressed to station %d' % (listen_address, msglist[0]))
+                    self.logger.debug('Packet received by %d, but it was addressed to station %d' % (listen_address, msglist[0]))
                 else:
-                    logger.info('Packet received by %d, but it was addressed to station %d' % (listen_address, msglist[0]))
+                    self.logger.info('Packet received by %d, but it was addressed to station %d' % (listen_address, msglist[0]))
                 return set(), set()    # Discard this packet, return control to the caller
 
             if msglist[1] == 0x03:   # Reading one or more registers
@@ -470,14 +473,14 @@ class Connection(object):
                 for r in range(regnum, regnum + numreg):   # Iterate over all requested registers
                     if r not in slave_registers:
                         read_error = True
-                        logger.error('Bad read register: %d' % r)
+                        self.logger.error('Bad read register: %d' % r)
                     else:
                         replylist += list(divmod(slave_registers[r], 256))
                         read_set.add(r)
                 if read_error:
                     replylist = [listen_address, 0x83, 0x02]  # 0x02 is 'Illegal Data Address'
                     self._send_reply(replylist)
-                    logger.error('Reading unknown register not allowed, returned exception packet %s' % (replylist,))
+                    self.logger.error('Reading unknown register not allowed, returned exception packet %s' % (replylist,))
                     return set(), set()    # Discard this packet, return control to the caller
                 self._send_reply(replylist)
                 return read_set, set()
@@ -488,14 +491,14 @@ class Connection(object):
                     slave_registers[regnum] = value
                 else:
                     replylist = [listen_address, 0x86, 0x02]   # 0x02 is 'Illegal Data Address'
-                    logger.error('Writing register %d not allowed, returned exception packet %s.' % (regnum, replylist))
+                    self.logger.error('Writing register %d not allowed, returned exception packet %s.' % (regnum, replylist))
                     self._send_reply(replylist)
                     return set(), set()    # Return, indicating that the packet did nothing
 
                 if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
                     slave_registers[regnum] = registers_backup[regnum]   # Put back the original contents of that register
                     replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
-                    logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
+                    self.logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
                     self._send_reply(replylist)
                     return set(), set()  # Return, indicating that the packet did nothing
                 else:
@@ -503,7 +506,7 @@ class Connection(object):
                     return set(), {regnum}
 
             elif msglist[1] == 0x10:  # Writing multiple registers
-                logger.debug("%14.3f %d: Write-mult 1" % (time.time(), threading.get_ident()))
+                self.logger.debug("%14.3f %d: Write-mult 1" % (time.time(), threading.get_ident()))
                 regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
                 numreg = msglist[4] * 256 + msglist[5]
                 numbytes = msglist[6]
@@ -515,14 +518,14 @@ class Connection(object):
                 for r in range(regnum, regnum + numreg):
                     if r not in slave_registers:
                         write_error = True
-                        logger.error('Bad write register: %d' % r)
+                        self.logger.error('Bad write register: %d' % r)
                     else:
                         value = bytelist[0] * 256 + bytelist[1]
                         bytelist = bytelist[2:]   # Use, then pop off, the first two bytes
                         slave_registers[r] = value
                         written_set.add(r)
 
-                logger.debug("%14.3f %d: Write-mult 2" % (time.time(), threading.get_ident()))
+                self.logger.debug("%14.3f %d: Write-mult 2" % (time.time(), threading.get_ident()))
 
                 if write_error:
                     for r2 in range(regnum, regnum + numreg):
@@ -530,26 +533,26 @@ class Connection(object):
                             slave_registers[r2] = registers_backup[r2]
                     replylist = [listen_address, 0x90, 0x02]  # 0x02 is 'Illegal Data Address'
                     self._send_reply(replylist)
-                    logger.error('Writing unknown register/s not allowed, returned exception packet %s.' % (replylist,))
+                    self.logger.error('Writing unknown register/s not allowed, returned exception packet %s.' % (replylist,))
                     return set(), set()    # Return, indicating that the packet did nothing
 
-                logger.debug("%14.3f %d: Write-mult 3" % (time.time(), threading.get_ident()))
+                self.logger.debug("%14.3f %d: Write-mult 3" % (time.time(), threading.get_ident()))
 
                 if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
                     for r in range(regnum, regnum + numreg):
                         slave_registers[r] = registers_backup[r]
                     replylist = [listen_address, 0x86, 0x03]  # 0x03 is 'Illegal Data Value'
                     self._send_reply(replylist)
-                    logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
+                    self.logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
                     return set(), set()  # Return, indicating that the packet did nothing
                 else:
-                    logger.debug("%14.3f %d: Write-mult 4" % (time.time(), threading.get_ident()))
+                    self.logger.debug("%14.3f %d: Write-mult 4" % (time.time(), threading.get_ident()))
                     replylist = [listen_address, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
                     self._send_reply(replylist)
-                    logger.debug("%14.3f %d: Write-mult 5" % (time.time(), threading.get_ident()))
+                    self.logger.debug("%14.3f %d: Write-mult 5" % (time.time(), threading.get_ident()))
                     return set(), written_set
             else:
-                logger.error('Received modbus packet for function %d - not supported.' % msglist[1])
+                self.logger.error('Received modbus packet for function %d - not supported.' % msglist[1])
                 replylist = [listen_address, msglist[1] + 0x80, 0x01]
                 self._send_reply(replylist)
                 return set(), set()  # Return, indicating that the packet did nothing
@@ -583,13 +586,13 @@ class Connection(object):
             except ValueError:  # Bad protocol global
                 raise
             except:  # No reply, or error from the communications layer
-                logger.error('Communications error in send_as_master, resending.')
+                self.logger.error('Communications error in send_as_master, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
 
             if not reply:
-                logger.error('No reply to readReg from initial packet, resending.')
+                self.logger.error('No reply to readReg from initial packet, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
@@ -597,7 +600,7 @@ class Connection(object):
             if reply[0] != modbus_address:
                 errs = "Sent to station %d, but station %d responded. Resending.\n" % (modbus_address, reply[0])
                 errs += "Packet: %s\n" % str(reply)
-                logger.error(errs)
+                self.logger.error(errs)
                 time.sleep(1)
                 self._flush()
                 continue
@@ -606,17 +609,17 @@ class Connection(object):
                 if reply[1] == 0x83:
                     excode = reply[2]
                     if excode == 2:
-                        logger.error("Exception 0x8302: Invalid register address. Aborting.")
+                        self.logger.error("Exception 0x8302: Invalid register address. Aborting.")
                     elif excode == 3:
-                        logger.error("Exception 0x8303: Register count <1 or >123. Aborting.")
+                        self.logger.error("Exception 0x8303: Register count <1 or >123. Aborting.")
                     elif excode == 4:
-                        logger.error("Exception 0x8304: Read error on one or more registers. Aborting.")
+                        self.logger.error("Exception 0x8304: Read error on one or more registers. Aborting.")
                     else:
-                        logger.error("Exception %s: Unknown exception. Aborting." % (hex(excode + 0x83 * 256),))
+                        self.logger.error("Exception %s: Unknown exception. Aborting." % (hex(excode + 0x83 * 256),))
                     raise ValueError
                 errs = "Unexpected reply received. Resending.\n"
                 errs += "Packet: %s\n" % str(reply)
-                logger.error(errs)
+                self.logger.error(errs)
                 time.sleep(1)
                 self._flush()
                 continue
@@ -627,12 +630,12 @@ class Connection(object):
             else:
                 errs = "Short reply received. Resending.\n"
                 errs += "Packet: %s\n" % str(reply)
-                logger.error(errs)
+                self.logger.error(errs)
                 time.sleep(1)
                 self._flush()
                 continue
 
-        logger.error('No valid reply received for readReg(). Giving up.')
+        self.logger.error('No valid reply received for readReg(). Giving up.')
         raise IOError
 
     def writeReg(self, modbus_address, regnum, value):
@@ -654,7 +657,7 @@ class Connection(object):
         elif (type(value) == list) and (len(value) == 2):
             valuelist = value
         else:
-            logger.error('Unexpected register value: %s' % value)
+            self.logger.error('Unexpected register value: %s' % value)
             return False
 
         packet = [modbus_address, 0x06] + NtoBytes(regnum - 1, 2) + valuelist
@@ -666,13 +669,13 @@ class Connection(object):
             except ValueError:  # Bad protocol global
                 raise
             except:  # No reply, or error from the communications layer
-                logger.error('Communications error in send_as_master, resending.')
+                self.logger.error('Communications error in send_as_master, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
 
             if not reply:
-                logger.error('No reply from send_as_master, resending.')
+                self.logger.error('No reply from send_as_master, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
@@ -680,7 +683,7 @@ class Connection(object):
             if reply[0] != modbus_address:
                 errs = "Sent to station %d, but station %d responded.\n" % (modbus_address, reply[0])
                 errs += "Packet: %s\n" % str(reply)
-                logger.error(errs)
+                self.logger.error(errs)
                 time.sleep(1)
                 self._flush()
                 continue
@@ -689,30 +692,30 @@ class Connection(object):
                 if reply[1] == 0x86:
                     excode = reply[2]
                     if excode == 2:
-                        logger.error("Exception 0x8602: Invalid register address")
+                        self.logger.error("Exception 0x8602: Invalid register address")
                     elif excode == 3:
-                        logger.error("Exception 0x8603: Register value out of range")
+                        self.logger.error("Exception 0x8603: Register value out of range")
                     elif excode == 4:
-                        logger.error("Exception 0x8604: Write error on one or more registers")
+                        self.logger.error("Exception 0x8604: Write error on one or more registers")
                     else:
-                        logger.error("Exception %s: Unknown exception" % (hex(excode + 0x86 * 256),))
+                        self.logger.error("Exception %s: Unknown exception" % (hex(excode + 0x86 * 256),))
                     raise ValueError
                 errs = "Unexpected reply received.\n"
                 errs += "Packet: %s\n" % str(reply)
-                logger.error(errs)
+                self.logger.error(errs)
                 time.sleep(1)
                 self._flush()
                 continue
 
             if reply != packet:  # The _send_as_master() method adds the CRC to the packet list, in place, so strip it
-                logger.error('writeReg: %s != %s' % (reply, packet))
+                self.logger.error('writeReg: %s != %s' % (reply, packet))
                 time.sleep(1)
                 self._flush()
                 continue   # Value returned is not equal to value written
 
             return True
 
-        logger.error('Too many errors in writeReg, giving up.')
+        self.logger.error('Too many errors in writeReg, giving up.')
         return False
 
     def writeMultReg(self, modbus_address, regnum, valuelist):
@@ -735,7 +738,7 @@ class Connection(object):
             elif (type(value) == list) and (len(value) == 2):
                 data += value
             else:
-                logger.error('Unexpected register value: %s' % value)
+                self.logger.error('Unexpected register value: %s' % value)
                 return None
 
         rlen = len(data) // 2
@@ -748,13 +751,13 @@ class Connection(object):
             except ValueError:  # Bad protocol global
                 raise
             except:  # No reply, or error from the communications layer
-                logger.exception('Communications error in send_as_master, resending.')
+                self.logger.exception('Communications error in send_as_master, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
 
             if not reply:
-                logger.error('No reply from send_as_master, resending.')
+                self.logger.error('No reply from send_as_master, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
@@ -762,7 +765,7 @@ class Connection(object):
             if reply[0] != modbus_address:
                 errs = "Sent to station %d, but station %d responded.\n" % (modbus_address, reply[0])
                 errs += "Packet: %s\n" % str(reply)
-                logger.error(errs)
+                self.logger.error(errs)
                 time.sleep(1)
                 self._flush()
                 continue
@@ -771,17 +774,17 @@ class Connection(object):
                 if reply[1] == 0x90:
                     excode = reply[2]
                     if excode == 2:
-                        logger.error("Exception 0x9002: Starting or ending register address invalid")
+                        self.logger.error("Exception 0x9002: Starting or ending register address invalid")
                     elif excode == 3:
-                        logger.error("Exception 0x9003: Register count <1 or >123, or bytecount<>rlen*2")
+                        self.logger.error("Exception 0x9003: Register count <1 or >123, or bytecount<>rlen*2")
                     elif excode == 4:
-                        logger.error("Exception 0x9004: Write error on one or more registers")
+                        self.logger.error("Exception 0x9004: Write error on one or more registers")
                     else:
-                        logger.error("Exception %s: Unknown exception" % (hex(excode + 0x90 * 256),))
+                        self.logger.error("Exception %s: Unknown exception" % (hex(excode + 0x90 * 256),))
                     raise ValueError
                 errs = "Unexpected reply received.\n"
                 errs += "Packet: %s\n" % str(reply)
-                logger.error(errs)
+                self.logger.error(errs)
                 time.sleep(1)
                 self._flush()
                 continue
@@ -793,7 +796,7 @@ class Connection(object):
 
             return True
 
-        logger.error('Too many errors in writeMultReg, giving up.')
+        self.logger.error('Too many errors in writeMultReg, giving up.')
         return False
 
 
@@ -803,11 +806,15 @@ class ModbusDevice(object):
 
     Child objects will be SMARTbox units themselves, and the FNDH controller.
     """
-    def __init__(self, conn=None, modbus_address=None):
+    def __init__(self, conn=None, modbus_address=None, logger=None):
         self.conn = conn
         self.modbus_address = modbus_address
         self.reg_version = None
         self.register_map = {}
+        if logger is None:
+            self.logger = logging.getLogger('SB.%d' % modbus_address)
+        else:
+            self.logger = logger
 
 
 ###################################
@@ -851,13 +858,11 @@ def bytestoN(valuelist):
         elif (type(value) == tuple) and (len(value) == 2):
             data += list(value)
         else:
-            logger.error('Unexpected value: %s' % value)
-            return None
+            raise ValueError('Unexpected value - must be an int or 2-tuple: %s' % value)
 
     nbytes = len(data)
     if nbytes != 2 * (nbytes // 2):
-        logger.error('Odd number of bytes to convert: %s' % valuelist)
-        return None
+        raise ValueError('Odd number of bytes to convert: %s' % valuelist)
 
     return sum([data[i] * (256 ** (nbytes - i - 1)) for i in range(nbytes)])
 

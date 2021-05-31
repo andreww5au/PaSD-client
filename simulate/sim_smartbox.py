@@ -10,8 +10,6 @@ import threading
 import time
 
 logging.basicConfig()
-logger = logging.getLogger()
-logger.level = logging.DEBUG
 
 from pasd import smartbox
 
@@ -21,8 +19,8 @@ class SimSMARTbox(smartbox.SMARTbox):
     An instance of this class simulates a single SMARTbox, acting as a Modbus slave and responding to 0x03, 0x06 and
     0x10 Modbus commands to read and write registers.
     """
-    def __init__(self, conn=None, modbus_address=None):
-        smartbox.SMARTbox.__init__(self, conn=conn, modbus_address=modbus_address)
+    def __init__(self, conn=None, modbus_address=None, logger=None):
+        smartbox.SMARTbox.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
         self.online = False   # Will be True if we've heard from the MCCS in the last 300 seconds.
         self.register_map = smartbox.SMARTBOX_REGISTERS[1]  # Assume register map version 1
         self.codes = smartbox.SMARTBOX_CODES[1]
@@ -159,7 +157,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                                                                     maxtime=99999999,
                                                                     validation_function=None)
             except:
-                logger.exception('Exception in transport.listen_for_packet():')
+                self.logger.exception('Exception in transport.listen_for_packet():')
                 time.sleep(1)
                 continue
 
@@ -180,7 +178,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                     elif (bitstring[2:4] == '00'):
                         pass
                     else:
-                        logger.warning('Unknown desire enabled online flag: %s' % bitstring[2:4])
+                        self.logger.warning('Unknown desire enabled online flag: %s' % bitstring[2:4])
                         port.desire_enabled_online = None
 
                     # Desired state offline - R/W, write 00 if no change to current value
@@ -191,7 +189,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                     elif (bitstring[4:6] == '00'):
                         pass
                     else:
-                        logger.warning('Unknown desired state offline flag: %s' % bitstring[4:6])
+                        self.logger.warning('Unknown desired state offline flag: %s' % bitstring[4:6])
                         port.desire_enabled_offline = None
 
                     # Technician override - R/W, write 00 if no change to current value
@@ -252,11 +250,11 @@ class SimSMARTbox(smartbox.SMARTbox):
         """
         self.start_time = time.time()
 
-        logger.info('Started comms thread for Smartbox')
+        self.logger.info('Started comms thread for Smartbox')
         listen_thread = threading.Thread(target=self.listen_loop, daemon=False)
         listen_thread.start()
 
-        logger.info('Started simulation loop for smartbox')
+        self.logger.info('Started simulation loop for smartbox')
         while not self.wants_exit:  # Process packets until we are told to die
             self.uptime = int(time.time() - self.start_time)  # Set the current uptime value
 

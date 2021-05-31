@@ -11,8 +11,6 @@ import logging
 import time
 
 logging.basicConfig()
-logger = logging.getLogger()
-logger.level = logging.DEBUG
 
 from pasd import conversion
 from pasd import smartbox
@@ -127,7 +125,7 @@ class PdocStatus(smartbox.PortStatus):
 
         Note that modbus_address, system_level_enabled and system_online have the the same values for all ports.
     """
-    def __init__(self, port_number, modbus_address, status_bitmap, read_timestamp):
+    def __init__(self, port_number, modbus_address, status_bitmap, read_timestamp, logger=None):
         """
         Instantiate an instance of a PdocStatus() object.
 
@@ -139,7 +137,7 @@ class PdocStatus(smartbox.PortStatus):
         :param status_bitmap: Raw contents of the P<NN>_STATE register for this port (0-65535)
         :param read_timestamp: Unix epoch at the time the P<NN>_STATE register was last read (integer)
         """
-        smartbox.PortStatus.__init__(self, port_number, modbus_address, status_bitmap, 0, 0.0, read_timestamp)
+        smartbox.PortStatus.__init__(self, port_number, modbus_address, status_bitmap, 0, 0.0, read_timestamp, logger=logger)
 
         self.smartbox_address = 0   # populated by the station initialisation code on powerup
         self.power_sense = None  # True if 48V power is detected on the output of this port
@@ -224,7 +222,7 @@ class FNDH(transport.ModbusDevice):
     ports: A dictionary with port number (1-28) as the key, and instances of PdocStatus() as values.
     """
 
-    def __init__(self, conn=None, modbus_address=None):
+    def __init__(self, conn=None, modbus_address=None, logger=None):
         """
         Instantiate an instance of FNDH() using a connection object, and the modbus address for the FNDH
         (usually 31).
@@ -235,7 +233,7 @@ class FNDH(transport.ModbusDevice):
         :param conn: An instance of transport.Connection() defining a connection to an FNDH
         :param modbus_address: Modbus address of the FNDH (usually 31)
         """
-        transport.ModbusDevice.__init__(self, conn=conn, modbus_address=modbus_address)
+        transport.ModbusDevice.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
 
         self.mbrv = None   # Modbus register-map revision number for this physical FNDH
         self.pcbrv = None  # PCB revision number for this physical FNDH
@@ -297,16 +295,16 @@ class FNDH(transport.ModbusDevice):
         try:
             valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=poll_blocksize)
         except Exception:
-            logger.exception('Exception in readReg in poll_data for FNDH')
+            self.logger.exception('Exception in readReg in poll_data for FNDH')
             return None
 
         read_timestamp = time.time()
         if valuelist is None:
-            logger.error('Error in readReg in poll_data for FNDH, no data')
+            self.logger.error('Error in readReg in poll_data for FNDH, no data')
             return None
 
         if len(valuelist) != poll_blocksize:
-            logger.warning('Only %d registers returned from FNSH by readReg in poll_data, expected %d' % (len(valuelist), poll_blocksize))
+            self.logger.warning('Only %d registers returned from FNSH by readReg in poll_data, expected %d' % (len(valuelist), poll_blocksize))
 
         self.mbrv = transport.bytestoN(valuelist[0])
         self.pcbrv = transport.bytestoN(valuelist[1])
@@ -378,7 +376,7 @@ class FNDH(transport.ModbusDevice):
             return None
 
         if not self.register_map:
-            logger.error('No register map, call poll_data() first')
+            self.logger.error('No register map, call poll_data() first')
             return None
 
         # Count how many system threshold registers there are, and create an empty list of register values
@@ -395,7 +393,7 @@ class FNDH(transport.ModbusDevice):
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         except:
-            logger.exception('Exception in transport.writeMultReg():')
+            self.logger.exception('Exception in transport.writeMultReg():')
             return False
 
         if res:
@@ -411,7 +409,7 @@ class FNDH(transport.ModbusDevice):
         :return: True if successful, False on failure
         """
         if not self.register_map:
-            logger.error('No register map, call poll_data() first')
+            self.logger.error('No register map, call poll_data() first')
             return None
 
         vlist = [0] * 28
@@ -422,7 +420,7 @@ class FNDH(transport.ModbusDevice):
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         except:
-            logger.exception('Exception in transport.writeMultReg():')
+            self.logger.exception('Exception in transport.writeMultReg():')
             return False
 
         if res:
@@ -454,12 +452,12 @@ class FNDH(transport.ModbusDevice):
             self.portconfig = portconfig
 
         if not self.register_map:
-            logger.error('No register map, call poll_data() first')
+            self.logger.error('No register map, call poll_data() first')
             return None
 
         ok = self.write_thresholds()
         if not ok:
-            logger.error('Could not load and write threshold data.')
+            self.logger.error('Could not load and write threshold data.')
             return False
 
         # Make sure all the ports are off, both online and offline
@@ -468,14 +466,14 @@ class FNDH(transport.ModbusDevice):
             self.ports[portnum].desire_enabled_offline = False
         ok = self.write_portconfig()
         if not ok:
-            logger.error('Could not write port configuration to the FNDH.')
+            self.logger.error('Could not write port configuration to the FNDH.')
             return False
 
         # Write state register so the FNDH will transition to 'online'
         try:
             self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
         except:
-            logger.exception('Exception in transport.writeReg():')
+            self.logger.exception('Exception in transport.writeReg():')
             return False
 
         return True
@@ -489,7 +487,7 @@ class FNDH(transport.ModbusDevice):
         which SMARTbox is connected to which PDoC port.
         """
         if not self.register_map:
-            logger.error('No register map, call poll_data() first')
+            self.logger.error('No register map, call poll_data() first')
             return None
 
         # Startup finished, now set all the port states as per the saved port configuration:

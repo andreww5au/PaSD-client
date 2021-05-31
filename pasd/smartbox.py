@@ -11,8 +11,6 @@ import logging
 import time
 
 logging.basicConfig()
-logger = logging.getLogger()
-logger.level = logging.DEBUG
 
 from pasd import conversion
 from pasd import transport
@@ -171,7 +169,7 @@ class PortStatus(object):
 
         Note that modbus_address, system_level_enabled and system_online have the the same values for all ports.
     """
-    def __init__(self, port_number, modbus_address, status_bitmap, current_raw, current, read_timestamp):
+    def __init__(self, port_number, modbus_address, status_bitmap, current_raw, current, read_timestamp, logger=None):
         """
         Instantiate a SMARTbox port status instance, given a 16 bit integer bitwise state (from a PNN_STATE register),
         a raw (ADC) current value, a scaled (float) current reading, and a timestamp at which that data was read.
@@ -204,6 +202,11 @@ class PortStatus(object):
         self.breaker_tripped = False    # Has the over-current breaker tripped on this port
         self.power_state = False    # Is this port switched ON
         self.antenna_number = None   # Physical station antenna number (1-256). Only set externally, at the station level.
+
+        if logger is None:
+            self.logger = logging.getLogger('P%02d' % self.port_number)
+        else:
+            self.logger = logger
 
         self.set_current(current_raw, current, read_timestamp=read_timestamp)
         self.set_status_data(status_bitmap, read_timestamp=read_timestamp)
@@ -273,7 +276,7 @@ class PortStatus(object):
         elif (bitstring[2:4] == '00'):
             self.desire_enabled_online = None
         else:
-            logger.warning('Unknown desire enabled online flag: %s' % bitstring[2:4])
+            self.logger.warning('Unknown desire enabled online flag: %s' % bitstring[2:4])
             self.desire_enabled_online = None
 
         # Desired state offline - R/W, write 00 if no change to current value
@@ -284,7 +287,7 @@ class PortStatus(object):
         elif (bitstring[4:6] == '00'):
             self.desire_enabled_offline = None
         else:
-            logger.warning('Unknown desired state offline flag: %s' % bitstring[4:6])
+            self.logger.warning('Unknown desired state offline flag: %s' % bitstring[4:6])
             self.desire_enabled_offline = None
 
         # Technician override - R/W, write 00 if no change to current value
@@ -392,7 +395,7 @@ class SMARTbox(transport.ModbusDevice):
     ports: A dictionary with port number (1-12) as the key, and instances of PortStatus() as values.
     """
 
-    def __init__(self, conn=None, modbus_address=None):
+    def __init__(self, conn=None, modbus_address=None, logger=None):
         """
         Instantiate an instance of SMARTbox() using a connection object, and the modbus address for that physical
         SMARTbox.
@@ -403,7 +406,7 @@ class SMARTbox(transport.ModbusDevice):
         :param conn: An instance of transport.Connection() defining a connection to an FNDH
         :param modbus_address: The modbus station address (1-30) for this physical SMARTbox
         """
-        transport.ModbusDevice.__init__(self, conn=conn, modbus_address=modbus_address)
+        transport.ModbusDevice.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
 
         self.mbrv = None   # Modbus register-map revision number for this physical SMARTbox
         self.pcbrv = None  # PCB revision number for this physical SMARTbox
@@ -446,7 +449,8 @@ class SMARTbox(transport.ModbusDevice):
                                           status_bitmap=0,
                                           current_raw=0,
                                           current=0,
-                                          read_timestamp=None)
+                                          read_timestamp=None,
+                                          logger=logging.getLogger(self.logger.name + '.P%02d' % pnum))
 
     def __str__(self):
         return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)]))
@@ -469,18 +473,18 @@ class SMARTbox(transport.ModbusDevice):
         try:
             valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=poll_blocksize)
         except Exception:
-            logger.exception('Exception in readReg in poll_data for SMARTbox %d' % self.modbus_address)
+            self.logger.exception('Exception in readReg in poll_data for SMARTbox %d' % self.modbus_address)
             return None
 
         read_timestamp = time.time()
         if valuelist is None:
-            logger.error('Error in readReg in poll_data for SMARTbox %d, no data' % self.modbus_address)
+            self.logger.error('Error in readReg in poll_data for SMARTbox %d, no data' % self.modbus_address)
             return None
 
         if len(valuelist) != poll_blocksize:
-            logger.warning('Only %d registers returned from SMARTbox %d by readReg in poll_data, expected %d' % (len(valuelist),
-                                                                                                                 self.modbus_address,
-                                                                                                                 poll_blocksize))
+            self.logger.warning('Only %d registers returned from SMARTbox %d by readReg in poll_data, expected %d' % (len(valuelist),
+                                                                                                                      self.modbus_address,
+                                                                                                                      poll_blocksize))
             return None
 
         self.mbrv = valuelist[0][0] * 256 + valuelist[0][1]
@@ -553,17 +557,17 @@ class SMARTbox(transport.ModbusDevice):
         try:
             valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=16)
         except Exception:
-            logger.exception('Exception in readReg in poll_data for SMARTbox %d' % self.modbus_address)
+            self.logger.exception('Exception in readReg in poll_data for SMARTbox %d' % self.modbus_address)
             return None
 
         if valuelist is None:
-            logger.error('Error in readReg in poll_data for SMARTbox %d, no data' % self.modbus_address)
+            self.logger.error('Error in readReg in poll_data for SMARTbox %d, no data' % self.modbus_address)
             return None
 
         if len(valuelist) != 16:
-            logger.warning('Only %d registers returned from SMARTbox %d by readReg in poll_data, expected %d' % (len(valuelist),
-                                                                                                                 self.modbus_address,
-                                                                                                                 16))
+            self.logger.warning('Only %d registers returned from SMARTbox %d by readReg in poll_data, expected %d' % (len(valuelist),
+                                                                                                                      self.modbus_address,
+                                                                                                                      16))
             return None
 
         self.mbrv = valuelist[0][0] * 256 + valuelist[0][1]
@@ -582,11 +586,11 @@ class SMARTbox(transport.ModbusDevice):
         :return: True if successful, False on failure, None if self.thresholds is empty
         """
         if self.thresholds is None:
-            logger.error('No thresholds, exiting')
+            self.logger.error('No thresholds, exiting')
             return None
 
         if not self.register_map:
-            logger.error('No register map, call poll_data() first')
+            self.logger.error('No register map, call poll_data() first')
             return None
 
         # Count how many system threshold registers there are, and create an empty list of register values
@@ -603,14 +607,14 @@ class SMARTbox(transport.ModbusDevice):
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         except:
-            logger.exception('Exception in transport.writeMultReg():')
+            self.logger.exception('Exception in transport.writeMultReg():')
             return False
 
         if res:
-            logger.info('Wrote thresholds.')
+            self.logger.info('Wrote thresholds.')
             return True
         else:
-            logger.info('Could not write thresholds.')
+            self.logger.info('Could not write thresholds.')
             return False
 
     def write_portconfig(self):
@@ -621,7 +625,7 @@ class SMARTbox(transport.ModbusDevice):
         :return: True if successful, False on failure
         """
         if not self.register_map:
-            logger.error('No register map, call poll_data() first')
+            self.logger.error('No register map, call poll_data() first')
             return None
 
         vlist = [0] * 24
@@ -633,14 +637,14 @@ class SMARTbox(transport.ModbusDevice):
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         except:
-            logger.exception('Exception in transport.writeMultReg():')
+            self.logger.exception('Exception in transport.writeMultReg():')
             return False
 
         if res:
-            logger.info('Wrote portconfig.')
+            self.logger.info('Wrote portconfig.')
             return True
         else:
-            logger.info('Could not write portconfig.')
+            self.logger.info('Could not write portconfig.')
             return False
 
     def configure(self, thresholds=None, portconfig=None):
@@ -667,7 +671,7 @@ class SMARTbox(transport.ModbusDevice):
             self.portconfig = portconfig
 
         if not self.register_map:
-            logger.error('No register map, call poll_data() first')
+            self.logger.error('No register map, call poll_data() first')
             return None
 
         ok = self.write_thresholds()
@@ -681,12 +685,12 @@ class SMARTbox(transport.ModbusDevice):
                 try:
                     return self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
                 except:
-                    logger.exception('Exception in transport.writeReg():')
+                    self.logger.exception('Exception in transport.writeReg():')
                     return False
             else:
-                logger.error('Could not load and write port state configuration.')
+                self.logger.error('Could not load and write port state configuration.')
         else:
-            logger.error('Could not load and write threshold data.')
+            self.logger.error('Could not load and write threshold data.')
         return False
 
 

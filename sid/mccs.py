@@ -32,7 +32,7 @@ class MCCS(transport.ModbusDevice):
     """
     MCCS class, an instance of which represents the PaSD local MCCS software
     """
-    def __init__(self, conn=None, modbus_address=MCCS_ADDRESS):
+    def __init__(self, conn=None, modbus_address=MCCS_ADDRESS, logger=None):
         """
         Instantiate an instance of MCCS() using a connection object, and the modbus address for the MCCS process.
 
@@ -42,7 +42,7 @@ class MCCS(transport.ModbusDevice):
         :param conn: An instance of transport.Connection() defining a connection to an FNDH
         :param modbus_address: The modbus station address of the MCCS, typically 63
         """
-        transport.ModbusDevice.__init__(self, conn=conn, modbus_address=modbus_address)
+        transport.ModbusDevice.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
         self.pdocs = {}   # Dictionary with PDoC port number (1-28) as key, and SMARTbox address (or 0) as value
         self.antennae = {}  # Dictionary with physical antenna number (1-256) as key, and a tuple of
                             # (SMARTbox_address, port_number) as value
