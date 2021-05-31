@@ -8,8 +8,6 @@ query the MCCS instead of the FNDH or a SMARTbox.
 import logging
 
 logging.basicConfig()
-logger = logging.getLogger()
-logger.level = logging.DEBUG
 
 from pasd import transport
 
@@ -61,11 +59,11 @@ class MCCS(transport.ModbusDevice):
         try:
             valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=PDOC_REGSTART + 1, numreg=28)
             if valuelist is None:
-                logger.error('Error reading register %d..%d from modbus address %d' % (PDOC_REGSTART + 1,
-                                                                                       PDOC_REGSTART + 1 + 28,
-                                                                                       self.modbus_address))
+                self.logger.error('Error reading register %d..%d from modbus address %d' % (PDOC_REGSTART + 1,
+                                                                                            PDOC_REGSTART + 1 + 28,
+                                                                                            self.modbus_address))
         except Exception:
-            logger.exception('Exception in readReg in poll_data for pdoc mapping from MCCS')
+            self.logger.exception('Exception in readReg in poll_data for pdoc mapping from MCCS')
             return None
 
         self.pdocs = {pdoc_num:(valuelist[pdoc_num - 1][0] * 256 + valuelist[pdoc_num - 1][0]) for pdoc_num in range(1, 29)}
@@ -76,7 +74,7 @@ class MCCS(transport.ModbusDevice):
             valuelist += self.conn.readReg(modbus_address=self.modbus_address, regnum=PHYSANT_REGSTART + 101, numreg=100)
             valuelist += self.conn.readReg(modbus_address=self.modbus_address, regnum=PHYSANT_REGSTART + 201, numreg=56)
         except Exception:
-            logger.exception('Exception in readReg in poll_data for physical antenna mapping from MCCS')
+            self.logger.exception('Exception in readReg in poll_data for physical antenna mapping from MCCS')
             return None
 
         self.antennae = {ant_num:valuelist[ant_num - 1] for ant_num in range(1, 257)}
@@ -115,11 +113,11 @@ class MCCS(transport.ModbusDevice):
                                             regnum=unmapped_regnum,
                                             valuelist=[0])
             except:
-                logger.exception('Exception in transport.writeMultReg():')
+                self.logger.exception('Exception in transport.writeMultReg():')
                 return False
 
             if ok:
-                logger.info('Disconnected antenna %d from port %d on SMARTbox %d.' % (unmapped_regnum, smartbox_address, port_number))
+                self.logger.info('Disconnected antenna %d from port %d on SMARTbox %d.' % (unmapped_regnum, smartbox_address, port_number))
 
         if mapped_regnum and ok:
             try:
@@ -127,11 +125,11 @@ class MCCS(transport.ModbusDevice):
                                             regnum=mapped_regnum,
                                             valuelist=[smartbox_address * 256 + port_number])
             except:
-                logger.exception('Exception in transport.writeMultReg():')
+                self.logger.exception('Exception in transport.writeMultReg():')
                 return False
 
             if ok:
-                logger.info('Connected antenna %d to port %d on SMARTbox %d.' % (mapped_regnum, smartbox_address, port_number))
+                self.logger.info('Connected antenna %d to port %d on SMARTbox %d.' % (mapped_regnum, smartbox_address, port_number))
         return ok
 
     def get_log_message(self, desired_antenna=None, desired_chipid=None, desired_lognum=0):
@@ -162,7 +160,7 @@ class MCCS(transport.ModbusDevice):
         try:
             ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=ANTNUM, valuelist=valuelist)
         except:
-            logger.exception('Exception in transport.writeMultReg():')
+            self.logger.exception('Exception in transport.writeMultReg():')
             return False
 
         if ok:
@@ -180,7 +178,7 @@ class MCCS(transport.ModbusDevice):
         try:
             messagelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=MESSAGE, numreg=MESSAGE_LEN)
         except:
-            logger.exception('Exception in transport.readReg():')
+            self.logger.exception('Exception in transport.readReg():')
             return None
 
         if messagelist is None:
@@ -228,7 +226,7 @@ class MCCS(transport.ModbusDevice):
         try:
             ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=ANTNUM, valuelist=valuelist)
         except:
-            logger.exception('Exception in transport.writeMultReg():')
+            self.logger.exception('Exception in transport.writeMultReg():')
             return None
 
         if ok:
@@ -241,7 +239,7 @@ class MCCS(transport.ModbusDevice):
             try:
                 ok = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=MESSAGE, valuelist=valuelist)
             except:
-                logger.exception('Exception in transport.writeMultReg():')
+                self.logger.exception('Exception in transport.writeMultReg():')
                 return None
 
         return ok

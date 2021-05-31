@@ -33,8 +33,10 @@ if __name__ == '__main__':
     else:
         loglevel = logging.INFO
 
-    logging.basicConfig(filename=LOGFILE,
-                        filemode='w',
+    fh = logging.FileHandler(filename=LOGFILE, mode='w')
+    sh = logging.StreamHandler()
+    # noinspection PyArgumentList
+    logging.basicConfig(handlers=[fh, sh],
                         level=loglevel,
                         format='%(levelname)s:%(name)s %(created)14.3f - %(message)s')
 
