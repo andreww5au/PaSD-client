@@ -161,6 +161,9 @@ class SimSMARTbox(smartbox.SMARTbox):
                 time.sleep(1)
                 continue
 
+            if 'SYS_UPTIME' in read_set:
+                self.logger.debug('Uptime read: %14.3f' % self.uptime)
+
             if read_set or written_set:  # The MCCS has talked to us, update the last_readtime timestamp
                 self.readtime = time.time()
 
