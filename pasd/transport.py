@@ -168,9 +168,8 @@ class Connection(object):
         with self.readlock:
             gtime = time.time()
             if gtime - ltime > 0.05:
-                self.logger.warning('%14.3f %d: %5.3f seconds to get readlock in _read' % (time.time(),
-                                                                                           threading.get_ident(),
-                                                                                           gtime - ltime))
+                self.logger.warning('%d: %5.3f seconds to get readlock in _read' % (threading.get_ident(),
+                                                                                    gtime - ltime))
             if self.ser is not None:
                 if self.multidrop:
                     remote_data = self.ser.read(1000)
@@ -219,9 +218,8 @@ class Connection(object):
 
                 etime = time.time()
                 if etime - gtime > 0.002:
-                    self.logger.warning('%14.3f %d: Spent %5.3f sec holding readlock in _read' % (time.time(),
-                                                                                                  threading.get_ident(),
-                                                                                                  etime - gtime))
+                    self.logger.warning('%d: Spent %5.3f sec holding readlock in _read' % (threading.get_ident(),
+                                                                                           etime - gtime))
                 return data
 
     def _write(self, data):
@@ -241,9 +239,8 @@ class Connection(object):
         with self.writelock:
             gtime = time.time()
             if gtime - ltime > 0.05:
-                self.logger.warning('%14.3f %d: %5.3f seconds to get lock in _write' % (time.time(),
-                                                                                        threading.get_ident(),
-                                                                                        gtime - ltime))
+                self.logger.warning('%d: %5.3f seconds to get lock in _write' % (threading.get_ident(),
+                                                                                 gtime - ltime))
             if self.ser is not None:
                 self.ser.write(data)
 
@@ -274,9 +271,8 @@ class Connection(object):
         with self.readlock:
             gtime = time.time()
             if gtime - ltime > 0.05:
-                self.logger.warning('%14.3f %d: %5.3f seconds to get lock in _flush' % (time.time(),
-                                                                                        threading.get_ident(),
-                                                                                        gtime - ltime))
+                self.logger.warning('%d: %5.3f seconds to get lock in _flush' % (threading.get_ident(),
+                                                                                 gtime - ltime))
             data = b''
             newdata = b'X'
             try:
@@ -327,15 +323,13 @@ class Connection(object):
             try:
                 reply = self._read(until=b'\r\n', nbytes=1000).decode('ascii')
                 if (not mstring) and reply and not (reply.startswith(':')):   # Unexpected first character, ignore it and keep reading
-                    self.logger.debug('%14.3f %d: ?"%s"' % (time.time(),
-                                      threading.get_ident(),
-                                      reply))
+                    self.logger.debug('%d: ?"%s"' % (threading.get_ident(),
+                                                     reply))
                     time.sleep(0.001)
                     continue
                 mstring += reply
             except UnicodeDecodeError:
-                self.logger.debug('%14.3f %d: ??' % (time.time(),
-                                                     threading.get_ident()))
+                self.logger.debug('%d: ??' % (threading.get_ident()))
                 pass  # Ignore non-ascii characters
             except:
                 self.logger.exception('Exception in sock.recv()')
@@ -371,11 +365,11 @@ class Connection(object):
         :param message: A list of bytes, each in the range 0-255
         :return: None
         """
-        self.logger.debug("%14.3f %d: _send_reply: %s" % (time.time(), threading.get_ident(), message))
+        self.logger.debug("%d: _send_reply: %s" % (threading.get_ident(), message))
         # self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
         fullmessage = message + getcrc(message)
         self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
-        self.logger.debug("%14.3f %d: _send_reply finished" % (time.time(), threading.get_ident()))
+        self.logger.debug("%d: _send_reply finished" % (threading.get_ident()))
 
     def listen_for_packet(self, listen_address, slave_registers, maxtime=10.0, validation_function=dummy_validate):
         """
@@ -412,15 +406,12 @@ class Connection(object):
                 try:
                     reply = self._read(until=b'\r\n', nbytes=1000).decode('ascii')
                     if (not mstring) and reply and not (reply.startswith(':')):  # Unexpected first character, ignore it and keep reading
-                        self.logger.debug('%14.3f %d: ?"%s"' % (time.time(),
-                                                                threading.get_ident(),
-                                                                reply))
+                        self.logger.debug('%d: ?"%s"' % (threading.get_ident(), reply))
                         time.sleep(0.001)
                         continue
                     mstring += reply
                 except UnicodeDecodeError:
-                    self.logger.debug('%14.3f %d: ??' % (time.time(),
-                                                         threading.get_ident()))
+                    self.logger.debug('%d: ??' % (threading.get_ident()))
                     time.sleep(0.001)
                     pass   # Ignore non-ascii characters
                 except:
@@ -448,7 +439,7 @@ class Connection(object):
             if not msglist:
                 return set(), set()
 
-            self.logger.debug("%14.3f %d: Received: %s=%s" % (time.time(), threading.get_ident(), mstring, str(msglist)))
+            self.logger.debug("%d: Received: %s=%s" % (threading.get_ident(), mstring, str(msglist)))
 
             if ((0 < len(msglist) < 3) or (not crcgood)):
                 self.logger.warning('Packet Fragment received: %s' % msglist)
@@ -506,7 +497,6 @@ class Connection(object):
                     return set(), {regnum}
 
             elif msglist[1] == 0x10:  # Writing multiple registers
-                self.logger.debug("%14.3f %d: Write-mult 1" % (time.time(), threading.get_ident()))
                 regnum = msglist[2] * 256 + msglist[3] + 1   # Packet contains register number - 1
                 numreg = msglist[4] * 256 + msglist[5]
                 numbytes = msglist[6]
@@ -525,8 +515,6 @@ class Connection(object):
                         slave_registers[r] = value
                         written_set.add(r)
 
-                self.logger.debug("%14.3f %d: Write-mult 2" % (time.time(), threading.get_ident()))
-
                 if write_error:
                     for r2 in range(regnum, regnum + numreg):
                         if r2 in slave_registers:
@@ -536,8 +524,6 @@ class Connection(object):
                     self.logger.error('Writing unknown register/s not allowed, returned exception packet %s.' % (replylist,))
                     return set(), set()    # Return, indicating that the packet did nothing
 
-                self.logger.debug("%14.3f %d: Write-mult 3" % (time.time(), threading.get_ident()))
-
                 if (validation_function is not None) and (not validation_function(slave_registers=slave_registers)):
                     for r in range(regnum, regnum + numreg):
                         slave_registers[r] = registers_backup[r]
@@ -546,10 +532,8 @@ class Connection(object):
                     self.logger.error('Inconsistent register values, returned exception packet %s.' % (replylist,))
                     return set(), set()  # Return, indicating that the packet did nothing
                 else:
-                    self.logger.debug("%14.3f %d: Write-mult 4" % (time.time(), threading.get_ident()))
                     replylist = [listen_address, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(numreg, 2)
                     self._send_reply(replylist)
-                    self.logger.debug("%14.3f %d: Write-mult 5" % (time.time(), threading.get_ident()))
                     return set(), written_set
             else:
                 self.logger.error('Received modbus packet for function %d - not supported.' % msglist[1])

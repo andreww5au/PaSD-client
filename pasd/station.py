@@ -188,6 +188,9 @@ class Station(object):
             if sadd not in self.smartboxes:  # If this SMARTbox isn't in the antenna map, save it in the the smartbox dictionary
                 self.smartboxes[sadd] = smb
 
+        self.logger.info('ON times: %s' % port_on_times)
+        self.logger.info('ADDRESS times: %s' % address_on_times)
+
         for portnum in range(1, 29):
             ontime = port_on_times[portnum]
             # Get a list of (address, difftime) tuples where address is modbus address, and difftime is how long it took to

@@ -106,7 +106,6 @@ class SimFNDH(fndh.FNDH):
         """
         while not self.wants_exit:  # Process packets until we are told to die
             # Set up the registers for the physical->smartbox/port mapping:
-            self.logger.debug("%14.3f %d: listen 1" % (time.time(), threading.get_ident()))
             slave_registers = {}
             self.uptime = int(time.time() - self.start_time)  # Set the current uptime value
 
@@ -151,8 +150,6 @@ class SimFNDH(fndh.FNDH):
                     pnum = int(regname[1:-6])
                     slave_registers[regnum] = self.ports[pnum].status_to_integer(write_state=True, write_to=True)
 
-            self.logger.debug("%14.3f %d: listen 2" % (time.time(), threading.get_ident()))
-
             for regnum in range(1001, 1033):   # Zero all the threshold registers
                 slave_registers[regnum] = 0
 
@@ -165,8 +162,6 @@ class SimFNDH(fndh.FNDH):
                 self.logger.exception('Exception in transport.listen_for_packet():')
                 time.sleep(1)
                 continue
-
-            self.logger.debug("%14.3f %d: listen 3" % (time.time(), threading.get_ident()))
 
             if read_set or written_set:  # The MCCS has talked to us, update the last_readtime timestamp
                 self.readtime = time.time()
@@ -212,8 +207,6 @@ class SimFNDH(fndh.FNDH):
                     else:
                         pass
 
-            self.logger.debug("%14.3f %d: listen 4" % (time.time(), threading.get_ident()))
-
             if self.register_map['POLL']['SYS_LIGHTS'][0] in written_set:  # Wrote to SYS_LIGHTS, so set light attributes
                 msb, lsb = divmod(slave_registers[self.register_map['POLL']['SYS_LIGHTS'][0]], 256)
                 self.service_led = bool(msb)
@@ -246,8 +239,6 @@ class SimFNDH(fndh.FNDH):
                         port.current_raw = 2048
                         port.current = 50.0
                     port.power_state = port_on
-
-            self.logger.debug("%14.3f %d: listen 5" % (time.time(), threading.get_ident()))
 
             self.loophook()
 

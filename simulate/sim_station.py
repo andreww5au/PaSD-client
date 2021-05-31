@@ -23,7 +23,7 @@ class Sim_Station(sim_fndh.SimFNDH):
             port.old_power_state = False   # Used to detect PDoC port state changes
 
     def loophook(self):
-        self.logger.debug("%14.3f %d: start loophook" % (time.time(), threading.get_ident()))
+        self.logger.debug("%d: start loophook" % threading.get_ident())
         self.logger.debug({pnum:(self.ports[pnum].power_state, self.ports[pnum].old_power_state) for pnum in self.ports.keys()})
         for portnum, port in self.ports.items():
             if port.power_state != port.old_power_state:
@@ -39,7 +39,7 @@ class Sim_Station(sim_fndh.SimFNDH):
                     del self.smartboxes[portnum]
                     self.logger.info('Killed the comms thread for smartbox %d' % portnum)
                 port.old_power_state = port.power_state
-        self.logger.debug("%14.3f %d: end loophook" % (time.time(), threading.get_ident()))
+        self.logger.debug("%d: end loophook" % threading.get_ident())
 
 
 """
