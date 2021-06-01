@@ -97,7 +97,7 @@ the&nbsp;first&nbsp;'nbytes'&nbsp;of&nbsp;characters&nbsp;are&nbsp;removed&nbsp;
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;remote&nbsp;device,&nbsp;if&nbsp;specified.<br>
 :param&nbsp;logger:&nbsp;A&nbsp;logging.Logger&nbsp;<a href="builtins.html#object">object</a>&nbsp;to&nbsp;use&nbsp;for&nbsp;all&nbsp;log&nbsp;messages,&nbsp;or&nbsp;None&nbsp;(in&nbsp;which&nbsp;case&nbsp;one&nbsp;will&nbsp;be&nbsp;created)</tt></dd></dl>
 
-<dl><dt><a name="Connection-listen_for_packet"><strong>listen_for_packet</strong></a>(self, listen_address, slave_registers, maxtime=10.0, validation_function=&lt;function dummy_validate at 0x7fd4f58fe730&gt;)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;an&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packet&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;a&nbsp;technician<br>
+<dl><dt><a name="Connection-listen_for_packet"><strong>listen_for_packet</strong></a>(self, listen_address, slave_registers, maxtime=10.0, validation_function=&lt;function dummy_validate at 0x7f52c7d02730&gt;)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;an&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packet&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;a&nbsp;technician<br>
 in&nbsp;the&nbsp;field).&nbsp;Handle&nbsp;one&nbsp;read/write&nbsp;register&nbsp;call&nbsp;by&nbsp;sending&nbsp;or&nbsp;modifying&nbsp;the&nbsp;contents&nbsp;of&nbsp;the&nbsp;registers&nbsp;passed<br>
 in&nbsp;the&nbsp;'slave_registers'&nbsp;dictionary.&nbsp;Exit&nbsp;after&nbsp;'maxtime'&nbsp;seconds,&nbsp;or&nbsp;after&nbsp;processing&nbsp;one&nbsp;valid&nbsp;packet,&nbsp;whichever<br>
 comes&nbsp;first.&nbsp;Note&nbsp;that&nbsp;if&nbsp;a&nbsp;packet&nbsp;results&nbsp;in&nbsp;an&nbsp;exception&nbsp;reply&nbsp;(invalid&nbsp;register&nbsp;number,&nbsp;invlaid&nbsp;data,&nbsp;etc),<br>
@@ -227,8 +227,8 @@ as&nbsp;a&nbsp;string.<br>
     
 <tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
 <td width="100%"><strong>COMMS_TIMEOUT</strong> = 0.001<br>
-<strong>LCLOG</strong> = &lt;_io.TextIOWrapper name='./logical.log' mode='w' encoding='UTF-8'&gt;<br>
+<strong>LCLOG</strong> = None<br>
 <strong>PACKET_WINDOW_TIME</strong> = 0.01<br>
-<strong>PCLOG</strong> = &lt;_io.TextIOWrapper name='./physical.log' mode='w' encoding='UTF-8'&gt;<br>
+<strong>PCLOG</strong> = None<br>
 <strong>TIMEOUT</strong> = 1.0</td></tr></table>
 </body></html>
