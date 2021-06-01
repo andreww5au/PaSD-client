@@ -55,6 +55,8 @@ if __name__ == '__main__':
         s.poll_data()
         print('Configuring SMARTbox as "s" on address %d.' % int(args.address))
         s.configure()
+        s.poll_data()
+        print(s)
     elif args.task.upper() == 'FNDH':
         if args.address is None:
             args.address = 31
@@ -66,6 +68,8 @@ if __name__ == '__main__':
         f.configure_all_off()
         print('Final configuring FNDH as "f" on address %d.' % int(args.address))
         f.configure_final()
+        f.poll_data()
+        print(f)
     elif args.task.upper() == 'STATION':
         slogger = logging.getLogger('ST')
         s = station.Station(conn=conn, station_id=1, logger=slogger)
