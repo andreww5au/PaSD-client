@@ -455,6 +455,9 @@ class SMARTbox(transport.ModbusDevice):
     def __str__(self):
         return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)]))
 
+    def __repr__(self):
+        return str(self)
+
     def poll_data(self):
         """
         Get all the polled registers from the device, and use the contents to fill in the instance data for this instance.

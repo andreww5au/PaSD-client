@@ -34,11 +34,14 @@ if __name__ == '__main__':
         loglevel = logging.INFO
 
     fh = logging.FileHandler(filename=LOGFILE, mode='w')
+    fh.setLevel(logging.DEBUG)   # All log messages go to the log file
     sh = logging.StreamHandler()
+    sh.setLevel(loglevel)        # Some or all log messages go to the console
+    logformat = '%(levelname)s:%(name)s %(created)14.3f - %(threadName)s: %(message)s'
     # noinspection PyArgumentList
     logging.basicConfig(handlers=[fh, sh],
-                        level=loglevel,
-                        format='%(levelname)s:%(name)s %(created)14.3f - %(message)s')
+                        level=logging.DEBUG,
+                        format=logformat)
 
     from pasd import transport
     from pasd import station
@@ -54,26 +57,26 @@ if __name__ == '__main__':
             args.address = 1
         slogger = logging.getLogger('SB:%d' % int(args.address))
         s = sim_smartbox.SimSMARTbox(conn=conn, modbus_address=int(args.address), logger=slogger)
-        simthread = threading.Thread(target=s.sim_loop, daemon=False)
+        simthread = threading.Thread(target=s.sim_loop, daemon=False, name='SB.thread')
         print('Simulating SMARTbox as "s" on address %d.' % int(args.address))
     elif args.task.upper() == 'FNDH':
         if args.address is None:
             args.address = 31
         flogger = logging.getLogger('FNDH:%d' % int(args.address))
         f = sim_fndh.SimFNDH(conn=conn, modbus_address=int(args.address), logger=flogger)
-        simthread = threading.Thread(target=f.sim_loop, daemon=False)
+        simthread = threading.Thread(target=f.sim_loop, daemon=False, name='FNDH.thread')
         print('Simulating FNDH as "f" on address %d.' % args.address)
     elif args.task.upper() == 'STATION':
         flogger = logging.getLogger('FNDH:%d' % 31)
         s = sim_station.Sim_Station(conn=conn, modbus_address=31, logger=flogger)
-        simthread = threading.Thread(target=s.sim_loop, daemon=False)
+        simthread = threading.Thread(target=s.sim_loop, daemon=False, name='FNDH.thread')
         print('Simulating entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
     elif args.task.upper() == 'MCCS':
         if args.address is None:
             args.address = 99
         mlogger = logging.getLogger('MCCS:%d' % int(args.address))
         s = station.Station(conn=conn, station_id=int(args.address), logger=mlogger)
-        simthread = threading.Thread(target=s.listen, kwargs={'maxtime':999999})
+        simthread = threading.Thread(target=s.listen, kwargs={'maxtime':999999}, name='MCCS.thread')
         print('Simulating the MCCS as "s" in slave mode, listening on address %d' % int(args.address))
     else:
         print('Task must be one of smartbox, fndh, station or mccs - not %s. Exiting.' % args.task)

@@ -15,8 +15,6 @@ if __name__ == '__main__':
                         help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
     parser.add_argument('--device', dest='device', default=None,
                         help='Serial port device name, eg /dev/ttyS0 or COM6')
-    parser.add_argument('--multidrop', dest='multidrop', action='store_true', default=False,
-                        help='Open connection in multidrop mode, so you can attach extra devices in "python -i ..." mode')
     parser.add_argument('--address', dest='address', default=None,
                         help='Modbus address (ignored when talking to an entire station)')
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
@@ -31,10 +29,12 @@ if __name__ == '__main__':
         loglevel = logging.INFO
 
     fh = logging.FileHandler(filename=LOGFILE, mode='w')
+    fh.setLevel(logging.DEBUG)   # All log messages go to the log file
     sh = logging.StreamHandler()
+    sh.setLevel(loglevel)        # Some or all log messages go to the console
     # noinspection PyArgumentList
     logging.basicConfig(handlers=[fh, sh],
-                        level=loglevel,
+                        level=logging.DEBUG,
                         format='%(levelname)s:%(name)s %(created)14.3f - %(message)s')
 
     from pasd import transport
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     from sid import mccs
 
     tlogger = logging.getLogger('T')
-    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=args.multidrop, logger=tlogger)
+    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=False, logger=tlogger)
 
     if args.task.upper() == 'SMARTBOX':
         if args.address is None:

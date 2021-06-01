@@ -158,11 +158,10 @@ class Station(object):
             self.logger.error('Could not configure FNDH - aborting station startup.')
             return False
 
-        time.sleep(5)
-
         # Turn on all the ports, one by one, with a 10 second interval between each port
         port_on_times = {}   # Unix timestamp at which each port number was turned on
         for portnum in range(1, 29):
+            time.sleep(10)
             self.fndh.ports[portnum].desire_enabled_online = True
             self.logger.info('Turning on PDoC port %d' % portnum)
             ok = self.fndh.write_portconfig()
@@ -170,7 +169,6 @@ class Station(object):
             if not ok:
                 self.logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
                 return False
-            time.sleep(10)
 
         # Read the uptimes for all possible SMARTbox addresses, to work out when they were turned on
         address_on_times = {}   # Unix timestamp at which each SMARTbox booted, according to the uptime

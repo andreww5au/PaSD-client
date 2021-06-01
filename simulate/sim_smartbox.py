@@ -154,14 +154,14 @@ class SimSMARTbox(smartbox.SMARTbox):
             try:
                 read_set, written_set = self.conn.listen_for_packet(listen_address=self.modbus_address,
                                                                     slave_registers=slave_registers,
-                                                                    maxtime=99999999,
+                                                                    maxtime=1,
                                                                     validation_function=None)
             except:
                 self.logger.exception('Exception in transport.listen_for_packet():')
                 time.sleep(1)
                 continue
 
-            if 'SYS_UPTIME' in read_set:
+            if self.register_map['POLL']['SYS_UPTIME'][0] in read_set:
                 self.logger.debug('Uptime read: %14.3f' % self.uptime)
 
             if read_set or written_set:  # The MCCS has talked to us, update the last_readtime timestamp
@@ -254,7 +254,7 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.start_time = time.time()
 
         self.logger.info('Started comms thread for Smartbox')
-        listen_thread = threading.Thread(target=self.listen_loop, daemon=False)
+        listen_thread = threading.Thread(target=self.listen_loop, daemon=False, name=threading.current_thread().name + '-C')
         listen_thread.start()
 
         self.logger.info('Started simulation loop for smartbox')

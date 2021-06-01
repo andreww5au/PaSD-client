@@ -156,7 +156,7 @@ class SimFNDH(fndh.FNDH):
             try:
                 read_set, written_set = self.conn.listen_for_packet(listen_address=self.modbus_address,
                                                                     slave_registers=slave_registers,
-                                                                    maxtime=99999999,
+                                                                    maxtime=1,
                                                                     validation_function=None)
             except:
                 self.logger.exception('Exception in transport.listen_for_packet():')
@@ -252,7 +252,7 @@ class SimFNDH(fndh.FNDH):
         self.start_time = time.time()
 
         self.logger.info('Started comms thread for FNDH')
-        listen_thread = threading.Thread(target=self.listen_loop, daemon=False)
+        listen_thread = threading.Thread(target=self.listen_loop, daemon=False, name=threading.current_thread().name + '-C')
         listen_thread.start()
 
         self.logger.info('Started simulation loop for fndh')
