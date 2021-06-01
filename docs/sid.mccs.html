@@ -42,7 +42,9 @@ query&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>&nbsp;instead&nbsp;of&nbsp;the&nbsp;
 <font color="#000000" face="helvetica, arial"><a name="MCCS">class <strong>MCCS</strong></a>(<a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt><a href="#MCCS">MCCS</a>&nbsp;class,&nbsp;an&nbsp;instance&nbsp;of&nbsp;which&nbsp;represents&nbsp;the&nbsp;PaSD&nbsp;local&nbsp;<a href="#MCCS">MCCS</a>&nbsp;software<br>&nbsp;</tt></td></tr>
+<td colspan=2><tt><a href="#MCCS">MCCS</a>(conn=None,&nbsp;modbus_address=63,&nbsp;logger=None)<br>
+&nbsp;<br>
+<a href="#MCCS">MCCS</a>&nbsp;class,&nbsp;an&nbsp;instance&nbsp;of&nbsp;which&nbsp;represents&nbsp;the&nbsp;PaSD&nbsp;local&nbsp;<a href="#MCCS">MCCS</a>&nbsp;software<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%"><dl><dt>Method resolution order:</dt>
 <dd><a href="mccs.html#MCCS">MCCS</a></dd>
@@ -51,7 +53,7 @@ query&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>&nbsp;instead&nbsp;of&nbsp;the&nbsp;
 </dl>
 <hr>
 Methods defined here:<br>
-<dl><dt><a name="MCCS-__init__"><strong>__init__</strong></a>(self, conn=None, modbus_address=63)</dt><dd><tt>Instantiate&nbsp;an&nbsp;instance&nbsp;of&nbsp;<a href="#MCCS">MCCS</a>()&nbsp;using&nbsp;a&nbsp;connection&nbsp;object,&nbsp;and&nbsp;the&nbsp;modbus&nbsp;address&nbsp;for&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>&nbsp;process.<br>
+<dl><dt><a name="MCCS-__init__"><strong>__init__</strong></a>(self, conn=None, modbus_address=63, logger=None)</dt><dd><tt>Instantiate&nbsp;an&nbsp;instance&nbsp;of&nbsp;<a href="#MCCS">MCCS</a>()&nbsp;using&nbsp;a&nbsp;connection&nbsp;object,&nbsp;and&nbsp;the&nbsp;modbus&nbsp;address&nbsp;for&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>&nbsp;process.<br>
 &nbsp;<br>
 This&nbsp;initialisation&nbsp;function&nbsp;doesn't&nbsp;communicate&nbsp;with&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>,&nbsp;it&nbsp;just&nbsp;sets&nbsp;up&nbsp;the<br>
 data&nbsp;structures.<br>
@@ -61,9 +63,9 @@ data&nbsp;structures.<br>
 
 <dl><dt><a name="MCCS-get_log_message"><strong>get_log_message</strong></a>(self, desired_antenna=None, desired_chipid=None, desired_lognum=0)</dt><dd><tt>Return&nbsp;a&nbsp;log&nbsp;entry&nbsp;for&nbsp;the&nbsp;given&nbsp;antenna,&nbsp;chipid,&nbsp;and&nbsp;station,&nbsp;by&nbsp;querying&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>&nbsp;over&nbsp;the&nbsp;serial&nbsp;link.<br>
 &nbsp;<br>
-:param&nbsp;desired_antenna:&nbsp;&nbsp;#&nbsp;Specifies&nbsp;a&nbsp;single&nbsp;physical&nbsp;antenna&nbsp;(1-256),&nbsp;or&nbsp;0/None<br>
-:param&nbsp;desired_chipid:&nbsp;&nbsp;#&nbsp;Specifies&nbsp;a&nbsp;single&nbsp;physical&nbsp;SMARTbox&nbsp;or&nbsp;FNDH&nbsp;serial&nbsp;number&nbsp;(bytes()&nbsp;object),&nbsp;or&nbsp;None.<br>
-:param&nbsp;desired_lognum:&nbsp;&nbsp;#&nbsp;0/None&nbsp;for&nbsp;the&nbsp;most&nbsp;recent&nbsp;log&nbsp;message,&nbsp;or&nbsp;larger&nbsp;numbers&nbsp;for&nbsp;older&nbsp;messages.<br>
+:param&nbsp;desired_antenna:&nbsp;&nbsp;Specifies&nbsp;a&nbsp;single&nbsp;physical&nbsp;antenna&nbsp;(1-256),&nbsp;or&nbsp;0/None<br>
+:param&nbsp;desired_chipid:&nbsp;&nbsp;Specifies&nbsp;a&nbsp;single&nbsp;physical&nbsp;SMARTbox&nbsp;or&nbsp;FNDH&nbsp;serial&nbsp;number&nbsp;(bytes()&nbsp;object),&nbsp;or&nbsp;None.<br>
+:param&nbsp;desired_lognum:&nbsp;&nbsp;0/None&nbsp;for&nbsp;the&nbsp;most&nbsp;recent&nbsp;log&nbsp;message,&nbsp;or&nbsp;larger&nbsp;numbers&nbsp;for&nbsp;older&nbsp;messages.<br>
 :return:&nbsp;None&nbsp;if&nbsp;there&nbsp;was&nbsp;an&nbsp;error,&nbsp;or&nbsp;A&nbsp;tuple&nbsp;of&nbsp;the&nbsp;log&nbsp;entry&nbsp;text,&nbsp;and&nbsp;a&nbsp;unix&nbsp;timestamp&nbsp;for&nbsp;when&nbsp;it&nbsp;was&nbsp;created</tt></dd></dl>
 
 <dl><dt><a name="MCCS-get_next_log_message"><strong>get_next_log_message</strong></a>(self)</dt><dd><tt>Return&nbsp;the&nbsp;next&nbsp;(older&nbsp;in&nbsp;time)&nbsp;log&nbsp;message&nbsp;from&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>,&nbsp;using&nbsp;the&nbsp;previously&nbsp;defined&nbsp;desired&nbsp;antenna<br>
@@ -92,6 +94,13 @@ the&nbsp;SMARTbox&nbsp;and&nbsp;port&nbsp;numbers&nbsp;for&nbsp;each&nbsp;physic
 &nbsp;<br>
 :return:&nbsp;True&nbsp;if&nbsp;there&nbsp;were&nbsp;no&nbsp;errors,&nbsp;None&nbsp;on&nbsp;error.</tt></dd></dl>
 
+<dl><dt><a name="MCCS-write_log_message"><strong>write_log_message</strong></a>(self, desired_antenna=None, desired_chipid=None, log_message='')</dt><dd><tt>Write&nbsp;a&nbsp;log&nbsp;entry&nbsp;for&nbsp;the&nbsp;given&nbsp;antenna,&nbsp;chipid,&nbsp;and&nbsp;station,&nbsp;by&nbsp;sending&nbsp;it&nbsp;to&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>&nbsp;over&nbsp;the&nbsp;serial&nbsp;link.<br>
+&nbsp;<br>
+:param&nbsp;desired_antenna:&nbsp;&nbsp;Specifies&nbsp;a&nbsp;single&nbsp;physical&nbsp;antenna&nbsp;(1-256),&nbsp;or&nbsp;0/None<br>
+:param&nbsp;desired_chipid:&nbsp;&nbsp;Specifies&nbsp;a&nbsp;single&nbsp;physical&nbsp;SMARTbox&nbsp;or&nbsp;FNDH&nbsp;serial&nbsp;number&nbsp;(bytes()&nbsp;object),&nbsp;or&nbsp;None.<br>
+:param&nbsp;log_message:&nbsp;The&nbsp;text&nbsp;of&nbsp;the&nbsp;message,&nbsp;which&nbsp;will&nbsp;be&nbsp;truncated&nbsp;to&nbsp;fit&nbsp;in&nbsp;one&nbsp;packet<br>
+:return:&nbsp;True&nbsp;if&nbsp;there&nbsp;wasn't&nbsp;an&nbsp;error</tt></dd></dl>
+
 <hr>
 Data descriptors inherited from <a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a>:<br>
 <dl><dt><strong>__dict__</strong></dt>
@@ -114,6 +123,5 @@ Data descriptors inherited from <a href="pasd.transport.html#ModbusDevice">pasd.
 <strong>MESSAGE</strong> = 1011<br>
 <strong>MESSAGE_LEN</strong> = 125<br>
 <strong>PDOC_REGSTART</strong> = 1200<br>
-<strong>PHYSANT_REGSTART</strong> = 0<br>
-<strong>logger</strong> = &lt;RootLogger root (DEBUG)&gt;</td></tr></table>
+<strong>PHYSANT_REGSTART</strong> = 0</td></tr></table>
 </body></html>

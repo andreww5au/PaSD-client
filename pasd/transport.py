@@ -27,11 +27,11 @@ PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each pack
 TIMEOUT = 1.0   # Wait at most this long for a reply to a modbus message
 COMMS_TIMEOUT = 0.001  # Low-level timeout for each call to socket.socket().recv or serial.Serial.write()
 
-# PCLOG = None
-PCLOG = open('./physical.log', 'w')
+PCLOG = None
+# PCLOG = open('./physical.log', 'w')
 
-# LCLOG = None
-LCLOG = open('./logical.log', 'w')
+LCLOG = None
+# LCLOG = open('./logical.log', 'w')
 
 
 # noinspection PyUnusedLocal

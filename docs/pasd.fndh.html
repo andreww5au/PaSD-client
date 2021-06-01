@@ -54,7 +54,9 @@ This&nbsp;code&nbsp;runs&nbsp;on&nbsp;the&nbsp;MCCS&nbsp;side&nbsp;in&nbsp;the&n
 <font color="#000000" face="helvetica, arial"><a name="FNDH">class <strong>FNDH</strong></a>(<a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt><a href="#FNDH">FNDH</a>&nbsp;class,&nbsp;an&nbsp;instance&nbsp;of&nbsp;which&nbsp;represents&nbsp;the&nbsp;microcontroller&nbsp;inside&nbsp;the&nbsp;<a href="#FNDH">FNDH</a>&nbsp;in&nbsp;an&nbsp;SKA-Low&nbsp;station,&nbsp;sitting<br>
+<td colspan=2><tt><a href="#FNDH">FNDH</a>(conn=None,&nbsp;modbus_address=None,&nbsp;logger=None)<br>
+&nbsp;<br>
+<a href="#FNDH">FNDH</a>&nbsp;class,&nbsp;an&nbsp;instance&nbsp;of&nbsp;which&nbsp;represents&nbsp;the&nbsp;microcontroller&nbsp;inside&nbsp;the&nbsp;<a href="#FNDH">FNDH</a>&nbsp;in&nbsp;an&nbsp;SKA-Low&nbsp;station,&nbsp;sitting<br>
 (virtually)&nbsp;on&nbsp;the&nbsp;same&nbsp;shared&nbsp;low-speed&nbsp;serial&nbsp;bus&nbsp;used&nbsp;to&nbsp;communicate&nbsp;with&nbsp;the&nbsp;SMARTboxes.<br>
 &nbsp;<br>
 Attributes&nbsp;are:<br>
@@ -94,7 +96,7 @@ ports:&nbsp;A&nbsp;dictionary&nbsp;with&nbsp;port&nbsp;number&nbsp;(1-28)&nbsp;a
 </dl>
 <hr>
 Methods defined here:<br>
-<dl><dt><a name="FNDH-__init__"><strong>__init__</strong></a>(self, conn=None, modbus_address=None)</dt><dd><tt>Instantiate&nbsp;an&nbsp;instance&nbsp;of&nbsp;<a href="#FNDH">FNDH</a>()&nbsp;using&nbsp;a&nbsp;connection&nbsp;object,&nbsp;and&nbsp;the&nbsp;modbus&nbsp;address&nbsp;for&nbsp;the&nbsp;<a href="#FNDH">FNDH</a><br>
+<dl><dt><a name="FNDH-__init__"><strong>__init__</strong></a>(self, conn=None, modbus_address=None, logger=None)</dt><dd><tt>Instantiate&nbsp;an&nbsp;instance&nbsp;of&nbsp;<a href="#FNDH">FNDH</a>()&nbsp;using&nbsp;a&nbsp;connection&nbsp;object,&nbsp;and&nbsp;the&nbsp;modbus&nbsp;address&nbsp;for&nbsp;the&nbsp;<a href="#FNDH">FNDH</a><br>
 (usually&nbsp;31).<br>
 &nbsp;<br>
 This&nbsp;initialisation&nbsp;function&nbsp;doesn't&nbsp;communicate&nbsp;with&nbsp;the&nbsp;<a href="#FNDH">FNDH</a>&nbsp;hardware,&nbsp;it&nbsp;just&nbsp;sets&nbsp;up&nbsp;the<br>
@@ -152,7 +154,9 @@ Data descriptors inherited from <a href="pasd.transport.html#ModbusDevice">pasd.
 <font color="#000000" face="helvetica, arial"><a name="PdocStatus">class <strong>PdocStatus</strong></a>(<a href="pasd.smartbox.html#PortStatus">pasd.smartbox.PortStatus</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt><a href="#FNDH">FNDH</a>&nbsp;PDoC&nbsp;port&nbsp;status&nbsp;instance,&nbsp;representing&nbsp;one&nbsp;of&nbsp;the&nbsp;28&nbsp;FEM&nbsp;PDoC&nbsp;ports&nbsp;that&nbsp;supply&nbsp;48VDC&nbsp;and<br>
+<td colspan=2><tt><a href="#PdocStatus">PdocStatus</a>(port_number,&nbsp;modbus_address,&nbsp;status_bitmap,&nbsp;read_timestamp,&nbsp;logger=None)<br>
+&nbsp;<br>
+<a href="#FNDH">FNDH</a>&nbsp;PDoC&nbsp;port&nbsp;status&nbsp;instance,&nbsp;representing&nbsp;one&nbsp;of&nbsp;the&nbsp;28&nbsp;FEM&nbsp;PDoC&nbsp;ports&nbsp;that&nbsp;supply&nbsp;48VDC&nbsp;and<br>
 serial&nbsp;comms&nbsp;to&nbsp;SMARTboxes&nbsp;in&nbsp;the&nbsp;field,&nbsp;making&nbsp;up&nbsp;a&nbsp;station.<br>
 &nbsp;<br>
 Some&nbsp;of&nbsp;the&nbsp;attributes&nbsp;inherited&nbsp;from&nbsp;the&nbsp;smartbox.<a href="pasd.smartbox.html#PortStatus">PortStatus</a>&nbsp;class&nbsp;are&nbsp;unused&nbsp;here,&nbsp;for&nbsp;PDoC&nbsp;port&nbsp;status<br>
@@ -187,7 +191,7 @@ Note&nbsp;that&nbsp;modbus_address,&nbsp;system_level_enabled&nbsp;and&nbsp;syst
 </dl>
 <hr>
 Methods defined here:<br>
-<dl><dt><a name="PdocStatus-__init__"><strong>__init__</strong></a>(self, port_number, modbus_address, status_bitmap, read_timestamp)</dt><dd><tt>Instantiate&nbsp;an&nbsp;instance&nbsp;of&nbsp;a&nbsp;<a href="#PdocStatus">PdocStatus</a>()&nbsp;object.<br>
+<dl><dt><a name="PdocStatus-__init__"><strong>__init__</strong></a>(self, port_number, modbus_address, status_bitmap, read_timestamp, logger=None)</dt><dd><tt>Instantiate&nbsp;an&nbsp;instance&nbsp;of&nbsp;a&nbsp;<a href="#PdocStatus">PdocStatus</a>()&nbsp;object.<br>
 &nbsp;<br>
 This&nbsp;initialisation&nbsp;function&nbsp;doesn't&nbsp;communicate&nbsp;with&nbsp;the&nbsp;port&nbsp;hardware,&nbsp;it&nbsp;just&nbsp;sets&nbsp;up&nbsp;the<br>
 data&nbsp;structures.<br>
@@ -253,6 +257,5 @@ Data descriptors inherited from <a href="pasd.smartbox.html#PortStatus">pasd.sma
 <strong>FNDH_POLL_REGS_1</strong> = {'P01_STATE': (27, 1, 'Port 01 state bitmap (r/w)', None), 'P02_STATE': (28, 1, 'Port 02 state bitmap (r/w)', None), 'P03_STATE': (29, 1, 'Port 03 state bitmap (r/w)', None), 'P04_STATE': (30, 1, 'Port 04 state bitmap (r/w)', None), 'P05_STATE': (31, 1, 'Port 05 state bitmap (r/w)', None), 'P06_STATE': (32, 1, 'Port 06 state bitmap (r/w)', None), 'P07_STATE': (33, 1, 'Port 07 state bitmap (r/w)', None), 'P08_STATE': (34, 1, 'Port 08 state bitmap (r/w)', None), 'P09_STATE': (35, 1, 'Port 09 state bitmap (r/w)', None), 'P10_STATE': (36, 1, 'Port 10 state bitmap (r/w)', None), ...}<br>
 <strong>FNDH_REGISTERS</strong> = {1: {'CONF': {'SYS_48V1_V': (1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V2_V': (1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V_I': (1013, 4, '48V PSU output current AH, WH, WL, AL', &lt;function scale_48vcurrent&gt;), 'SYS_48V_TEMP': (1017, 4, '48V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_TEMP': (1021, 4, '5V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_V': (1009, 4, '5V PSU output voltage AH, WH, WL, AL', &lt;function scale_5v&gt;), 'SYS_OUTTEMP_TH': (1029, 4, 'Outside temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_PCBTEMP_TH': (1025, 4, 'PCB temperature AH, WH, WL, AL', &lt;function scale_temp&gt;)}, 'POLL': {'P01_STATE': (27, 1, 'Port 01 state bitmap (r/w)', None), 'P02_STATE': (28, 1, 'Port 02 state bitmap (r/w)', None), 'P03_STATE': (29, 1, 'Port 03 state bitmap (r/w)', None), 'P04_STATE': (30, 1, 'Port 04 state bitmap (r/w)', None), 'P05_STATE': (31, 1, 'Port 05 state bitmap (r/w)', None), 'P06_STATE': (32, 1, 'Port 06 state bitmap (r/w)', None), 'P07_STATE': (33, 1, 'Port 07 state bitmap (r/w)', None), 'P08_STATE': (34, 1, 'Port 08 state bitmap (r/w)', None), 'P09_STATE': (35, 1, 'Port 09 state bitmap (r/w)', None), 'P10_STATE': (36, 1, 'Port 10 state bitmap (r/w)', None), ...}}}<br>
 <strong>PORTCONFIG_FILENAME</strong> = 'pasd/fndh_ports.json'<br>
-<strong>THRESHOLD_FILENAME</strong> = 'pasd/fndh_thresholds.json'<br>
-<strong>logger</strong> = &lt;RootLogger root (DEBUG)&gt;</td></tr></table>
+<strong>THRESHOLD_FILENAME</strong> = 'pasd/fndh_thresholds.json'</td></tr></table>
 </body></html>

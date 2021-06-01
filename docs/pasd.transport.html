@@ -55,7 +55,9 @@ holding&nbsp;register&nbsp;set&nbsp;(40000-49999).</tt></p>
 <font color="#000000" face="helvetica, arial"><a name="Connection">class <strong>Connection</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt>Class&nbsp;to&nbsp;handle&nbsp;Modbus&nbsp;communications&nbsp;between&nbsp;the&nbsp;MCCS&nbsp;and&nbsp;Modbus-RTU&nbsp;devices&nbsp;connected&nbsp;via&nbsp;an&nbsp;ethernet&nbsp;to&nbsp;serial<br>
+<td colspan=2><tt><a href="#Connection">Connection</a>(hostname=None,&nbsp;devicename=None,&nbsp;port=5000,&nbsp;baudrate=9600,&nbsp;multidrop=False,&nbsp;logger=None)<br>
+&nbsp;<br>
+Class&nbsp;to&nbsp;handle&nbsp;Modbus&nbsp;communications&nbsp;between&nbsp;the&nbsp;MCCS&nbsp;and&nbsp;Modbus-RTU&nbsp;devices&nbsp;connected&nbsp;via&nbsp;an&nbsp;ethernet&nbsp;to&nbsp;serial<br>
 bridge,&nbsp;or&nbsp;directly&nbsp;via&nbsp;a&nbsp;serial&nbsp;port.&nbsp;One&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;handles&nbsp;all&nbsp;communications&nbsp;for&nbsp;an&nbsp;entire&nbsp;station.<br>
 &nbsp;<br>
 An&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;is&nbsp;thread-safe&nbsp;-&nbsp;it&nbsp;can&nbsp;be&nbsp;shared&nbsp;between&nbsp;threads,&nbsp;and&nbsp;an&nbsp;internal&nbsp;lock&nbsp;prevents&nbsp;resource<br>
@@ -77,7 +79,7 @@ And&nbsp;for&nbsp;acting&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;slave,&nbsp;and&nbsp;li
 &nbsp;&nbsp;&nbsp;&nbsp;listen_for_packet<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%">Methods defined here:<br>
-<dl><dt><a name="Connection-__init__"><strong>__init__</strong></a>(self, hostname=None, devicename=None, port=5000, baudrate=9600, multidrop=False)</dt><dd><tt>Create&nbsp;a&nbsp;new&nbsp;instance,&nbsp;using&nbsp;either&nbsp;a&nbsp;socket&nbsp;connection&nbsp;to&nbsp;a&nbsp;serial&nbsp;bridge&nbsp;hostname,&nbsp;or&nbsp;a&nbsp;physical&nbsp;serial&nbsp;port,<br>
+<dl><dt><a name="Connection-__init__"><strong>__init__</strong></a>(self, hostname=None, devicename=None, port=5000, baudrate=9600, multidrop=False, logger=None)</dt><dd><tt>Create&nbsp;a&nbsp;new&nbsp;instance,&nbsp;using&nbsp;either&nbsp;a&nbsp;socket&nbsp;connection&nbsp;to&nbsp;a&nbsp;serial&nbsp;bridge&nbsp;hostname,&nbsp;or&nbsp;a&nbsp;physical&nbsp;serial&nbsp;port,<br>
 or&nbsp;neither<br>
 &nbsp;<br>
 If&nbsp;'multidrop'&nbsp;is&nbsp;true,&nbsp;this&nbsp;class&nbsp;can&nbsp;be&nbsp;used&nbsp;for&nbsp;emulating&nbsp;serial&nbsp;traffic&nbsp;between&nbsp;multiple&nbsp;threads,&nbsp;with&nbsp;or<br>
@@ -92,9 +94,10 @@ the&nbsp;first&nbsp;'nbytes'&nbsp;of&nbsp;characters&nbsp;are&nbsp;removed&nbsp;
 :param&nbsp;baudrate:&nbsp;<a href="#Connection">Connection</a>&nbsp;speed&nbsp;for&nbsp;serial&nbsp;port&nbsp;connection<br>
 :param&nbsp;multidrop:&nbsp;If&nbsp;True,&nbsp;and&nbsp;this&nbsp;connection&nbsp;is&nbsp;shared&nbsp;between&nbsp;multiple&nbsp;threads,&nbsp;each&nbsp;thread&nbsp;will&nbsp;read()<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;any&nbsp;traffic&nbsp;written&nbsp;by&nbsp;any&nbsp;other&nbsp;thread,&nbsp;as&nbsp;well&nbsp;as&nbsp;that&nbsp;coming&nbsp;in&nbsp;from&nbsp;the&nbsp;(optional)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;remote&nbsp;device,&nbsp;if&nbsp;specified.</tt></dd></dl>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;remote&nbsp;device,&nbsp;if&nbsp;specified.<br>
+:param&nbsp;logger:&nbsp;A&nbsp;logging.Logger&nbsp;<a href="builtins.html#object">object</a>&nbsp;to&nbsp;use&nbsp;for&nbsp;all&nbsp;log&nbsp;messages,&nbsp;or&nbsp;None&nbsp;(in&nbsp;which&nbsp;case&nbsp;one&nbsp;will&nbsp;be&nbsp;created)</tt></dd></dl>
 
-<dl><dt><a name="Connection-listen_for_packet"><strong>listen_for_packet</strong></a>(self, listen_address, slave_registers, maxtime=10.0, validation_function=&lt;function dummy_validate at 0x7fc1bb50a730&gt;)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;an&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packet&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;a&nbsp;technician<br>
+<dl><dt><a name="Connection-listen_for_packet"><strong>listen_for_packet</strong></a>(self, listen_address, slave_registers, maxtime=10.0, validation_function=&lt;function dummy_validate at 0x7fd4f58fe730&gt;)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;an&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packet&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;a&nbsp;technician<br>
 in&nbsp;the&nbsp;field).&nbsp;Handle&nbsp;one&nbsp;read/write&nbsp;register&nbsp;call&nbsp;by&nbsp;sending&nbsp;or&nbsp;modifying&nbsp;the&nbsp;contents&nbsp;of&nbsp;the&nbsp;registers&nbsp;passed<br>
 in&nbsp;the&nbsp;'slave_registers'&nbsp;dictionary.&nbsp;Exit&nbsp;after&nbsp;'maxtime'&nbsp;seconds,&nbsp;or&nbsp;after&nbsp;processing&nbsp;one&nbsp;valid&nbsp;packet,&nbsp;whichever<br>
 comes&nbsp;first.&nbsp;Note&nbsp;that&nbsp;if&nbsp;a&nbsp;packet&nbsp;results&nbsp;in&nbsp;an&nbsp;exception&nbsp;reply&nbsp;(invalid&nbsp;register&nbsp;number,&nbsp;invlaid&nbsp;data,&nbsp;etc),<br>
@@ -115,6 +118,14 @@ NOTE&nbsp;-&nbsp;the&nbsp;slave_registers&nbsp;dictionary&nbsp;will&nbsp;be&nbsp
 
 <dl><dt><a name="Connection-readReg"><strong>readReg</strong></a>(self, modbus_address, regnum, numreg=1)</dt><dd><tt>Given&nbsp;a&nbsp;register&nbsp;number&nbsp;and&nbsp;the&nbsp;number&nbsp;of&nbsp;registers&nbsp;to&nbsp;read,&nbsp;return&nbsp;the&nbsp;raw&nbsp;register&nbsp;contents<br>
 of&nbsp;the&nbsp;desired&nbsp;register/s.<br>
+&nbsp;<br>
+This&nbsp;function&nbsp;will&nbsp;always&nbsp;either&nbsp;return&nbsp;a&nbsp;list&nbsp;of&nbsp;register&nbsp;value&nbsp;tuples&nbsp;from&nbsp;a&nbsp;validated&nbsp;packet,&nbsp;or&nbsp;throw&nbsp;an&nbsp;exception.<br>
+&nbsp;<br>
+If&nbsp;a&nbsp;validated&nbsp;packet&nbsp;is&nbsp;received,&nbsp;but&nbsp;that&nbsp;packet&nbsp;is&nbsp;a&nbsp;Modbus&nbsp;exception,&nbsp;then&nbsp;ValueError&nbsp;is&nbsp;raised,&nbsp;indicating<br>
+a&nbsp;problem&nbsp;with&nbsp;the&nbsp;packet&nbsp;contents,&nbsp;as&nbsp;parsed&nbsp;by&nbsp;the&nbsp;remote&nbsp;device.<br>
+&nbsp;<br>
+If&nbsp;no&nbsp;reply&nbsp;is&nbsp;received&nbsp;after&nbsp;retrying,&nbsp;or&nbsp;only&nbsp;a&nbsp;corrupted&nbsp;reply&nbsp;was&nbsp;received,&nbsp;then&nbsp;IOError&nbsp;is&nbsp;raised,<br>
+indicating&nbsp;a&nbsp;communications&nbsp;problem&nbsp;with&nbsp;the&nbsp;remote&nbsp;device.<br>
 &nbsp;<br>
 :param&nbsp;modbus_address:&nbsp;MODBUS&nbsp;station&nbsp;number,&nbsp;0-255<br>
 :param&nbsp;regnum:&nbsp;Register&nbsp;number&nbsp;to&nbsp;read<br>
@@ -159,12 +170,14 @@ Data descriptors defined here:<br>
 <font color="#000000" face="helvetica, arial"><a name="ModbusDevice">class <strong>ModbusDevice</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt>Generic&nbsp;parent&nbsp;class&nbsp;for&nbsp;all&nbsp;modbus&nbsp;slaves&nbsp;that&nbsp;the&nbsp;MCCS&nbsp;can&nbsp;communicate&nbsp;with.<br>
+<td colspan=2><tt><a href="#ModbusDevice">ModbusDevice</a>(conn=None,&nbsp;modbus_address=None,&nbsp;logger=None)<br>
+&nbsp;<br>
+Generic&nbsp;parent&nbsp;class&nbsp;for&nbsp;all&nbsp;modbus&nbsp;slaves&nbsp;that&nbsp;the&nbsp;MCCS&nbsp;can&nbsp;communicate&nbsp;with.<br>
 &nbsp;<br>
 Child&nbsp;objects&nbsp;will&nbsp;be&nbsp;SMARTbox&nbsp;units&nbsp;themselves,&nbsp;and&nbsp;the&nbsp;FNDH&nbsp;controller.<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%">Methods defined here:<br>
-<dl><dt><a name="ModbusDevice-__init__"><strong>__init__</strong></a>(self, conn=None, modbus_address=None)</dt><dd><tt>Initialize&nbsp;self.&nbsp;&nbsp;See&nbsp;help(type(self))&nbsp;for&nbsp;accurate&nbsp;signature.</tt></dd></dl>
+<dl><dt><a name="ModbusDevice-__init__"><strong>__init__</strong></a>(self, conn=None, modbus_address=None, logger=None)</dt><dd><tt>Initialize&nbsp;self.&nbsp;&nbsp;See&nbsp;help(type(self))&nbsp;for&nbsp;accurate&nbsp;signature.</tt></dd></dl>
 
 <hr>
 Data descriptors defined here:<br>
@@ -193,10 +206,19 @@ and&nbsp;LSB&nbsp;last.<br>
 :param&nbsp;valuelist:&nbsp;A&nbsp;list&nbsp;of&nbsp;integers,&nbsp;or&nbsp;tuple&nbsp;of&nbsp;two&nbsp;integers,&nbsp;or&nbsp;a&nbsp;list&nbsp;of&nbsp;tuples&nbsp;of&nbsp;two&nbsp;integers<br>
 :return:&nbsp;An&nbsp;integer</tt></dd></dl>
  <dl><dt><a name="-dummy_validate"><strong>dummy_validate</strong></a>(slave_registers=None)</dt><dd><tt>#&nbsp;noinspection&nbsp;PyUnusedLocal</tt></dd></dl>
+ <dl><dt><a name="-from_ascii"><strong>from_ascii</strong></a>(mstring)</dt><dd><tt>Take&nbsp;a&nbsp;string&nbsp;full&nbsp;of&nbsp;ASCII-hex&nbsp;values&nbsp;(and&nbsp;nothing&nbsp;else),&nbsp;and&nbsp;convert&nbsp;it&nbsp;to&nbsp;a&nbsp;list&nbsp;of&nbsp;integers,&nbsp;each&nbsp;0-255.<br>
+&nbsp;<br>
+:param&nbsp;mstring:&nbsp;A&nbsp;string&nbsp;of&nbsp;letters,&nbsp;each&nbsp;0-9,&nbsp;or&nbsp;A-F,&nbsp;or&nbsp;a-f.&nbsp;String&nbsp;must&nbsp;have&nbsp;an&nbsp;even&nbsp;number&nbsp;of&nbsp;characters.<br>
+:return:&nbsp;A&nbsp;list&nbsp;of&nbsp;integers,&nbsp;each&nbsp;0-255</tt></dd></dl>
  <dl><dt><a name="-getcrc"><strong>getcrc</strong></a>(message=None)</dt><dd><tt>Calculate&nbsp;and&nbsp;returns&nbsp;the&nbsp;CRC&nbsp;bytes&nbsp;required&nbsp;for&nbsp;'message'&nbsp;(a&nbsp;list&nbsp;of&nbsp;bytes).<br>
 &nbsp;<br>
 :param&nbsp;message:&nbsp;A&nbsp;list&nbsp;of&nbsp;bytes,&nbsp;each&nbsp;in&nbsp;the&nbsp;range&nbsp;0-255<br>
 :return:&nbsp;A&nbsp;list&nbsp;of&nbsp;two&nbsp;integers,&nbsp;each&nbsp;in&nbsp;the&nbsp;range&nbsp;0-255</tt></dd></dl>
+ <dl><dt><a name="-to_ascii"><strong>to_ascii</strong></a>(message=None)</dt><dd><tt>Take&nbsp;a&nbsp;message&nbsp;list&nbsp;(a&nbsp;list&nbsp;of&nbsp;integers)&nbsp;and&nbsp;convert&nbsp;each&nbsp;integer&nbsp;to&nbsp;an&nbsp;a&nbsp;two-character&nbsp;ASCII&nbsp;hex&nbsp;value.&nbsp;Return<br>
+as&nbsp;a&nbsp;string.<br>
+&nbsp;<br>
+:param&nbsp;message:&nbsp;A&nbsp;list&nbsp;of&nbsp;integers,&nbsp;each&nbsp;0-255<br>
+:return:&nbsp;A&nbsp;string&nbsp;containing&nbsp;the&nbsp;ASCII&nbsp;hex&nbsp;representation&nbsp;of&nbsp;all&nbsp;the&nbsp;integers&nbsp;in&nbsp;the&nbsp;list.</tt></dd></dl>
 </td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#55aa55">
@@ -205,7 +227,8 @@ and&nbsp;LSB&nbsp;last.<br>
     
 <tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
 <td width="100%"><strong>COMMS_TIMEOUT</strong> = 0.001<br>
+<strong>LCLOG</strong> = &lt;_io.TextIOWrapper name='./logical.log' mode='w' encoding='UTF-8'&gt;<br>
 <strong>PACKET_WINDOW_TIME</strong> = 0.01<br>
-<strong>TIMEOUT</strong> = 1.0<br>
-<strong>logger</strong> = &lt;RootLogger root (DEBUG)&gt;</td></tr></table>
+<strong>PCLOG</strong> = &lt;_io.TextIOWrapper name='./physical.log' mode='w' encoding='UTF-8'&gt;<br>
+<strong>TIMEOUT</strong> = 1.0</td></tr></table>
 </body></html>

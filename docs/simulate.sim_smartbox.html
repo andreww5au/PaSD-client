@@ -20,8 +20,9 @@ to&nbsp;read&nbsp;and&nbsp;write&nbsp;registers.&nbsp;Used&nbsp;for&nbsp;testing
 <tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
 <td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="logging.html">logging</a><br>
 </td><td width="25%" valign=top><a href="pasd.smartbox.html">pasd.smartbox</a><br>
+</td><td width="25%" valign=top><a href="threading.html">threading</a><br>
 </td><td width="25%" valign=top><a href="time.html">time</a><br>
-</td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+</td></tr></table></td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#ee77aa">
 <td colspan=3 valign=bottom>&nbsp;<br>
@@ -43,7 +44,9 @@ to&nbsp;read&nbsp;and&nbsp;write&nbsp;registers.&nbsp;Used&nbsp;for&nbsp;testing
 <font color="#000000" face="helvetica, arial"><a name="SimSMARTbox">class <strong>SimSMARTbox</strong></a>(<a href="pasd.smartbox.html#SMARTbox">pasd.smartbox.SMARTbox</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt>An&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;simulates&nbsp;a&nbsp;single&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a>,&nbsp;acting&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;slave&nbsp;and&nbsp;responding&nbsp;to&nbsp;0x03,&nbsp;0x06&nbsp;and<br>
+<td colspan=2><tt><a href="#SimSMARTbox">SimSMARTbox</a>(conn=None,&nbsp;modbus_address=None,&nbsp;logger=None)<br>
+&nbsp;<br>
+An&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;simulates&nbsp;a&nbsp;single&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a>,&nbsp;acting&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;slave&nbsp;and&nbsp;responding&nbsp;to&nbsp;0x03,&nbsp;0x06&nbsp;and<br>
 0x10&nbsp;Modbus&nbsp;commands&nbsp;to&nbsp;read&nbsp;and&nbsp;write&nbsp;registers.<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%"><dl><dt>Method resolution order:</dt>
@@ -54,7 +57,7 @@ to&nbsp;read&nbsp;and&nbsp;write&nbsp;registers.&nbsp;Used&nbsp;for&nbsp;testing
 </dl>
 <hr>
 Methods defined here:<br>
-<dl><dt><a name="SimSMARTbox-__init__"><strong>__init__</strong></a>(self, conn=None, modbus_address=None)</dt><dd><tt>Instantiate&nbsp;an&nbsp;instance&nbsp;of&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a>()&nbsp;using&nbsp;a&nbsp;connection&nbsp;object,&nbsp;and&nbsp;the&nbsp;modbus&nbsp;address&nbsp;for&nbsp;that&nbsp;physical<br>
+<dl><dt><a name="SimSMARTbox-__init__"><strong>__init__</strong></a>(self, conn=None, modbus_address=None, logger=None)</dt><dd><tt>Instantiate&nbsp;an&nbsp;instance&nbsp;of&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a>()&nbsp;using&nbsp;a&nbsp;connection&nbsp;object,&nbsp;and&nbsp;the&nbsp;modbus&nbsp;address&nbsp;for&nbsp;that&nbsp;physical<br>
 <a href="pasd.smartbox.html#SMARTbox">SMARTbox</a>.<br>
 &nbsp;<br>
 This&nbsp;initialisation&nbsp;function&nbsp;doesn't&nbsp;communicate&nbsp;with&nbsp;the&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a>&nbsp;hardware,&nbsp;it&nbsp;just&nbsp;sets&nbsp;up&nbsp;the<br>
@@ -65,7 +68,7 @@ data&nbsp;structures.<br>
 
 <dl><dt><a name="SimSMARTbox-configure"><strong>configure</strong></a>(self, thresholds=None, portconfig=None)</dt><dd><tt>Stub,&nbsp;not&nbsp;needed&nbsp;for&nbsp;simulated&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a></tt></dd></dl>
 
-<dl><dt><a name="SimSMARTbox-mainloop"><strong>mainloop</strong></a>(self)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;any&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packets&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;the&nbsp;MCCS).<br>
+<dl><dt><a name="SimSMARTbox-listen_loop"><strong>listen_loop</strong></a>(self)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;any&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packets&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;the&nbsp;MCCS).<br>
 &nbsp;<br>
 The&nbsp;transport.Connection.listen_for_packet()&nbsp;method&nbsp;exits&nbsp;after&nbsp;the&nbsp;first&nbsp;valid&nbsp;packet&nbsp;processed,&nbsp;to&nbsp;allow<br>
 the&nbsp;calling&nbsp;code&nbsp;to&nbsp;handle&nbsp;side-effects&nbsp;from&nbsp;register&nbsp;read/write&nbsp;operations&nbsp;(for&nbsp;example,&nbsp;multiple&nbsp;reads&nbsp;from<br>
@@ -77,11 +80,20 @@ the&nbsp;same&nbsp;register&nbsp;block&nbsp;returning&nbsp;different&nbsp;values
 4)&nbsp;Uses&nbsp;the&nbsp;list&nbsp;of&nbsp;written&nbsp;registers&nbsp;to&nbsp;update&nbsp;the&nbsp;box&nbsp;state,&nbsp;and&nbsp;update&nbsp;the&nbsp;'heard&nbsp;from&nbsp;MCCS'&nbsp;timestamp.<br>
 5)&nbsp;If&nbsp;any&nbsp;registers&nbsp;are&nbsp;in&nbsp;the&nbsp;'read'&nbsp;list,&nbsp;update&nbsp;the&nbsp;'heard&nbsp;from&nbsp;MCCS'&nbsp;timestamp.<br>
 &nbsp;<br>
+Note&nbsp;that&nbsp;we&nbsp;only&nbsp;traverse&nbsp;around&nbsp;the&nbsp;loop&nbsp;whenever&nbsp;we&nbsp;process&nbsp;an&nbsp;incoming&nbsp;packet<br>
+&nbsp;<br>
 :return:&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="SimSMARTbox-loophook"><strong>loophook</strong></a>(self)</dt><dd><tt>Stub,&nbsp;overwrite&nbsp;if&nbsp;you&nbsp;subclass&nbsp;this&nbsp;to&nbsp;handle&nbsp;more&nbsp;complex&nbsp;simulation.&nbsp;Called&nbsp;every&nbsp;time&nbsp;a&nbsp;packet&nbsp;has<br>
+finished&nbsp;processing,&nbsp;or&nbsp;every&nbsp;few&nbsp;seconds&nbsp;if&nbsp;there&nbsp;haven't&nbsp;been&nbsp;any&nbsp;packets.<br>
+:return:</tt></dd></dl>
 
 <dl><dt><a name="SimSMARTbox-poll_data"><strong>poll_data</strong></a>(self)</dt><dd><tt>Stub,&nbsp;not&nbsp;needed&nbsp;for&nbsp;simulated&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a></tt></dd></dl>
 
 <dl><dt><a name="SimSMARTbox-read_uptime"><strong>read_uptime</strong></a>(self)</dt><dd><tt>Stub,&nbsp;not&nbsp;needed&nbsp;for&nbsp;simulated&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a></tt></dd></dl>
+
+<dl><dt><a name="SimSMARTbox-sim_loop"><strong>sim_loop</strong></a>(self)</dt><dd><tt>Runs&nbsp;continuously,&nbsp;simulating&nbsp;hardware&nbsp;processes&nbsp;independent&nbsp;of&nbsp;the&nbsp;communications&nbsp;packet&nbsp;handler<br>
+:return:</tt></dd></dl>
 
 <dl><dt><a name="SimSMARTbox-write_portconfig"><strong>write_portconfig</strong></a>(self)</dt><dd><tt>Stub,&nbsp;not&nbsp;needed&nbsp;for&nbsp;simulated&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a></tt></dd></dl>
 
@@ -89,6 +101,8 @@ the&nbsp;same&nbsp;register&nbsp;block&nbsp;returning&nbsp;different&nbsp;values
 
 <hr>
 Methods inherited from <a href="pasd.smartbox.html#SMARTbox">pasd.smartbox.SMARTbox</a>:<br>
+<dl><dt><a name="SimSMARTbox-__repr__"><strong>__repr__</strong></a>(self)</dt><dd><tt>Return&nbsp;repr(self).</tt></dd></dl>
+
 <dl><dt><a name="SimSMARTbox-__str__"><strong>__str__</strong></a>(self)</dt><dd><tt>Return&nbsp;str(self).</tt></dd></dl>
 
 <hr>
@@ -99,12 +113,5 @@ Data descriptors inherited from <a href="pasd.transport.html#ModbusDevice">pasd.
 <dl><dt><strong>__weakref__</strong></dt>
 <dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
 </dl>
-</td></tr></table></td></tr></table><p>
-<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
-<tr bgcolor="#55aa55">
-<td colspan=3 valign=bottom>&nbsp;<br>
-<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
-    
-<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
-<td width="100%"><strong>logger</strong> = &lt;RootLogger root (DEBUG)&gt;</td></tr></table>
+</td></tr></table></td></tr></table>
 </body></html>
