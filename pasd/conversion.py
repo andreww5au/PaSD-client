@@ -17,7 +17,7 @@ def scale_5v(value, reverse=False, pcb_version=0):
     :return: output_value in Volts
     """
     if reverse:
-        return int(value * 100)
+        return int(value * 100) & 0xFFFF
     else:
         return value / 100.0
 
@@ -35,7 +35,7 @@ def scale_48v(value, reverse=False, pcb_version=0):
     :return: output_value in Volts
     """
     if reverse:
-        return int(value * 100)
+        return int(value * 100) & 0xFFFF
     else:
         return value / 100.0
 
@@ -56,11 +56,11 @@ def scale_temp(value, reverse=False, pcb_version=0):
         if value < 0:
             return (int(value * 100) + 65536) & 0xFFFF
         else:
-            return int(value * 100)
+            return int(value * 100) & 0xFFFF
     else:
         if value >= 32768:
             value -= 65536
-        return value / 10.0     # raw_value is a signed 16-bit integer containing temp in 1/100th of a degree
+        return value / 100.0     # raw_value is a signed 16-bit integer containing temp in 1/100th of a degree
 
 
 def scale_FEMcurrent(value, reverse=False, pcb_version=0):
@@ -91,6 +91,6 @@ def scale_48vcurrent(value, reverse=False, pcb_version=0):
     :return: output_value in Amps
     """
     if reverse:
-        return int(value * 100)
+        return int(value * 100) & 0xFFFF
     else:
         return value / 100.0
