@@ -307,7 +307,7 @@ class Connection(object):
         """
         # self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
         self.logger.debug('_send_as_master(): %s' % message)
-        fullmessage = message + getcrc(message)
+        fullmessage = message + getlrc(message)
         self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
 
         replist = []  # Entire message, including CRC, as a list of integers
@@ -342,7 +342,7 @@ class Connection(object):
             except ValueError:   # Non ASCII-hex characters in reply
                 self.logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
                 raise IOError
-            if getcrc(message=replist[:-1]) == [replist[-1],]:
+            if getlrc(message=replist[:-1]) == [replist[-1],]:
                 crcgood = True
                 datalist = replist[:-1]
         elif mstring:
@@ -367,7 +367,7 @@ class Connection(object):
         """
         self.logger.debug("%d: _send_reply: %s" % (threading.get_ident(), message))
         # self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
-        fullmessage = message + getcrc(message)
+        fullmessage = message + getlrc(message)
         self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
         self.logger.debug("%d: _send_reply finished" % (threading.get_ident()))
 
@@ -425,7 +425,7 @@ class Connection(object):
                 except ValueError:  # Non ASCII-hex characters in reply
                     self.logger.error('Non ASCII-Hex characters in reply: %s' % mstring[1:-2])
                     raise IOError
-                if getcrc(message=replist[:-1]) == [replist[-1],]:
+                if getlrc(message=replist[:-1]) == [replist[-1],]:
                     crcgood = True
                     msglist = replist[:-1]
             elif mstring:
@@ -851,12 +851,12 @@ def bytestoN(valuelist):
     return sum([data[i] * (256 ** (nbytes - i - 1)) for i in range(nbytes)])
 
 
-def getcrc(message=None):
+def getlrc(message=None):
     """
-    Calculate and returns the CRC bytes required for 'message' (a list of bytes).
+    Calculate and returns the LRC byte required for 'message' (a list of bytes).
 
     :param message: A list of bytes, each in the range 0-255
-    :return: A list of two integers, each in the range 0-255
+    :return: A list of one integer, in the range 0-255
     """
     if not message:
         return 0
