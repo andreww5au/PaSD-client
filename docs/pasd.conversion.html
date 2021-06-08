@@ -18,35 +18,50 @@ register&nbsp;values&nbsp;into&nbsp;real&nbsp;values.</tt></p>
 <font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
     
 <tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
-<td width="100%"><dl><dt><a name="-scale_48v"><strong>scale_48v</strong></a>(raw_value, pcb_version)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
-value&nbsp;to&nbsp;a&nbsp;voltage.<br>
+<td width="100%"><dl><dt><a name="-scale_48v"><strong>scale_48v</strong></a>(value, reverse=False, pcb_version=0)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
+value&nbsp;to&nbsp;a&nbsp;voltage&nbsp;(if&nbsp;reverse=False),&nbsp;or&nbsp;convert&nbsp;a&nbsp;value&nbsp;in&nbsp;Volts&nbsp;to&nbsp;raw&nbsp;(if&nbsp;reverse=True).<br>
 &nbsp;<br>
-:param&nbsp;raw_value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535<br>
+For&nbsp;now,&nbsp;raw&nbsp;values&nbsp;are&nbsp;hundredths&nbsp;of&nbsp;a&nbsp;volt,&nbsp;positive&nbsp;only.<br>
+&nbsp;<br>
+:param&nbsp;value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535,&nbsp;or&nbsp;a&nbsp;voltage&nbsp;in&nbsp;Volts<br>
+:param&nbsp;reverse:&nbsp;Boolean,&nbsp;True&nbsp;to&nbsp;perform&nbsp;physical-&gt;raw&nbsp;conversion&nbsp;instead&nbsp;of&nbsp;raw-&gt;physical<br>
 :param&nbsp;pcb_version:&nbsp;integer&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;0-65535<br>
 :return:&nbsp;output_value&nbsp;in&nbsp;Volts</tt></dd></dl>
- <dl><dt><a name="-scale_48vcurrent"><strong>scale_48vcurrent</strong></a>(raw_value, pcb_version)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
-value&nbsp;to&nbsp;Amps.<br>
+ <dl><dt><a name="-scale_48vcurrent"><strong>scale_48vcurrent</strong></a>(value, reverse=False, pcb_version=0)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
+value&nbsp;to&nbsp;Amps&nbsp;(if&nbsp;reverse=False),&nbsp;or&nbsp;convert&nbsp;a&nbsp;value&nbsp;in&nbsp;Amps&nbsp;to&nbsp;raw&nbsp;(if&nbsp;reverse=True).<br>
 &nbsp;<br>
-:param&nbsp;raw_value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535<br>
+For&nbsp;now,&nbsp;raw&nbsp;values&nbsp;are&nbsp;hundredths&nbsp;of&nbsp;an&nbsp;Amp,&nbsp;positive&nbsp;only.<br>
+&nbsp;<br>
+:param&nbsp;value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535,&nbsp;or&nbsp;current&nbsp;in&nbsp;Amps<br>
+:param&nbsp;reverse:&nbsp;Boolean,&nbsp;True&nbsp;to&nbsp;perform&nbsp;physical-&gt;raw&nbsp;conversion&nbsp;instead&nbsp;of&nbsp;raw-&gt;physical<br>
 :param&nbsp;pcb_version:&nbsp;integer&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;0-65535<br>
 :return:&nbsp;output_value&nbsp;in&nbsp;Amps</tt></dd></dl>
- <dl><dt><a name="-scale_5v"><strong>scale_5v</strong></a>(raw_value, pcb_version)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
-value&nbsp;to&nbsp;a&nbsp;voltage.<br>
+ <dl><dt><a name="-scale_5v"><strong>scale_5v</strong></a>(value, reverse=False, pcb_version=0)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
+value&nbsp;to&nbsp;a&nbsp;voltage&nbsp;(if&nbsp;reverse=False),&nbsp;or&nbsp;convert&nbsp;a&nbsp;value&nbsp;in&nbsp;Volts&nbsp;to&nbsp;raw&nbsp;(if&nbsp;reverse=True).<br>
 &nbsp;<br>
-:param&nbsp;raw_value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535<br>
+For&nbsp;now,&nbsp;raw&nbsp;values&nbsp;are&nbsp;hundredths&nbsp;of&nbsp;a&nbsp;volt,&nbsp;positive&nbsp;only.<br>
+&nbsp;<br>
+:param&nbsp;value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535,&nbsp;or&nbsp;a&nbsp;voltage&nbsp;in&nbsp;Volts<br>
+:param&nbsp;reverse:&nbsp;Boolean,&nbsp;True&nbsp;to&nbsp;perform&nbsp;physical-&gt;raw&nbsp;conversion&nbsp;instead&nbsp;of&nbsp;raw-&gt;physical<br>
 :param&nbsp;pcb_version:&nbsp;integer&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;0-65535<br>
 :return:&nbsp;output_value&nbsp;in&nbsp;Volts</tt></dd></dl>
- <dl><dt><a name="-scale_current"><strong>scale_current</strong></a>(raw_value, pcb_version)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
+ <dl><dt><a name="-scale_FEMcurrent"><strong>scale_FEMcurrent</strong></a>(value, reverse=False, pcb_version=0)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
 value&nbsp;to&nbsp;mA.<br>
 &nbsp;<br>
-:param&nbsp;raw_value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535<br>
+Note&nbsp;that&nbsp;for&nbsp;now,&nbsp;this&nbsp;returns&nbsp;the&nbsp;value&nbsp;unchanged,&nbsp;in&nbsp;both&nbsp;directions,&nbsp;until&nbsp;we&nbsp;settle&nbsp;on&nbsp;a&nbsp;final&nbsp;representation.<br>
+&nbsp;<br>
+:param&nbsp;value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535,&nbsp;or&nbsp;crude&nbsp;estimate&nbsp;of&nbsp;the&nbsp;current&nbsp;in&nbsp;Amps<br>
+:param&nbsp;reverse:&nbsp;Boolean,&nbsp;True&nbsp;to&nbsp;perform&nbsp;physical-&gt;raw&nbsp;conversion&nbsp;instead&nbsp;of&nbsp;raw-&gt;physical<br>
 :param&nbsp;pcb_version:&nbsp;integer&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;0-65535<br>
 :return:&nbsp;output_value&nbsp;in&nbsp;mA</tt></dd></dl>
- <dl><dt><a name="-scale_temp"><strong>scale_temp</strong></a>(raw_value, pcb_version)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
-value&nbsp;to&nbsp;deg&nbsp;C.<br>
+ <dl><dt><a name="-scale_temp"><strong>scale_temp</strong></a>(value, reverse=False, pcb_version=0)</dt><dd><tt>Given&nbsp;a&nbsp;raw&nbsp;register&nbsp;value&nbsp;and&nbsp;the&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;find&nbsp;out&nbsp;what&nbsp;scale&nbsp;and&nbsp;offset&nbsp;are&nbsp;needed,&nbsp;convert&nbsp;the&nbsp;raw<br>
+value&nbsp;to&nbsp;deg&nbsp;C&nbsp;(if&nbsp;reverse=False),&nbsp;or&nbsp;convert&nbsp;a&nbsp;value&nbsp;in&nbsp;deg&nbsp;C&nbsp;to&nbsp;raw&nbsp;(if&nbsp;reverse=True).<br>
 &nbsp;<br>
-:param&nbsp;raw_value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535<br>
+For&nbsp;now,&nbsp;raw&nbsp;values&nbsp;are&nbsp;hundredths&nbsp;of&nbsp;a&nbsp;deg&nbsp;C,&nbsp;as&nbsp;a&nbsp;signed&nbsp;16-bit&nbsp;integer&nbsp;value<br>
+&nbsp;<br>
+:param&nbsp;value:&nbsp;raw&nbsp;register&nbsp;contents&nbsp;as&nbsp;a&nbsp;value&nbsp;from&nbsp;0-65535,&nbsp;or&nbsp;a&nbsp;floating&nbsp;point&nbsp;temperature&nbsp;in&nbsp;degrees<br>
+:param&nbsp;reverse:&nbsp;Boolean,&nbsp;True&nbsp;to&nbsp;perform&nbsp;physical-&gt;raw&nbsp;conversion&nbsp;instead&nbsp;of&nbsp;raw-&gt;physical<br>
 :param&nbsp;pcb_version:&nbsp;integer&nbsp;PCB&nbsp;version&nbsp;number,&nbsp;0-65535<br>
-:return:&nbsp;output_value&nbsp;in&nbsp;deg&nbsp;C</tt></dd></dl>
+:return:&nbsp;value&nbsp;in&nbsp;deg&nbsp;C&nbsp;(if&nbsp;reverse=False),&nbsp;or&nbsp;raw&nbsp;value&nbsp;as&nbsp;an&nbsp;unsigned&nbsp;16&nbsp;bit&nbsp;integer</tt></dd></dl>
 </td></tr></table>
 </body></html>

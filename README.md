@@ -135,28 +135,28 @@ The port registers are:
 | # | **Name** | **Size** | **Description** |
 | --- | --- | --- | --- |
 | 36 | P01\_STATE | 1 | Port 1 state bitmap (see text). R/W. |
-| 37 | P01\_CURRENT | 1 | Port 1 current (raw ADC value). RO. |
-| 38 | P02\_STATE | 1 | Port 2 state bitmap (see text). R/W. |
-| 39 | P02\_CURRENT | 1 | Port 2 current (raw ADC value). RO. |
-| 40 | P03\_STATE | 1 | Port 3 state bitmap (see text). R/W. |
-| 41 | P03\_CURRENT | 1 | Port 3 current (raw ADC value). RO. |
-| 42 | P04\_STATE | 1 | Port 4 state bitmap (see text). R/W. |
-| 43 | P04\_CURRENT | 1 | Port 4 current (raw ADC value). RO. |
-| 44 | P05\_STATE | 1 | Port 5 state bitmap (see text). R/W. |
-| 45 | P05\_CURRENT | 1 | Port 5 current (raw ADC value). RO. |
-| 46 | P06\_STATE | 1 | Port 6 state bitmap (see text). R/W. |
-| 47 | P06\_CURRENT | 1 | Port 6 current (raw ADC value). RO. |
-| 48 | P07\_STATE | 1 | Port 7 state bitmap (see text). R/W. |
-| 49 | P07\_CURRENT | 1 | Port 7 current (raw ADC value). RO. |
-| 50 | P08\_STATE | 1 | Port 8 state bitmap (see text). R/W. |
-| 51 | P08\_CURRENT | 1 | Port 8 current (raw ADC value). RO. |
-| 52 | P09\_STATE | 1 | Port 9 state bitmap (see text). R/W. |
-| 53 | P09\_CURRENT | 1 | Port 9 current (raw ADC value). RO. |
-| 54 | P10\_STATE | 1 | Port 10 state bitmap (see text). R/W. |
-| 55 | P10\_CURRENT | 1 | Port 10 current (raw ADC value). RO. |
-| 56 | P11\_STATE | 1 | Port 11 state bitmap (see text). R/W. |
-| 57 | P11\_CURRENT | 1 | Port 11 current (raw ADC value). RO. |
-| 58 | P12\_STATE | 1 | Port 12 state bitmap (see text). R/W. |
+| 37 | P02\_STATE | 1 | Port 2 state bitmap (see text). R/W. |
+| 38 | P03\_STATE | 1 | Port 3 state bitmap (see text). R/W. |
+| 39 | P04\_STATE | 1 | Port 4 state bitmap (see text). R/W. |
+| 40 | P05\_STATE | 1 | Port 5 state bitmap (see text). R/W. |
+| 41 | P06\_STATE | 1 | Port 6 state bitmap (see text). R/W. |
+| 42 | P07\_STATE | 1 | Port 7 state bitmap (see text). R/W. |
+| 43 | P08\_STATE | 1 | Port 8 state bitmap (see text). R/W. |
+| 44 | P09\_STATE | 1 | Port 9 state bitmap (see text). R/W. |
+| 45 | P10\_STATE | 1 | Port 10 state bitmap (see text). R/W. |
+| 46 | P11\_STATE | 1 | Port 11 state bitmap (see text). R/W. |
+| 47 | P12\_STATE | 1 | Port 12 state bitmap (see text). R/W. |
+| 48 | P01\_CURRENT | 1 | Port 1 current (raw ADC value). RO. |
+| 49 | P02\_CURRENT | 1 | Port 2 current (raw ADC value). RO. |
+| 50 | P03\_CURRENT | 1 | Port 3 current (raw ADC value). RO. |
+| 51 | P04\_CURRENT | 1 | Port 4 current (raw ADC value). RO. |
+| 52 | P05\_CURRENT | 1 | Port 5 current (raw ADC value). RO. |
+| 53 | P06\_CURRENT | 1 | Port 6 current (raw ADC value). RO. |
+| 54 | P07\_CURRENT | 1 | Port 7 current (raw ADC value). RO. |
+| 55 | P08\_CURRENT | 1 | Port 8 current (raw ADC value). RO. |
+| 56 | P09\_CURRENT | 1 | Port 9 current (raw ADC value). RO. |
+| 57 | P10\_CURRENT | 1 | Port 10 current (raw ADC value). RO. |
+| 58 | P11\_CURRENT | 1 | Port 11 current (raw ADC value). RO. |
 | 59 | P12\_CURRENT | 1 | Port 12 current (raw ADC value). RO. |
 
 Each of the 12 FEM ports has a state register (described below), which is Read/Write, and a current register containing the raw ADC reading for the current to that port (read only).
