@@ -14,46 +14,52 @@ The FNDH has 28 possible slots in which a &#39;Power and Data over Coax&#39; (PD
 
 A single fibre pair from the control building to the FNDH is connected to an ethernet-serial bridge (via a media converter), allowing the MCCS in the control building to send and receive data over the network to a given FNDH (with a unique IP address). The serial data from the ethernet-serial bridge is passed to the local microcontroller in the FNDH, and shared with all of the SMARTboxes via a multi-drop serial bus. When the MCCS sends data, every device on the shared bus (the FNDH microcontroller and all of the SMARTboxes in the station) receives it.
 
-The microcontroller in the FNDH monitors temperatures, voltages and currents in the FNDH, and allows the 28 possible output ports to be switched on and off. It does _NOT_ communicate with the SMARboxes at all. Instead, the SMARTboxes are controlled by the MCCS in the main building, talking to them directly via serial traffic over the shared serial bus.
+The microcontroller in the FNDH monitors temperatures, voltages and currents in the FNDH, and allows the 28 possible output ports to be switched on and off. It does _NOT_ communicate with the SMARTboxes at all. Instead, the SMARTboxes are controlled by the MCCS in the main building, talking to them directly via serial traffic over the shared serial bus.
 
 Like the SMARTboxes, the FNDH has an infra-red port, to allow a technician to do diagnostics in the field.
 
 ## Link layer
 
-As seen at the microcontroller in a SMARTbox or FNDH, the protocol is Modbus RTU, at 9600 bps, (8 bit, no parity), handshaking TBD. For the prototype, the FNDH will have a media converter from fibre to 100baseT, and a commercial ethernet (100baseT) to serial bridge, which accepts a TCP connection to port 5000 from any client (or UDP packets to port 5000), and translates traffic on the serial port to/from the network. For the final version, the media converter and ethernet-serial bridge could be merged into a single custom-designed board.
+As seen at the microcontroller in a SMARTbox or FNDH, the protocol is Modbus ASCII, at 9600 bps, (8 bit, no parity), handshaking TBD. For the prototype, the FNDH will have a media converter from fibre to 100baseT, and a commercial ethernet (100baseT) to serial bridge, which accepts a TCP connection to port 5000 from any client (or UDP packets to port 5000), and translates traffic on the serial port to/from the network. For the final version, the media converter and ethernet-serial bridge could be merged into a single custom-designed board.
 
-The local MCCS simply opens a TCP connection to the given IP address (depending on the station number, set via DIP switches in the FNDH) and sends and receives bytes in the Modbus RTU packet format.
+The local MCCS simply opens a TCP connection to the given IP address (depending on the station number, set via DIP switches in the FNDH) and sends and receives bytes in the Modbus ASCII packet format.
 
 The microcontroller in the FNDH forwards these packets directly to a multidrop serial bus, to which all of the SMARTboxes are connected as Modbus slave devices, each with a unique station address. The FNDH microcontroller also sits (logically, if not physically) on the same multidrop serial bus, and acts as a Modbus slave device with a fixed station address, allowing 48VDC power to the each of the 28 SMARTbox ports to be turned on and off.
 
 ## Low-level API
 
-The protocol is Modbus RTU. The only registers being used are in the &#39;holding register&#39; area, from 40001-49999. All are formally read/write according to the Modbus standard, but the microcontroller ignores writes to most of them. This allows a single multi-register write command, instead of several individual commands.
+The protocol is Modbus ASCII. The only registers being used are in the &#39;holding register&#39; area, from 40001-49999. All are formally read/write according to the Modbus standard, but the microcontroller ignores writes to most of them. This allows a single multi-register write command, instead of several individual commands.
 
 In this documentation, &#39;register numbers&#39; refer to the location inside the set of Modbus holding registers, so register &#39;5&#39; means 40005 in the full Modbus address space. Note that the &#39;Regnum&#39; field inside the Modbus packet is 1 less than this, so a packet with a value of &#39;4&#39; in the Regnum field would refer to register 40005, or &#39;register 5&#39; in this document.
+
+All Modbus ASCII packets start with a &#39;:&#39; character (ASCII 58, or 0x3A), contain a number of bytes, each expressed in hex as two ASCII characters (0-9 or A-F), and end with Carriage-Return (&#39;\r&#39; or 0x0D) and Line-Feed (&#39;\n&#39; or 0x0A) characters. For example, a packet might be &quot;:01030000003BC1\r\n&quot;.
 
 ### Single or multi-register read (function 0x03):
 
 To read one or more registers from the microcontroller, the MCCS would send a packet consisting of:
 
-| Station\_id | 0x03 | Regnum(hi) | Regnum(lo) | Numreg(hi) | Numreg(lo) | CRC(hi) | CRC(lo) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
+| Station\_id | 0x03 | Regnum(hi) | Regnum(lo) | Numreg(hi) | Numreg(lo) | LRC |
+| --- | --- | --- | --- | --- | --- | --- |
 
-Sample code to calculate the CRC for a message is included in the appendix.
+(with a leading &#39;:&#39;, and a trailing CR/LF pair)
 
-For example, to read 8 (two-byte) registers, starting with register 11, from the SMARTbox with a station address of 1, the packet contents would be:
+Sample code to calculate the LRC (checksum) for a message is included in the appendix.
 
-| 0x01 | 0x03 | 0x00 | 0x0A | 0x00 | 0x08 | 0x64 | 0x0E |
-| --- | --- | --- | --- | --- | --- | --- | --- |
+For example, to read 8 (two-byte) registers, starting with register 11, from the SMARTbox with a station address of 1, the packet contents (between the &#39;:&#39; and the CR/LF pair) would be:
+
+| 0x01 | 0x03 | 0x00 | 0x0A | 0x00 | 0x08 | 0xF4 |
+| --- | --- | --- | --- | --- | --- | --- |
+
+That packet would be &#39;:010300000008F4\r\n&#39;
 
 _Note that the &#39;Regnum&#39; values in the packet are the actual register number minus 1, so we send decimal &#39;10&#39; in the packet (0x0A) to read register 11._
 
-In reply, the microcontroller would send a packet containing its own station ID, a 0x03, the number of registers read (in 1 byte), the desired register contents (MSB first), and ending with a two-byte CRC.
+In reply, the microcontroller would send a packet containing its own station ID, a 0x03, the number of registers read (in 1 byte), the desired register contents (MSB first), and ending with a checksum LRC.
 
 If there was an error, the microcontroller would reply with a packet that looks like:
 
-| Station id | 0x83 | Exc\_code | CRC(hi) | CRC(lo) |
-| --- | --- | --- | --- | --- |
+| Station id | 0x83 | Exc\_code | LRC |
+| --- | --- | --- | --- |
 
 The 0x83 function code is the original function code of 0x03 for &#39;read register&#39;, plus 0x80 to indicate an exception. The &#39;Exc\_code&#39; values are documented elsewhere (eg [Modbus - Wikipedia](https://en.wikipedia.org/wiki/Modbus))
 
@@ -63,27 +69,29 @@ The 0x83 function code is the original function code of 0x03 for &#39;read regis
 
 To write one register to the microcontroller, the MCCS would send a packet that looks like:
 
-| Station id | 0x06 | Regnum(hi) | Regnum(lo) | Data(hi) | Data(lo) | CRC(hi) | CRC(lo) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
+| Station id | 0x06 | Regnum(hi) | Regnum(lo) | Data(hi) | Data(lo) | LRC |
+| --- | --- | --- | --- | --- | --- | --- |
 
-If there was no error, the microcontroller should reply with a packet identical to the one it received, with register number, data and CRC. If there was an error, it should reply with a 5-byte exception packet, with a function code of 0x86, and an appropriate exception code and CRC.
+If there was no error, the microcontroller should reply with a packet identical to the one it received, with register number, data and LRC. If there was an error, it should reply with a 4-byte exception packet, with a function code of 0x86, and an appropriate exception code and LRC.
 
 ### Multi-register write (function 0x10):
 
-To write multiple registers to the microcontroller at the same time, the MCCS would send a packet with the station ID, a function code of 0x10, the starting register number &#39;Rn&#39; (two bytes, MSB first), the number of registers to write &#39;NR&#39; (two bytes), the number of bytes of data in the packet &#39;NB&#39; (one byte) and a list of register contents &#39;D1&#39; and &#39;D2&#39; (two bytes per register, MSB first), then a two-byte packet CRC. For example, to write 0x1234 to register 23 and 0x5678 to register 24, on station 1:
+To write multiple registers to the microcontroller at the same time, the MCCS would send a packet with the station ID, a function code of 0x10, the starting register number &#39;Rn&#39; (two bytes, MSB first), the number of registers to write &#39;NR&#39; (two bytes), the number of bytes of data in the packet &#39;NB&#39; (one byte) and a list of register contents &#39;D1&#39; and &#39;D2&#39; (two bytes per register, MSB first), then a one-byte packet LRC. For example, to write 0x1234 to register 23 and 0x5678 to register 24, on station 1:
 
-| ID | Fn | Rn(h) | Rn(l) | NR(h) | NR(l) | NB | D1(h) | D1(l) | D2(h) | D2(l) | CRC(h) | CRC(l) |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0x01 | 0x10 | 0x00 | 0x16 | 0x00 | 0x02 | 0x04 | 0x12 | 0x34 | 0x56 | 0x78 | 0x09 | 0xBD |
+| ID | Fn | Rn(h) | Rn(l) | NR(h) | NR(l) | NB | D1(h) | D1(l) | D2(h) | D2(l) | LRC |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0x01 | 0x10 | 0x00 | 0x16 | 0x00 | 0x02 | 0x04 | 0x12 | 0x34 | 0x56 | 0x78 | 0xBF |
+
+(or &#39;:0110001600020412345678BF\r\n&#39;)
 
 For multiple register writes (function 0x10), the microcontroller would respond with a packet that contains the starting register number, and the number of registers written, not the complete list of register values. In the above example, the reply packet would be:
 
-| 0x01 | 0x10 | 0x00 | 0x16 | 0x00 | 0x02 | 0xA0 | 0x0C |
-| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0x01 | 0x10 | 0x00 | 0x16 | 0x00 | 0x02 | 0xD7 |
+| --- | --- | --- | --- | --- | --- | --- |
 
-Errors resulting from a multi-register write would have a function code of 0x90, and the relevant exception code.
+(or &#39;:011000160002D7\r\n&#39;)
 
-**Note – the Modbus packet size limit means that a maximum of 125 registers can be written with a single function 0x10 call.**
+Errors resulting from a multi-register write would have a function code of 0x90, and the relevant exception code. **Note – the Modbus packet size limit means that a maximum of 125 registers can be written with a single function 0x10 call.**
 
 ## SMARTbox register map
 
@@ -102,25 +110,25 @@ The polled register block has 59 two-byte registers, starting at register 1. Two
 | 13 | SYS\_FIRMVER | 1 | Firmware revision number. RO. |
 | 14 | SYS\_UPTIME | 2 | System uptime, in seconds (2 registers, four bytes). RO. |
 | 16 | SYS\_ADDRESS | 1 | Modbus station address. RO. |
-| 17 | SYS\_48V\_V | 1 | Incoming 48VDC voltage (raw ADC value). RO. |
-| 18 | SYS\_PSU\_V | 1 | PSU output voltage (raw ADC value). RO. |
-| 19 | SYS\_PSUTEMP | 1 | PSU temperature (raw ADC value). RO. |
-| 20 | SYS\_PCBTEMP | 1 | PCB temperature (raw ADC value). RO. |
-| 21 | SYS\_OUTTEMP | 1 | Outside temperature (raw ADC value). RO. |
+| 17 | SYS\_48V\_V | 1 | Incoming 48VDC voltage (Volts/100). RO. |
+| 18 | SYS\_PSU\_V | 1 | PSU output voltage (Volts/100). RO. |
+| 19 | SYS\_PSUTEMP | 1 | PSU temperature (deg C / 100). RO. |
+| 20 | SYS\_PCBTEMP | 1 | PCB temperature (deg C / 100). RO. |
+| 21 | SYS\_OUTTEMP | 1 | Outside temperature (deg C / 100). RO. |
 | 22 | SYS\_STATUS | 1 | System status (see text). R/W. |
 | 23 | SYS\_LIGHTS | 1 | LED status (see text). R/W. |
-| 24 | SYS\_FEM01TEMP | 1 | FEM 1 enclosure temperature (raw ADC value). RO. |
-| 25 | SYS\_FEM02TEMP | 1 | FEM 2 enclosure temperature (raw ADC value). RO. |
-| 26 | SYS\_FEM03TEMP | 1 | FEM 3 enclosure temperature (raw ADC value). RO. |
-| 27 | SYS\_FEM04TEMP | 1 | FEM 4 enclosure temperature (raw ADC value). RO. |
-| 28 | SYS\_FEM05TEMP | 1 | FEM 5 enclosure temperature (raw ADC value). RO. |
-| 29 | SYS\_FEM06TEMP | 1 | FEM 6 enclosure temperature (raw ADC value). RO. |
-| 30 | SYS\_FEM07TEMP | 1 | FEM 7 enclosure temperature (raw ADC value). RO. |
-| 31 | SYS\_FEM08TEMP | 1 | FEM 8 enclosure temperature (raw ADC value). RO. |
-| 32 | SYS\_FEM09TEMP | 1 | FEM 9 enclosure temperature (raw ADC value). RO. |
-| 33 | SYS\_FEM10TEMP | 1 | FEM 10 enclosure temperature (raw ADC value). RO. |
-| 34 | SYS\_FEM11TEMP | 1 | FEM 11 enclosure temperature (raw ADC value). RO. |
-| 35 | SYS\_FEM12TEMP | 1 | FEM 12 enclosure temperature (raw ADC value). RO. |
+| 24 | SYS\_FEM01TEMP | 1 | FEM 1 enclosure temperature (deg C / 100). RO. |
+| 25 | SYS\_FEM02TEMP | 1 | FEM 2 enclosure temperature (deg C / 100). RO. |
+| 26 | SYS\_FEM03TEMP | 1 | FEM 3 enclosure temperature (deg C / 100). RO. |
+| 27 | SYS\_FEM04TEMP | 1 | FEM 4 enclosure temperature (deg C / 100). RO. |
+| 28 | SYS\_FEM05TEMP | 1 | FEM 5 enclosure temperature (deg C / 100). RO. |
+| 29 | SYS\_FEM06TEMP | 1 | FEM 6 enclosure temperature (deg C / 100). RO. |
+| 30 | SYS\_FEM07TEMP | 1 | FEM 7 enclosure temperature (deg C / 100). RO. |
+| 31 | SYS\_FEM08TEMP | 1 | FEM 8 enclosure temperature (deg C / 100). RO. |
+| 32 | SYS\_FEM09TEMP | 1 | FEM 9 enclosure temperature (deg C / 100). RO. |
+| 33 | SYS\_FEM10TEMP | 1 | FEM 10 enclosure temperature (deg C / 100). RO. |
+| 34 | SYS\_FEM11TEMP | 1 | FEM 11 enclosure temperature (deg C / 100). RO. |
+| 35 | SYS\_FEM12TEMP | 1 | FEM 12 enclosure temperature (deg C / 100). RO. |
 
 The SYS\_STATUS is one of the two status registers that are read/write. When read, it contains the current status code – 0=OK, 1=WARNING, 2=ALARM, 3=RECOVERY, 4=UNINITIALISED. The SMARTbox will boot into the UNINITIALISED state, and stay in that state until any value is written into the SYS\_STATUS register. That register write will result in a transition to one of the other states (OK if temperatures and currents are in-spec, WARNING, ALARM or RECOVERY if not). Two of the states (OK and WARNING) allow ports to be turned on, the rest result in the ports being forced off.
 
@@ -146,20 +154,20 @@ The port registers are:
 | 45 | P10\_STATE | 1 | Port 10 state bitmap (see text). R/W. |
 | 46 | P11\_STATE | 1 | Port 11 state bitmap (see text). R/W. |
 | 47 | P12\_STATE | 1 | Port 12 state bitmap (see text). R/W. |
-| 48 | P01\_CURRENT | 1 | Port 1 current (raw ADC value). RO. |
-| 49 | P02\_CURRENT | 1 | Port 2 current (raw ADC value). RO. |
-| 50 | P03\_CURRENT | 1 | Port 3 current (raw ADC value). RO. |
-| 51 | P04\_CURRENT | 1 | Port 4 current (raw ADC value). RO. |
-| 52 | P05\_CURRENT | 1 | Port 5 current (raw ADC value). RO. |
-| 53 | P06\_CURRENT | 1 | Port 6 current (raw ADC value). RO. |
-| 54 | P07\_CURRENT | 1 | Port 7 current (raw ADC value). RO. |
-| 55 | P08\_CURRENT | 1 | Port 8 current (raw ADC value). RO. |
-| 56 | P09\_CURRENT | 1 | Port 9 current (raw ADC value). RO. |
-| 57 | P10\_CURRENT | 1 | Port 10 current (raw ADC value). RO. |
-| 58 | P11\_CURRENT | 1 | Port 11 current (raw ADC value). RO. |
-| 59 | P12\_CURRENT | 1 | Port 12 current (raw ADC value). RO. |
+| 48 | P01\_CURRENT | 1 | Port 1 current (1/100ths of a degree C, signed integer). RO. |
+| 49 | P02\_CURRENT | 1 | Port 2 current (1/100ths of a degree C, signed integer). RO. |
+| 50 | P03\_CURRENT | 1 | Port 3 current (1/100ths of a degree C, signed integer). RO. |
+| 51 | P04\_CURRENT | 1 | Port 4 current (1/100ths of a degree C, signed integer). RO. |
+| 52 | P05\_CURRENT | 1 | Port 5 current (1/100ths of a degree C, signed integer). RO. |
+| 53 | P06\_CURRENT | 1 | Port 6 current (1/100ths of a degree C, signed integer). RO. |
+| 54 | P07\_CURRENT | 1 | Port 7 current (1/100ths of a degree C, signed integer). RO. |
+| 55 | P08\_CURRENT | 1 | Port 8 current (1/100ths of a degree C, signed integer). RO. |
+| 56 | P09\_CURRENT | 1 | Port 9 current (1/100ths of a degree C, signed integer). RO. |
+| 57 | P10\_CURRENT | 1 | Port 10 current (1/100ths of a degree C, signed integer). RO. |
+| 58 | P11\_CURRENT | 1 | Port 11 current (1/100ths of a degree C, signed integer). RO. |
+| 59 | P12\_CURRENT | 1 | Port 12 current (1/100ths of a degree C, signed integer). RO. |
 
-Each of the 12 FEM ports has a state register (described below), which is Read/Write, and a current register containing the raw ADC reading for the current to that port (read only).
+Each of the 12 FEM ports has a state register (described below), which is Read/Write, and a current register containing reading for the current to that port, in a format TBD (read only).
 
 The state register is a bitmap. The first (most significant) byte contains:
 
@@ -199,38 +207,38 @@ The configuration register block, starting at register 1001 (all read/write), co
 - WARNING-low (WL): If the current state is OK or WARNING, and the new reading is below this value (but still above ALARM-low), then the state transitions to (or stays in) WARNING. If the current state is ALARM, and the new reading is below this value and above ALARM-low, then transition to RECOVERY. From any state, if any reading is above this value (but still below WARNING-high), then transition to OK.
 - ALARM-low (AL): If the new reading is below this value, then the state transitions to (or stays in) ALARM. If the current state is ALARM, and the new reading is _above_ this value, but still below WARNING-low, then transition to the RECOVERY state.
 
-| 1001 | SYS\_48V\_V\_TH | 4 | Incoming 48VDC voltage (raw ADC value). AH, WH, WL, AL. |
+| 1001 | SYS\_48V\_V\_TH | 4 | Incoming 48VDC voltage (Volts/100). AH, WH, WL, AL. |
 | --- | --- | --- | --- |
-| 1005 | SYS\_PSU\_V\_TH | 4 | PSU output voltage (raw ADC value). AH, WH, WL, AL. |
-| 1009 | SYS\_PSUTEMP\_TH | 4 | PSU temperature (raw ADC value). AH, WH, WL, AL. |
-| 1013 | SYS\_PCBTEMP\_TH | 4 | PCB temperature (raw ADC value). AH, WH, WL, AL. |
-| 1017 | SYS\_OUTTEMP\_TH | 4 | Outside temperature (raw ADC value). AH, WH, WL, AL. |
-| 1021 | SYS\_FEM01TEMP\_TH | 4 | FEM 1 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1025 | SYS\_FEM02TEMP\_TH | 4 | FEM 2 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1029 | SYS\_FEM03TEMP\_TH | 4 | FEM 3 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1033 | SYS\_FEM04TEMP\_TH | 4 | FEM 4 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1037 | SYS\_FEM05TEMP\_TH | 4 | FEM 5 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1041 | SYS\_FEM06TEMP\_TH | 4 | FEM 6 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1045 | SYS\_FEM07TEMP\_TH | 4 | FEM 7 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1049 | SYS\_FEM08TEMP\_TH | 4 | FEM 8 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1053 | SYS\_FEM09TEMP\_TH | 4 | FEM 9 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1057 | SYS\_FEM10TEMP\_TH | 4 | FEM 10 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1061 | SYS\_FEM11TEMP\_TH | 4 | FEM 11 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1065 | SYS\_FEM12TEMP\_TH | 4 | FEM 12 temperature (raw ADC value). AH, WH, WL, AL. |
-| 1069 | P01\_CURRENT\_TH | 1 | Port 01 current trip threshold (raw ADC value). |
-| 1070 | P02\_CURRENT\_TH | 1 | Port 02 current trip threshold (raw ADC value). |
-| 1071 | P03\_CURRENT\_TH | 1 | Port 03 current trip threshold (raw ADC value). |
-| 1072 | P04\_CURRENT\_TH | 1 | Port 04 current trip threshold (raw ADC value). |
-| 1073 | P05\_CURRENT\_TH | 1 | Port 05 current trip threshold (raw ADC value). |
-| 1074 | P06\_CURRENT\_TH | 1 | Port 06 current trip threshold (raw ADC value). |
-| 1075 | P07\_CURRENT\_TH | 1 | Port 07 current trip threshold (raw ADC value). |
-| 1076 | P08\_CURRENT\_TH | 1 | Port 08 current trip threshold (raw ADC value). |
-| 1077 | P09\_CURRENT\_TH | 1 | Port 09 current trip threshold (raw ADC value). |
-| 1078 | P10\_CURRENT\_TH | 1 | Port 10 current trip threshold (raw ADC value). |
-| 1079 | P11\_CURRENT\_TH | 1 | Port 11 current trip threshold (raw ADC value). |
-| 1080 | P12\_CURRENT\_TH | 1 | Port 12 current trip threshold (raw ADC value). |
+| 1005 | SYS\_PSU\_V\_TH | 4 | PSU output voltage (Volts/100). AH, WH, WL, AL. |
+| 1009 | SYS\_PSUTEMP\_TH | 4 | PSU temperature (deg C / 100). AH, WH, WL, AL. |
+| 1013 | SYS\_PCBTEMP\_TH | 4 | PCB temperature (deg C / 100). AH, WH, WL, AL. |
+| 1017 | SYS\_OUTTEMP\_TH | 4 | Outside temperature (deg C / 100). AH, WH, WL, AL. |
+| 1021 | SYS\_FEM01TEMP\_TH | 4 | FEM 1 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1025 | SYS\_FEM02TEMP\_TH | 4 | FEM 2 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1029 | SYS\_FEM03TEMP\_TH | 4 | FEM 3 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1033 | SYS\_FEM04TEMP\_TH | 4 | FEM 4 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1037 | SYS\_FEM05TEMP\_TH | 4 | FEM 5 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1041 | SYS\_FEM06TEMP\_TH | 4 | FEM 6 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1045 | SYS\_FEM07TEMP\_TH | 4 | FEM 7 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1049 | SYS\_FEM08TEMP\_TH | 4 | FEM 8 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1053 | SYS\_FEM09TEMP\_TH | 4 | FEM 9 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1057 | SYS\_FEM10TEMP\_TH | 4 | FEM 10 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1061 | SYS\_FEM11TEMP\_TH | 4 | FEM 11 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1065 | SYS\_FEM12TEMP\_TH | 4 | FEM 12 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1069 | P01\_CURRENT\_TH | 1 | Port 01 current trip threshold (format TBD). |
+| 1070 | P02\_CURRENT\_TH | 1 | Port 02 current trip threshold (format TBD). |
+| 1071 | P03\_CURRENT\_TH | 1 | Port 03 current trip threshold (format TBD). |
+| 1072 | P04\_CURRENT\_TH | 1 | Port 04 current trip threshold (format TBD). |
+| 1073 | P05\_CURRENT\_TH | 1 | Port 05 current trip threshold (format TBD). |
+| 1074 | P06\_CURRENT\_TH | 1 | Port 06 current trip threshold (format TBD). |
+| 1075 | P07\_CURRENT\_TH | 1 | Port 07 current trip threshold (format TBD). |
+| 1076 | P08\_CURRENT\_TH | 1 | Port 08 current trip threshold (format TBD). |
+| 1077 | P09\_CURRENT\_TH | 1 | Port 09 current trip threshold (format TBD). |
+| 1078 | P10\_CURRENT\_TH | 1 | Port 10 current trip threshold (format TBD). |
+| 1079 | P11\_CURRENT\_TH | 1 | Port 11 current trip threshold (format TBD). |
+| 1080 | P12\_CURRENT\_TH | 1 | Port 12 current trip threshold (format TBD). |
 
-The P\&lt;NN\&gt;\_CURRENT\_TH are the thresholds at which the microcontroller will turn off an FEM because the current is too high. The values are raw ADC values, representing the difference between two voltage readings.
+The P\&lt;NN\&gt;\_CURRENT\_TH are the thresholds at which the microcontroller will turn off an FEM because the current is too high. The values represent the difference between two voltage readings.
 
 ## FNDH Register map
 
@@ -249,14 +257,14 @@ The polled register block has 54 two-byte registers, starting at register 1. Two
 | 13 | SYS\_FIRMVER | 1 | Firmware revision number. RO. |
 | 14 | SYS\_UPTIME | 2 | System uptime, in seconds (2 registers, four bytes). RO. |
 | 16 | SYS\_ADDRESS | 1 | Modbus station address. RO. |
-| 17 | SYS\_48V1\_V | 1 | 48VDC PSU 1 output voltage (raw ADC value). RO. |
-| 18 | SYS\_48V2\_V | 1 | 48VDC PSU 2 output voltage (raw ADC value). RO. |
-| 19 | SYS\_5V\_V | 1 | 5VDC PSU output voltage (raw ADC value). RO. |
-| 20 | SYS\_48V\_I | 1 | Total 48VDC output current (raw ADC value). RO. |
-| 21 | SYS\_48V\_TEMP | 1 | 48VDC PSU 1+2 temperature (raw ADC value). RO. |
-| 22 | SYS\_5V\_TEMP | 1 | 5VDC PSU temperature (raw ADC value). RO. |
-| 23 | SYS\_PCBTEMP | 1 | PCB temperature (raw ADC value). RO. |
-| 24 | SYS\_OUTTEMP | 1 | Outside temperature (raw ADC value). RO. |
+| 17 | SYS\_48V1\_V | 1 | 48VDC PSU 1 output voltage (Volts/100). RO. |
+| 18 | SYS\_48V2\_V | 1 | 48VDC PSU 2 output voltage (Volts/100). RO. |
+| 19 | SYS\_5V\_V | 1 | 5VDC PSU output voltage (Volts/100). RO. |
+| 20 | SYS\_48V\_I | 1 | Total 48VDC output current (Volts/100). RO. |
+| 21 | SYS\_48V\_TEMP | 1 | 48VDC PSU 1+2 temperature (deg C / 100). RO. |
+| 22 | SYS\_5V\_TEMP | 1 | 5VDC PSU temperature (deg C / 100). RO. |
+| 23 | SYS\_PCBTEMP | 1 | PCB temperature (deg C / 100). RO. |
+| 24 | SYS\_OUTTEMP | 1 | Outside temperature (deg C / 100). RO. |
 | 25 | SYS\_STATUS | 1 | System status (see text). R/W. |
 | 26 | SYS\_LIGHTS | 1 | LED status (see text). R/W. |
 
@@ -418,27 +426,18 @@ There are 28 read-only registers (1201-1228), one for each of the PDoC ports, ea
 
 # Appendix
 
-## CRC code example:
+## LRC code example:
 
-def getcrc(message=None):
+def getlrc(message=None):
 _&quot;&quot;&quot;
- Calculate and returns the CRC bytes required for &#39;message&#39; (a list_
+ Calculate and returns the LRC byte required for &#39;message&#39;_
 
-_of bytes).
+_(a list of bytes).
 
  :param message: A list of bytes, each in the range 0-255
- :return: A list of two integers, each in the range 0-255
+ :return: A list of one integer, in the range 0-255
  &quot;&quot;&quot;_
   if not message:
-return 0, 0
-
-crc = 0xFFFF
-
-for byte in message:
- crc = crc ^ byte
-for bit in range(8):
- b = crc &amp; 0x0001
-crc = (crc \&gt;\&gt; 1) &amp; 0x7FFF
-if b:
- crc = crc ^ 0xA001
-return [(crc &amp; 0x00FF), ((crc \&gt;\&gt; 8) &amp; 0x00FF)]
+return 0
+lrc = (0 - sum(message)) &amp; 0xFF _# Twos-complement of the sum of the message bytes, masked to 8 bits_
+return [lrc,]
