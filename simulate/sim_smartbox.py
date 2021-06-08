@@ -26,7 +26,7 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.codes = smartbox.SMARTBOX_CODES[1]
         self.mbrv = 1   # Modbus register-map revision number for this physical SMARTbox
         self.pcbrv = 1  # PCB revision number for this physical SMARTbox
-        self.fem_temps = {i:1500 for i in range(1, 13)}  # Dictionary with FEM number (1-12) as key, and temperature as value
+        self.fem_temps = {i:33.33 for i in range(1, 13)}  # Dictionary with FEM number (1-12) as key, and temperature as value
         self.cpuid = 1    # CPU identifier (integer)
         self.chipid = bytes([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])   # Unique ID number (16 bytes), different for every physical SMARTbox
         self.firmware_version = 1  # Firmware revision mumber for this physical SMARTbox
@@ -125,22 +125,22 @@ class SimSMARTbox(smartbox.SMARTbox):
                 elif regname == 'SYS_ADDRESS':
                     slave_registers[regnum] = self.station_value
                 elif regname == 'SYS_48V_V':
-                    slave_registers[regnum] = int(4096 * self.incoming_voltage / 100.0)
+                    slave_registers[regnum] = scalefunc(self.incoming_voltage, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_PSU_V':
-                    slave_registers[regnum] = int(4096 * self.psu_voltage / 10.0)
+                    slave_registers[regnum] = scalefunc(self.psu_voltage, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_PSUTEMP':
-                    slave_registers[regnum] = int(4096 * (self.psu_temp + 10) / 150.0)
+                    slave_registers[regnum] = scalefunc(self.psu_temp, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_PCBTEMP':
-                    slave_registers[regnum] = int(4096 * (self.pcb_temp + 10) / 150.0)
+                    slave_registers[regnum] = scalefunc(self.pcb_temp, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_OUTTEMP':
-                    slave_registers[regnum] = int(4096 * (self.outside_temp + 10) / 150.0)
+                    slave_registers[regnum] = scalefunc(self.outside_temp, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_STATUS':
                     slave_registers[regnum] = self.statuscode
                 elif regname == 'SYS_LIGHTS':
                     slave_registers[regnum] = int(self.service_led) * 256 + self.indicator_code
                 elif (len(regname) >= 12) and ((regname[:7] + regname[-4:]) == 'SYS_FEMTEMP'):
                     fem_num = int(regname[7:-4])
-                    slave_registers[regnum] = int(4096 * (self.fem_temps[fem_num] + 10) / 150.0)
+                    slave_registers[regnum] = scalefunc(self.fem_temps[fem_num], reverse=True, pcb_version=self.pcbrv)
                 elif (len(regname) >= 8) and ((regname[0] + regname[-6:]) == 'P_STATE'):
                     pnum = int(regname[1:-6])
                     slave_registers[regnum] = self.ports[pnum].status_to_integer(write_state=True, write_to=True)
