@@ -94,6 +94,28 @@ FNDH_CODES = {1: FNDH_CODES_1}
 THRESHOLD_FILENAME = 'pasd/fndh_thresholds.json'
 PORTCONFIG_FILENAME = 'pasd/fndh_ports.json'
 
+STATUS_STRING = """\
+FNDH at address: %(modbus_address)s:
+    ModBUS register revision: %(mbrv)s
+    PCB revision: %(pcbrv)s
+    CPU ID: %(cpuid)s
+    CHIP ID: %(chipid)s
+    Firmware revision: %(firmware_version)s
+    Uptime: %(uptime)s seconds
+    R.Address: %(station_value)s
+    48V Out 1: %(psu48v1_voltage)s V
+    48V Out 2: %(psu48v1_voltage)s V
+    5V out: %(psu5v_voltage)s V
+    48V Current: %(psu48v_current)s V 
+    48V Temp: %(psu48v_temp)s deg C
+    5V Temp: %(psu5v_temp)s deg C
+    PCB Temp: %(pcb_temp)s deg C
+    Outside Temp: %(outside_temp)s deg C
+    Status: %(statuscode)s (%(status)s)
+    Service LED: %(service_led)s
+    Indicator: %(indicator_code)s (%(indicator_state)s)
+"""
+
 
 class PdocStatus(smartbox.PortStatus):
     """
@@ -277,6 +299,12 @@ class FNDH(transport.ModbusDevice):
                                           status_bitmap=0,
                                           read_timestamp=None)
 
+    def __str__(self):
+        return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)]))
+
+    def __repr__(self):
+        return str(self)
+
     def poll_data(self):
         """
         Get all the polled registers from the device, and use the contents to fill in the instance data for this instance.
@@ -386,7 +414,8 @@ class FNDH(transport.ModbusDevice):
         startreg = min([data[0] for data in self.register_map['CONF'].values()])
         for regname in conf_reglist:
             regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
-            values = self.thresholds[regname]
+            # Convert the list of threshold values in physical units into the 16 bit integers to be passed in registers
+            values = [scalefunc(v, reverse=True) for v in self.thresholds[regname]]
             assert len(values) == numreg
             vlist[(regnum - startreg):(regnum - startreg) + numreg] = values
 

@@ -167,9 +167,9 @@ class SimSMARTbox(smartbox.SMARTbox):
             if read_set or written_set:  # The MCCS has talked to us, update the last_readtime timestamp
                 self.readtime = time.time()
 
-            for regnum in range(self.register_map['POLL']['P01_STATE'][0], self.register_map['POLL']['P12_STATE'][0] + 1, 2):
+            for regnum in range(self.register_map['POLL']['P01_STATE'][0], self.register_map['POLL']['P12_STATE'][0] + 1):
                 if regnum in written_set:
-                    port = self.ports[(regnum - self.register_map['POLL']['P01_STATE'][0]) // 2 + 1]
+                    port = self.ports[(regnum - self.register_map['POLL']['P01_STATE'][0]) + 1]
                     status_bitmap = slave_registers[regnum]
                     bitstring = "{:016b}".format(status_bitmap)
 

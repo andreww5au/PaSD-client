@@ -51,29 +51,29 @@ SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed,
 
                         # Per-port status variables
                         'P01_STATE': (36, 1, 'Port 01 state bitmap', None),
-                        'P01_CURRENT': (37, 1, 'Port 01 current', conversion.scale_current),
-                        'P02_STATE': (38, 1, 'Port 02 state bitmap', None),
-                        'P02_CURRENT': (39, 1, 'Port 02 current', conversion.scale_current),
-                        'P03_STATE': (40, 1, 'Port 03 state bitmap', None),
-                        'P03_CURRENT': (41, 1, 'Port 03 current', conversion.scale_current),
-                        'P04_STATE': (42, 1, 'Port 04 state bitmap', None),
-                        'P04_CURRENT': (43, 1, 'Port 04 current', conversion.scale_current),
-                        'P05_STATE': (44, 1, 'Port 05 state bitmap', None),
-                        'P05_CURRENT': (45, 1, 'Port 05 current', conversion.scale_current),
-                        'P06_STATE': (46, 1, 'Port 06 state bitmap', None),
-                        'P06_CURRENT': (47, 1, 'Port 06 current', conversion.scale_current),
-                        'P07_STATE': (48, 1, 'Port 07 state bitmap', None),
-                        'P07_CURRENT': (49, 1, 'Port 07 current', conversion.scale_current),
-                        'P08_STATE': (50, 1, 'Port 08 state bitmap', None),
-                        'P08_CURRENT': (51, 1, 'Port 08 current', conversion.scale_current),
-                        'P09_STATE': (52, 1, 'Port 09 state bitmap', None),
-                        'P09_CURRENT': (53, 1, 'Port 09 current', conversion.scale_current),
-                        'P10_STATE': (54, 1, 'Port 10 state bitmap', None),
-                        'P10_CURRENT': (55, 1, 'Port 10 current', conversion.scale_current),
-                        'P11_STATE': (56, 1, 'Port 11 state bitmap', None),
-                        'P11_CURRENT': (57, 1, 'Port 11 current', conversion.scale_current),
-                        'P12_STATE': (58, 1, 'Port 12 state bitmap', None),
-                        'P12_CURRENT': (59, 1, 'Port 12 current', conversion.scale_current),
+                        'P02_STATE': (37, 1, 'Port 02 state bitmap', None),
+                        'P03_STATE': (38, 1, 'Port 03 state bitmap', None),
+                        'P04_STATE': (39, 1, 'Port 04 state bitmap', None),
+                        'P05_STATE': (40, 1, 'Port 05 state bitmap', None),
+                        'P06_STATE': (41, 1, 'Port 06 state bitmap', None),
+                        'P07_STATE': (42, 1, 'Port 07 state bitmap', None),
+                        'P08_STATE': (43, 1, 'Port 08 state bitmap', None),
+                        'P09_STATE': (44, 1, 'Port 09 state bitmap', None),
+                        'P10_STATE': (45, 1, 'Port 10 state bitmap', None),
+                        'P11_STATE': (46, 1, 'Port 11 state bitmap', None),
+                        'P12_STATE': (47, 1, 'Port 12 state bitmap', None),
+                        'P01_CURRENT': (48, 1, 'Port 01 current', conversion.scale_FEMcurrent),
+                        'P02_CURRENT': (49, 1, 'Port 02 current', conversion.scale_FEMcurrent),
+                        'P03_CURRENT': (50, 1, 'Port 03 current', conversion.scale_FEMcurrent),
+                        'P04_CURRENT': (51, 1, 'Port 04 current', conversion.scale_FEMcurrent),
+                        'P05_CURRENT': (52, 1, 'Port 05 current', conversion.scale_FEMcurrent),
+                        'P06_CURRENT': (53, 1, 'Port 06 current', conversion.scale_FEMcurrent),
+                        'P07_CURRENT': (54, 1, 'Port 07 current', conversion.scale_FEMcurrent),
+                        'P08_CURRENT': (55, 1, 'Port 08 current', conversion.scale_FEMcurrent),
+                        'P09_CURRENT': (56, 1, 'Port 09 current', conversion.scale_FEMcurrent),
+                        'P10_CURRENT': (57, 1, 'Port 10 current', conversion.scale_FEMcurrent),
+                        'P11_CURRENT': (58, 1, 'Port 11 current', conversion.scale_FEMcurrent),
+                        'P12_CURRENT': (59, 1, 'Port 12 current', conversion.scale_FEMcurrent),
 }
 
 # System threshold configuration registers (not polled)
@@ -603,7 +603,8 @@ class SMARTbox(transport.ModbusDevice):
         startreg = min([data[0] for data in self.register_map['CONF'].values()])
         for regname in conf_reglist:
             regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
-            values = self.thresholds[regname]
+            # Convert the list of threshold values in physical units into the 16 bit integers to be passed in registers
+            values = [scalefunc(v, reverse=True) for v in self.thresholds[regname]]
             assert len(values) == numreg
             vlist[(regnum - startreg):(regnum - startreg) + numreg] = values
 
@@ -631,11 +632,10 @@ class SMARTbox(transport.ModbusDevice):
             self.logger.error('No register map, call poll_data() first')
             return None
 
-        vlist = [0] * 24
+        vlist = [0] * 12
         startreg = self.register_map['POLL']['P01_STATE'][0]
         for portnum in range(1, 13):
-            vlist[(portnum - 1) * 2] = self.ports[portnum].status_to_integer(write_state=True)
-            vlist[(portnum - 1) * 2 + 1] = self.ports[portnum].current_raw
+            vlist[(portnum - 1)] = self.ports[portnum].status_to_integer(write_state=True)
 
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
