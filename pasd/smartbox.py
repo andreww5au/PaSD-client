@@ -658,7 +658,7 @@ class SMARTbox(transport.ModbusDevice):
         If that succeeds, use the port configuration (desired state online, desired state offline) as given, or in
         self.portconfig read from the config file on initialisation, and write it to the SMARTbox.
 
-        Then, if that succeeds, write a '1' to the status register to tell the micontroller to
+        Then, if that succeeds, write a '1' to the status register to tell the microcontroller to
         transition out of the 'UNINITIALISED' state.
 
         :param thresholds: A dictionary containing the ADC thresholds to write to the SMARTbox. If none, use defaults
