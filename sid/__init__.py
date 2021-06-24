@@ -5,7 +5,7 @@ as a Modbus master.
 
 Also uses the classes in 'pasd'.
 
-Files are:
+The contents are:
 
-mccs.py - Abstracts the SKA-Low PaSD MCCS into a class.
+        mccs.py – allows the user to communicate with the MCCS (pasd/station.py) using the SID API
 """

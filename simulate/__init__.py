@@ -1,13 +1,14 @@
 """
-Code to simulate PaSD hardware (SMARTboxes, FNDH) for testing.
+Code used to simulate SMARTboxes and an FNDH, for testing. Uses the 'pasd' module.
 
 Also uses the classes in 'pasd'.
 
-Files are:
+The contents are:
 
-transport.py - low level Modbus-RTU serial API, abstracted into a Connection class.
+        sim_smartbox.py – Simulates a single SMARTbox.
 
-sim_smartbox.py - code to simulate a SMARTBox for testing.
+        sim_fndh.py – Simulates an FNDH.
 
-fndh.py - code to simulate an FNDH for testing.
+        sim_station – Simulates an entire SKALOW station (one FNDH and 24 SMARTboxes).
+
 """

@@ -9,20 +9,21 @@
 <font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>pasd</strong></big></big></font></td
 ><td align=right valign=bottom
 ><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/andrew/PyDevel/PaSD-client/pasd/__init__.py">/home/andrew/PyDevel/PaSD-client/pasd/__init__.py</a></font></td></tr></table>
-    <p><tt>Code&nbsp;to&nbsp;handle&nbsp;power&nbsp;and&nbsp;signal&nbsp;distribution&nbsp;for&nbsp;an&nbsp;SKA-Low&nbsp;station.<br>
+    <p><tt>Base&nbsp;module,&nbsp;including&nbsp;Modbus&nbsp;transport&nbsp;library,&nbsp;and&nbsp;code&nbsp;used&nbsp;by&nbsp;the&nbsp;MCCS&nbsp;in&nbsp;the&nbsp;control&nbsp;room<br>
 &nbsp;<br>
-Files&nbsp;are:<br>
+The&nbsp;contents&nbsp;are:<br>
 &nbsp;<br>
-transport.py&nbsp;-&nbsp;low&nbsp;level&nbsp;Modbus-RTU&nbsp;serial&nbsp;API,&nbsp;abstracted&nbsp;into&nbsp;a&nbsp;Connection&nbsp;class.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;transport.py&nbsp;–&nbsp;low-level&nbsp;Modbus-ASCII&nbsp;code.<br>
 &nbsp;<br>
-conversion.py&nbsp;-&nbsp;functions&nbsp;to&nbsp;convert&nbsp;from&nbsp;raw&nbsp;ADU&nbsp;values&nbsp;to&nbsp;scaled&nbsp;temperatures,&nbsp;voltages,&nbsp;currents,&nbsp;etc.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;smartbox.py&nbsp;–&nbsp;class&nbsp;to&nbsp;control&nbsp;a&nbsp;SMARTbox.<br>
 &nbsp;<br>
-smartbox.py&nbsp;-&nbsp;handles&nbsp;a&nbsp;single&nbsp;SMARTbox,&nbsp;one&nbsp;of&nbsp;~24&nbsp;in&nbsp;a&nbsp;station,&nbsp;abstracted&nbsp;into&nbsp;a&nbsp;SMARTbox&nbsp;class.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fndh.py&nbsp;–&nbsp;class&nbsp;to&nbsp;control&nbsp;an&nbsp;FNDH.<br>
 &nbsp;<br>
-fndh.py&nbsp;-&nbsp;handles&nbsp;the&nbsp;Field&nbsp;Node&nbsp;Distribution&nbsp;Hub&nbsp;for&nbsp;a&nbsp;station,&nbsp;providing&nbsp;48V&nbsp;power&nbsp;and&nbsp;comms&nbsp;to&nbsp;the&nbsp;SMARTboxes.<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Abstracted&nbsp;into&nbsp;an&nbsp;FNDH&nbsp;class.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;station.py&nbsp;–&nbsp;class&nbsp;to&nbsp;control&nbsp;an&nbsp;entire&nbsp;station&nbsp;(an&nbsp;FNDH&nbsp;and&nbsp;multiple&nbsp;SMARTboxes).&nbsp;Also&nbsp;acts&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;'slave'&nbsp;to&nbsp;act&nbsp;on&nbsp;commands&nbsp;from&nbsp;a&nbsp;Technician's&nbsp;SID.<br>
 &nbsp;<br>
-station.py&nbsp;-&nbsp;handles&nbsp;an&nbsp;entire&nbsp;SKA-Low&nbsp;station,&nbsp;with&nbsp;one&nbsp;FNDH&nbsp;and&nbsp;up&nbsp;to&nbsp;28&nbsp;SMARTboxes.&nbsp;Abstracted&nbsp;into&nbsp;a&nbsp;Station&nbsp;class.</tt></p>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;conversion.py&nbsp;–&nbsp;helper&nbsp;functions&nbsp;to&nbsp;convert&nbsp;sensor&nbsp;data&nbsp;between&nbsp;the&nbsp;values&nbsp;in&nbsp;the&nbsp;Modbus&nbsp;packets&nbsp;and&nbsp;real&nbsp;physical&nbsp;values.<br>
+&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\*.json&nbsp;–&nbsp;default&nbsp;configuration&nbsp;data&nbsp;to&nbsp;send&nbsp;to&nbsp;the&nbsp;hardware&nbsp;on&nbsp;startup.</tt></p>
 <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#aa55cc">
