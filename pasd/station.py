@@ -92,7 +92,7 @@ class Station(object):
     In reality, the service log entries would be stored in a site-wide database (SMARTboxes might be moved from station
     to station), so the code handling them here is a simple demo function.
     """
-    def __init__(self, conn, station_id=None, logger=None):
+    def __init__(self, conn, station_id=None, logger=None, smartbox_class=smartbox.SMARTbox, fndh_class=fndh.FNDH):
         """
         Instantiate an instance of Station() using the connection object for this given
         station.
@@ -102,9 +102,14 @@ class Station(object):
 
         :param conn: An instance of transport.Connection() for the transport layer.
         :param station_id: An integer, unique for each physical station.
+        :param logger: A logging.logger() instance to log messages to, or None to create a new one.
+        :param smartbox_class: A class to use when creating a SMARTbox() instance inside this stattion
+        :param fndh_class: A class to use when creating the FNDH() instance for this station
         """
         self.conn = conn  # An instance of transport.Connection()
         self.station_id = station_id
+        self.smartbox_class = smartbox_class
+        self.fndh_class = fndh_class
         self.antennae = {}  # A dict with physical antenna number (1-256) as key, and smartbox.PortStatus() instances as value
         self.smartboxes = {}  # A dict with smartbox address (1-30) as key, and smartbox.SMARTbox() instances as value
         self.servicelog_desired_antenna = None  # Specifies a single physical antenna (1-256), or 0/None
@@ -120,14 +125,14 @@ class Station(object):
         # the ANTENNA_MAP dictionary. In a real system, this would be replaced with code to instantiate them from
         # database queries.
         for sadd in ANTENNA_MAP.keys():
-            smb = smartbox.SMARTbox(conn=self.conn, modbus_address=sadd, logger=logging.getLogger('SB:%d' % sadd))
+            smb = self.smartbox_class(conn=self.conn, modbus_address=sadd, logger=logging.getLogger('SB:%d' % sadd))
             for pnum in range(1, 13):
                 smb.ports[pnum].antenna_number = ANTENNA_MAP[sadd][pnum]
                 if ANTENNA_MAP[sadd][pnum] is not None:
                     self.antennae[ANTENNA_MAP[sadd][pnum]] = smb.ports[pnum]
             self.smartboxes[sadd] = smb
 
-        self.fndh = fndh.FNDH(conn=self.conn, modbus_address=FNDH_ADDRESS, logger=logging.getLogger('FNDH:%d' % FNDH_ADDRESS))
+        self.fndh = self.fndh_class(conn=self.conn, modbus_address=FNDH_ADDRESS, logger=logging.getLogger('FNDH:%d' % FNDH_ADDRESS))
 
     def startup(self):
         """
@@ -176,7 +181,7 @@ class Station(object):
             if sadd in self.smartboxes:
                 smb = self.smartboxes[sadd]
             else:   # If this address isn't in the saved antenna map, create a temporary SMARTbox instance.
-                smb = smartbox.SMARTbox(conn=self.conn, modbus_address=sadd)
+                smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
             uptime = smb.read_uptime()
             if uptime is None:
                 continue
@@ -242,7 +247,7 @@ class Station(object):
         # Next, grab all the data from all possible SMARTboxes, to keep comms restricted to a short time window
         for sadd in range(1, 31):
             if sadd not in self.smartboxes:   # Check for a new SMARTbox with this address
-                smb = smartbox.SMARTbox(conn=self.conn, modbus_address=sadd)
+                smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
                 test_ok = smb.poll_data()
                 if test_ok:
                     self.smartboxes[sadd] = smb   # If we heard a reply, add it to self.smartboxes, if not, ignore it
