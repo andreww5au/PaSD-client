@@ -1,5 +1,5 @@
 
-/* Note - this table contains 288 rows per station, for 24 smartboxes each with 12 ports. Up
+/* This table contains 288 rows per station, for 24 smartboxes each with 12 ports. Up
    to 256 of these will have valid antenna numbers for the antenna connected to those ports,
    the rest will have antenna_number=NULL.
 
