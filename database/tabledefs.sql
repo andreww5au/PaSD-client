@@ -231,4 +231,4 @@ CREATE TABLE fndh_port_status (
     PRIMARY KEY(station_id, pdoc_number)
 );
 
-CREATE INDEX smartbox_port_status_smartbox_number on smartbox_port_status (smartbox_number);
+CREATE INDEX fndh_port_status_smartbox_number on fndh_port_status (smartbox_number);
