@@ -213,7 +213,7 @@ CREATE TABLE smartbox_port_status (
 
 */
 
-CREATE TABLE smartbox_port_status (
+CREATE TABLE fndh_port_status (
     -- Values read from the device, via Modbus register reads:
     station_id integer,                         -- Station ID
     pdoc_number integer,                        -- Equal to the fibre number (1-12) for the RFoF signal from that SMARTbox
