@@ -242,5 +242,8 @@ CREATE TABLE stations (
     -- Status values pushed by the station daemon
     station_id integer,                         -- Station ID
     online boolean,                             -- True if the station is 'ON', with PDoC's powered up
+    status_timestamp timestamp with time zone,  -- When the status data was read from the station daemon
 
+    -- Values to be written, and acted on by the station daemon
+    desired_online boolean                      -- True if the MCCS wants this station powered up
 )
