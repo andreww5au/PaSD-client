@@ -113,8 +113,8 @@ SMARTBOX_CONF_REGS_1 = {
 
 SMARTBOX_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED'},
                               'fromname':{'OK':0, 'WARNING':1, 'ALARM':2, 'RECOVERY':3, 'UNINITIALISED':4}},
-                    'led':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW'},
-                           'fromname':{'OFF':0, 'GREEN':1, 'RED':2, 'YELLOW':3}}}
+                    'led':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW', 4:'WANTS_POWERDOWN'},
+                           'fromname':{'OFF':0, 'GREEN':1, 'RED':2, 'YELLOW':3, 'WANTS_POWERDOWN':4}}}
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value

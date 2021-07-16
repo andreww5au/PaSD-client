@@ -430,10 +430,18 @@ class FNDH(transport.ModbusDevice):
         else:
             return False
 
-    def write_portconfig(self):
+    def write_portconfig(self, write_state=True, write_to=False, write_breaker=False):
         """
-        Write the current instance data for 'desired port state online' and 'desired port state offline' in each of
-        the port status objects, to the FNDH.
+        Write the current instance data for all of the ports to the FNDH.
+
+        If 'write_state' is True, then the 'desired_state_online' and 'desired_state_offline' will have bitfields
+        corresponding to the current instance data, otherwise they will contain '00' (meaning 'do not overwrite').
+
+        If 'write_to' is True, then the 'technicians override' bits will have bitfields corresponding to the
+        current instance data (locally_forced_on and locally_forced_off), otherwise they will contain '00'
+
+        If 'write_breaker' is True, then the bit corresponding to the 'reset breaker' action will be 1, otherwise
+        it will contain 0 (do not reset the breaker).
 
         :return: True if successful, False on failure
         """
@@ -444,7 +452,9 @@ class FNDH(transport.ModbusDevice):
         vlist = [0] * 28
         startreg = self.register_map['POLL']['P01_STATE'][0]
         for portnum in range(1, 29):
-            vlist[(portnum - 1)] = self.ports[portnum].status_to_integer(write_state=True)
+            vlist[(portnum - 1)] = self.ports[portnum].status_to_integer(write_state=write_state,
+                                                                         write_to=write_to,
+                                                                         write_breaker=write_breaker)
 
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
