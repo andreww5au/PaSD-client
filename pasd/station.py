@@ -108,6 +108,7 @@ class Station(object):
         """
         self.conn = conn  # An instance of transport.Connection()
         self.station_id = station_id
+        self.online = False    # True if the station is powered up
         self.smartbox_class = smartbox_class
         self.fndh_class = fndh_class
         self.antennae = {}  # A dict with physical antenna number (1-256) as key, and smartbox.PortStatus() instances as value
@@ -153,6 +154,7 @@ class Station(object):
             7) Finish by setting the real 'desired_state_online' and 'desired_state_offline' values for all of the PDoC
                ports, and writing that to the FNDH.
         """
+        self.online = None   # Failure in the middle of this process means the state is unknown
         ok = self.fndh.poll_data()
         if not ok:
             self.logger.error('No reply from FNDH - aborting station startup.')
@@ -211,7 +213,31 @@ class Station(object):
         ok = self.fndh.configure_final()
         if not ok:
             self.logger.error('Could not do final configuration of FNDH during startup.')
-        return ok
+            return False
+
+        self.online = True
+        return True
+
+    def shutdown(self):
+        """
+        Power down all PDoC ports on the FNDH.
+
+        :return: True for success, False for failure
+        """
+        allok = True
+        for portnum in range(1, 29):
+            time.sleep(1)
+            self.fndh.ports[portnum].desire_enabled_online = True
+            self.logger.info('Turning off PDoC port %d' % portnum)
+            ok = self.fndh.write_portconfig()
+            if not ok:
+                allok = False
+                self.logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
+        if allok:
+            self.online = False
+        else:
+            self.online = None   # We failed to turn off the PDoC ports, so we don't know the state
+        return allok
 
     def poll_data(self):
         """
