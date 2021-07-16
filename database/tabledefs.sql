@@ -234,6 +234,13 @@ CREATE TABLE fndh_port_status (
 CREATE INDEX fndh_port_status_smartbox_number on fndh_port_status (smartbox_number);
 
 
-/*
-
+/* Station management - reflects the state of the daemons managing each station, rather than the hardware that
+   they control.
 */
+
+CREATE TABLE stations (
+    -- Status values pushed by the station daemon
+    station_id integer,                         -- Station ID
+    online boolean,                             -- True if the station is 'ON', with PDoC's powered up
+
+)
