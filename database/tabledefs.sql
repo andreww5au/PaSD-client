@@ -173,17 +173,17 @@ CREATE TABLE smartbox_port_status (
 
 
 
-/* Table to store the current state of each of the 28 FNDH power/data ports per station
+/* Table to store the current state of each of the 28 FNDH power/data-over-coax (PDoC) ports per station
 
-   One row per FNDH power/data port in all of the stations. Each FNDH has 28 ports that can provide power
+   One row per FNDH PDoC port in all of the stations. Each FNDH has 28 PDoC ports that can provide power
    and data to a SMARTbox, and each can be switched on and off. Only 24 SMARTboxes can ever be connected at
    one time, because there are only 24 ribbons for the RFoF data. The SMARTbox with a modbus address of N
    will always be connected to fibre ribbon number N at the FNDH, but it could be connected to any one of
-   the power/data ports (to allow redundancy for port failures).
+   the PDoC ports (to allow redundancy for port failures).
 
    Because the SMARTboxes are connected using a multi-drop serial bus, the Modbus address number is entirely
-   unrelated to the physical power/data port on the FNDH. The MCCS must work out the mapping between Modbus
-   address and physical power/data port on startup, by turning all 28 ports on one at time, with a delay
+   unrelated to the physical PDoC port on the FNDH. The MCCS must work out the mapping between Modbus
+   address and physical PDoC port on startup, by turning all 28 PDoC ports on one at time, with a delay
    between ports, then querying the 'time since poweron' value for all possible modbus addresses.
 
    Most of the data is read (polled once a minute or so) from the FNDH, with the 'status_timetamp' and
@@ -200,12 +200,12 @@ CREATE TABLE smartbox_port_status (
    that more than a few (exact number TBD) minutes has elapsed since the last Modbus packet from the MCCS, then
    the FNDH transitions back to the 'offline' state.
 
-   The standard method for turning ports on and off is to set the 'desired_state_online' value to True or False.
+   The standard method for turning PDoC ports on and off is to set the 'desired_state_online' value to True or False.
    It's also possible to set the 'desired_state_offline' value to True, in which case the port will stay on
    even without an active MCCS, but this feature will probably only be used for engineering tests, or in the
    laboratory.
 
-   If the output current is too high on a port, the hardware current limit circuit will trip, turning off
+   If the output current is too high on a PDoC port, the hardware current limit circuit will trip, turning off
    the 48V power to that port. This will result in a 0/False value for the 'power sense bit for that port,
    which will be read by the MCCS the next time the FNDH is polled, and saved to this table. The only way
    to reset this hardware current limit to to turn the port off, then on again, using the
@@ -216,9 +216,9 @@ CREATE TABLE smartbox_port_status (
 CREATE TABLE fndh_port_status (
     -- Values read from the device, via Modbus register reads:
     station_id integer,                         -- Station ID
-    pdoc_number integer,                        -- Equal to the fibre number (1-12) for the RFoF signal from that SMARTbox
-    smartbox_number integer,                    -- Populated by the station startup code in the MCCS
-    system_online boolean,                      -- Is the SMARTbox in the 'online' state now?
+    pdoc_number integer,                        -- Physical power/data-over-coax port number (1-28), unrelated to SMARTbox address
+    smartbox_number integer,                    -- NULL if not yet populated by the station startup code in the MCCS
+    system_online boolean,                      -- Is the FNDH in the 'online' state now?
     locally_forced_on boolean,                  -- Has this port been locally forced ON by a technician overide?
     locally_forced_off boolean,                 -- Has this port been locally forced OFF by a technician overide?
     power_state boolean,                        -- Is this port turned on by the microcontroller?
@@ -232,3 +232,8 @@ CREATE TABLE fndh_port_status (
 );
 
 CREATE INDEX fndh_port_status_smartbox_number on fndh_port_status (smartbox_number);
+
+
+/*
+
+*/
