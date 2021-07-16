@@ -6,8 +6,10 @@ to read and write registers. Used for testing PaSD code.
 """
 
 import logging
+import random
 import threading
 import time
+
 
 logging.basicConfig()
 
@@ -40,6 +42,7 @@ class SimFNDH(fndh.FNDH):
         self.psu5v_temp = 55.1  # Temperature of the 5VDC power supply (Volts)
         self.pcb_temp = 38.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 34.0    # Outside temperature (deg C)
+        self.initialised = False   # True if the system has been initialised by the LMC
         self.statuscode = 4    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'       # Status string, obtained from self.codes['status'] (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
@@ -48,6 +51,7 @@ class SimFNDH(fndh.FNDH):
         self.readtime = 0    # Unix timestamp for the last successful polled data from this FNDH
         self.start_time = 0   # Unix timestamp when this instance started processing
         self.wants_exit = False  # Set to True externally to kill self.mainloop if the box is pseudo-powered-off
+        self.sensor_states = {regname:'OK' for regname in self.register_map['CONF']}  # OK, WARNING or RECOVERY
 
     def poll_data(self):
         """
@@ -127,21 +131,21 @@ class SimFNDH(fndh.FNDH):
                 elif regname == 'SYS_ADDRESS':
                     slave_registers[regnum] = self.station_value
                 elif regname == 'SYS_48V1_V':
-                    slave_registers[regnum] = int(4096 * self.psu48v1_voltage / 100.0)
+                    slave_registers[regnum] = scalefunc(self.psu48v1_voltage, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_48V2_V':
-                    slave_registers[regnum] = int(4096 * self.psu48v2_voltage / 100.0)
+                    slave_registers[regnum] = scalefunc(self.psu48v2_voltage, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_5V_V':
-                    slave_registers[regnum] = int(4096 * self.psu5v_voltage / 10.0)
+                    slave_registers[regnum] = scalefunc(self.psu5v_voltage, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_48V_I':
-                    slave_registers[regnum] = int(4096 * self.psu48v_current / 50.0)
+                    slave_registers[regnum] = scalefunc(self.psu48v_current, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_48V_TEMP':
-                    slave_registers[regnum] = int(4096 * (self.psu48v_temp + 10) / 150.0)
+                    slave_registers[regnum] = scalefunc(self.psu48v_temp, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_5V_TEMP':
-                    slave_registers[regnum] = int(4096 * (self.psu5v_temp + 10) / 150.0)
+                    slave_registers[regnum] = scalefunc(self.psu5v_temp, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_PCBTEMP':
-                    slave_registers[regnum] = int(4096 * (self.pcb_temp + 10) / 150.0)
+                    slave_registers[regnum] = scalefunc(self.pcb_temp, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_OUTTEMP':
-                    slave_registers[regnum] = int(4096 * (self.outside_temp + 10) / 150.0)
+                    slave_registers[regnum] = scalefunc(self.outside_temp, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_STATUS':
                     slave_registers[regnum] = self.statuscode
                 elif regname == 'SYS_LIGHTS':
@@ -150,8 +154,12 @@ class SimFNDH(fndh.FNDH):
                     pnum = int(regname[1:-6])
                     slave_registers[regnum] = self.ports[pnum].status_to_integer(write_state=True, write_to=True)
 
-            for regnum in range(1001, 1033):   # Zero all the threshold registers
-                slave_registers[regnum] = 0
+            for regname in self.register_map['CONF']:
+                regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
+                (slave_registers[regnum],
+                 slave_registers[regnum + 1],
+                 slave_registers[regnum + 2],
+                 slave_registers[regnum + 3]) = (scalefunc(x, reverse=True) for x in self.thresholds[regname])
 
             try:
                 read_set, written_set = self.conn.listen_for_packet(listen_address=self.modbus_address,
@@ -207,6 +215,11 @@ class SimFNDH(fndh.FNDH):
                     else:
                         pass
 
+            for regname in self.register_map['CONF']:
+                regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
+                if regnum in written_set:
+                    self.thresholds[regname] = [scalefunc(slave_registers[x]) for x in range(regnum, regnum + 4)]
+
             if self.register_map['POLL']['SYS_LIGHTS'][0] in written_set:  # Wrote to SYS_LIGHTS, so set light attributes
                 msb, lsb = divmod(slave_registers[self.register_map['POLL']['SYS_LIGHTS'][0]], 256)
                 self.service_led = bool(msb)
@@ -214,8 +227,10 @@ class SimFNDH(fndh.FNDH):
                 self.indicator_state = self.codes['led']['fromid'][lsb]
 
             if self.register_map['POLL']['SYS_STATUS'][0] in written_set:   # Wrote to SYS_STATUS, so clear UNINITIALISED state
-                self.statuscode = 0
-                self.status = self.codes['status']['fromid'][0]
+                self.initialised = True
+                # We can't write to the statuscode or status, because it might be in a WARNING, ALARM or RECOVERY state
+                # self.statuscode = 0
+                # self.status = self.codes['status']['fromid'][0]
 
             if (self.statuscode not in [0, 1]):   # If we're not OK or WARNING, disable all the outputs
                 for port in self.ports.values():
@@ -229,15 +244,13 @@ class SimFNDH(fndh.FNDH):
                     port.current_timestamp = port.status_timestamp
                     port.system_level_enabled = True
                     port_on = False
-                    port.current_raw = 0
-                    port.current = 0.0
+                    port.power_sense = False
                     if ( ( (self.online and port.desire_enabled_online)
                            or ((not self.online) and port.desire_enabled_offline)
                            or (port.locally_forced_on) )
                          and (not port.locally_forced_off) ):
                         port_on = True
-                        port.current_raw = 2048
-                        port.current = 50.0
+                        port.power_sense = True
                     port.power_state = port_on
 
             self.loophook()
@@ -267,6 +280,71 @@ class SimFNDH(fndh.FNDH):
                 self.online = True
                 for port in self.ports.values():
                     port.system_online = True
+
+            self.psu48v1_voltage += (48.1 - self.psu48v1_voltage) * 0.1 + (random.random() - 0.5)
+            self.psu48v2_voltage += (48.1 - self.psu48v2_voltage) * 0.1 + (random.random() - 0.5)
+            self.psu5v_voltage += (5.1 - self.psu5v_voltage) * 0.01 + (random.random() - 0.05)
+            self.psu48v_current += (13.4 - self.psu48v_current) * 0.02 + (random.random() - 0.1)
+            self.psu48v_temp += (58.3 - self.psu48v_temp) * 0.1 + (random.random() - 0.5)
+            self.psu5v_temp += (55.1 - self.psu5v_temp) * 0.1 + (random.random() - 0.5)
+            self.pcb_temp += (38.0 - self.pcb_temp) * 0.1 + (random.random() - 0.5)
+            self.outside_temp += (34.0 - self.outside_temp) * 0.1 + (random.random() - 0.5)
+
+            # Test current voltage/temp/current values against threshold and update states
+            for regname in self.register_map['CONF']:
+                ah, wh, wl, al = self.thresholds[regname]
+                curstate = self.sensor_states[regname]
+                if regname == 'SYS_48V1_V_TH':
+                    curvalue = self.psu48v1_voltage
+                elif regname == 'SYS_48V2_V_TH':
+                    curvalue = self.psu48v2_voltage
+                elif regname == 'SYS_5V_V_TH':
+                    curvalue = self.psu5v_voltage
+                elif regname == 'SYS_48V_I_TH':
+                    curvalue = self.psu48v_current
+                elif regname == 'SYS_48V_TEMP_TH':
+                    curvalue = self.psu48v_temp
+                elif regname == 'SYS_5V_TEMP_TH':
+                    curvalue = self.psu5v_temp
+                elif regname == 'SYS_PCBTEMP_TH':
+                    curvalue = self.pcb_temp
+                elif regname == 'SYS_OUTTEMP_TH':
+                    curvalue = self.outside_temp
+                else:
+                    self.logger.critical('Configuration register %s not handled by simulation code')
+                    return
+
+                newstate = curstate
+                if curvalue > ah:
+                    newstate = 'ALARM'
+                elif wh > curvalue >= ah:
+                    if curstate == 'ALARM':
+                        newstate = 'RECOVERY'
+                    else:
+                        newstate = 'WARNING'
+                elif wl >= curvalue >= wh:
+                    newstate = 'OK'
+                elif al <= curvalue < wl:
+                    if curstate == 'ALARM':
+                        newstate = 'RECOVERY'
+                    else:
+                        newstate = 'WARNING'
+                elif curvalue < al:
+                    newstate = 'ALARM'
+                self.sensor_states[regname] = newstate
+
+            if 'ALARM' in self.sensor_states.values():
+                self.status = 'ALARM'
+            elif 'WARNING' in self.sensor_states.values():
+                self.status = 'WARNING'
+            elif 'RECOVERY' in self.sensor_states.values():
+                self.status = 'RECOVERY'
+            elif not self.initialised:
+                self.status = 'UNINITIALISED'
+            else:
+                self.status = 'OK'
+
+            self.statuscode = self.codes['status']['fromname'][self.status]
 
             time.sleep(0.5)
 

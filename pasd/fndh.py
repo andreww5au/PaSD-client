@@ -71,18 +71,18 @@ FNDH_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
 }
 
 FNDH_CONF_REGS_1 = {
-                    'SYS_48V1_V':(1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),
-                    'SYS_48V2_V':(1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),
-                    'SYS_5V_V':(1009, 4, '5V PSU output voltage AH, WH, WL, AL', conversion.scale_5v),
-                    'SYS_48V_I':(1013, 4, '48V PSU output current AH, WH, WL, AL', conversion.scale_48vcurrent),
-                    'SYS_48V_TEMP':(1017, 4, '48V PSU temperature AH, WH, WL, AL', conversion.scale_temp),
-                    'SYS_5V_TEMP':(1021, 4, '5V PSU temperature AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_48V1_V_TH':(1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),
+                    'SYS_48V2_V_TH':(1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),
+                    'SYS_5V_V_TH':(1009, 4, '5V PSU output voltage AH, WH, WL, AL', conversion.scale_5v),
+                    'SYS_48V_I_TH':(1013, 4, '48V PSU output current AH, WH, WL, AL', conversion.scale_48vcurrent),
+                    'SYS_48V_TEMP_TH':(1017, 4, '48V PSU temperature AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_5V_TEMP_TH':(1021, 4, '5V PSU temperature AH, WH, WL, AL', conversion.scale_temp),
                     'SYS_PCBTEMP_TH':(1025, 4, 'PCB temperature AH, WH, WL, AL', conversion.scale_temp),
                     'SYS_OUTTEMP_TH':(1029, 4, 'Outside temperature AH, WH, WL, AL', conversion.scale_temp),
 }
 
-FNDH_CODES_1 = {'status':{'fromid':{0:'UNINITIALISED', 1:'OK', 2:'ALARM', 3:'WARNING', 4:'RECOVERY'},
-                          'fromname':{'UNINITIALISED':0, 'OK':1, 'ALARM':2, 'WARNING':3, 'RECOVERY':4}},
+FNDH_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED'},
+                          'fromname':{'OK':0, 'WARNING':1, 'ALARM':2, 'RECOVERY':3, 'UNINITIALISED':4}},
                 'leds':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW'},
                         'fromname':{'OFF':0, 'GREEN':1, 'RED':2, 'YELLOW':3}}}
 

@@ -349,15 +349,16 @@ The configuration register block, starting at register 1001 (all read/write), co
 - WARNING-low (WL): If the current state is OK or WARNING, and the new reading is below this value (but still above ALARM-low), then the state transitions to (or stays in) WARNING. If the current state is ALARM, and the new reading is below this value and above ALARM-low, then transition to RECOVERY. From any state, if any reading is above this value (but still below WARNING-high), then transition to OK.
 - ALARM-low (AL): If the new reading is below this value, then the state transitions to (or stays in) ALARM. If the current state is ALARM, and the new reading is _above_ this value, but still below WARNING-low, then transition to the RECOVERY state.
 
-| 1001 | SYS\_48V1\_V\_TH | 4 | 48VDC PSU 1 output voltage. AH, WH, WL, AL. |
+|  #  | Name | Size | Description |
 | --- | --- | --- | --- |
+| 1001 | SYS\_48V1\_V\_TH | 4 | 48VDC PSU 1 output voltage. AH, WH, WL, AL. |
 | 1005 | SYS\_48V2\_V\_TH | 4 | 48VDC PSU 2 output voltage. AH, WH, WL, AL. |
-| 1009 | SYS\_5V\_V | 4 | 5V DC PSU output voltage. AH, WH, WL, AL. |
-| 1013 | SYS\_48V\_I | 4 | Total 48V current. AH, WH, WL, AL. |
-| 1017 | SYS\_48V\_TEMP | 4 | Joint 48V power supply temperature. AH, WH, WL, AL. |
-| 1021 | SYS\_5V\_TEMP | 4 | 5V power supply temperature. AH, WH, WL, AL. |
-| 1025 | SYS\_PCBTEMP | 4 | PCB temperature. AH, WH, WL, AL. |
-| 1029 | SYS\_OUTTEMP | 4 | Outside air temperature. AH, WH, WL, AL. |
+| 1009 | SYS\_5V\_V\_TH | 4 | 5V DC PSU output voltage. AH, WH, WL, AL. |
+| 1013 | SYS\_48V\_I\_TH | 4 | Total 48V current. AH, WH, WL, AL. |
+| 1017 | SYS\_48V\_TEMP\_TH | 4 | Joint 48V power supply temperature. AH, WH, WL, AL. |
+| 1021 | SYS\_5V\_TEMP\_TH | 4 | 5V power supply temperature. AH, WH, WL, AL. |
+| 1025 | SYS\_PCBTEMP\_TH | 4 | PCB temperature. AH, WH, WL, AL. |
+| 1029 | SYS\_OUTTEMP\_TH | 4 | Outside air temperature. AH, WH, WL, AL. |
 
 ## FNDH start-up – SMARTbox to PDoC mapping
 
