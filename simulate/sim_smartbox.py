@@ -176,7 +176,7 @@ class SimSMARTbox(smartbox.SMARTbox):
             for regname in self.register_map['CONF']:
                 regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
                 if numreg == 1:
-                    slave_registers[regnum] = scalefunc(self.thresholds[regname][0], reverse=True)
+                    slave_registers[regnum] = scalefunc(self.thresholds[regname], reverse=True)
                 elif numreg == 4:
                     (slave_registers[regnum],
                      slave_registers[regnum + 1],
@@ -248,7 +248,10 @@ class SimSMARTbox(smartbox.SMARTbox):
             for regname in self.register_map['CONF']:
                 regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
                 if regnum in written_set:
-                    self.thresholds[regname] = [scalefunc(slave_registers[x]) for x in range(regnum, regnum + 4)]
+                    if numreg == 1:
+                        self.thresholds[regname] = scalefunc(slave_registers[regnum])
+                    else:
+                        self.thresholds[regname] = [scalefunc(slave_registers[x]) for x in range(regnum, regnum + 4)]
 
             if self.register_map['POLL']['SYS_LIGHTS'][0] in written_set:  # Wrote to SYS_LIGHTS, so set light attributes
                 msb, lsb = divmod(slave_registers[self.register_map['POLL']['SYS_LIGHTS'][0]], 256)
@@ -326,10 +329,9 @@ class SimSMARTbox(smartbox.SMARTbox):
             for regname in self.register_map['CONF']:
                 if regname.endswith('_CURRENT_TH'):
                     curstate = self.portcurrent_states[regname]
-                    ah = self.thresholds[regname][0]
+                    ah = self.thresholds[regname]
                     wh, wl, al = ah, -1, -2   # Only one threshold for port current, hysteresis handled in firmware
                     curvalue = self.ports[int(regname[1:3])].current
-                    print(regname, ah, wh, wl, al, curvalue)
                 else:
                     curstate = self.sensor_states[regname]
                     ah, wh, wl, al = self.thresholds[regname]
@@ -344,11 +346,10 @@ class SimSMARTbox(smartbox.SMARTbox):
                     elif regname == 'SYS_OUTTEMP_TH':
                         curvalue = self.outside_temp
                     elif regname.startswith('SYS_SENSE'):
-                        curvalue = self.sensor_temps[int(regname[9:])]
+                        curvalue = self.sensor_temps[int(regname[9:11])]
                     else:
                         self.logger.critical('Configuration register %s not handled by simulation code')
                         return
-                    print(regname, ah, wh, wl, al, curvalue)
 
                 newstate = curstate
                 if curvalue > ah:
@@ -370,9 +371,11 @@ class SimSMARTbox(smartbox.SMARTbox):
                     newstate = 'ALARM'
 
                 if curstate != newstate:
-                    self.logger.warning('Sensor %s transitioned from %s to ALARM with reading of %4.2f' % (regname[:-3],
-                                                                                                           curstate,
-                                                                                                           curvalue))
+                    msg = 'Sensor %s transitioned from %s to ALARM with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
+                    self.logger.warning(msg % (regname[:-3],
+                                               curstate,
+                                               curvalue,
+                                               ah,wh,wl,al))
 
                 if regname.endswith('_CURRENT_TH'):
                     self.portcurrent_states[regname] = newstate

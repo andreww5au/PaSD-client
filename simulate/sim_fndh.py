@@ -174,10 +174,13 @@ class SimFNDH(fndh.FNDH):
 
             for regname in self.register_map['CONF']:
                 regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
-                (slave_registers[regnum],
-                 slave_registers[regnum + 1],
-                 slave_registers[regnum + 2],
-                 slave_registers[regnum + 3]) = (scalefunc(x, reverse=True) for x in self.thresholds[regname])
+                if numreg == 1:
+                    slave_registers[regnum] = scalefunc(self.thresholds[regname], reverse=True)
+                else:
+                    (slave_registers[regnum],
+                     slave_registers[regnum + 1],
+                     slave_registers[regnum + 2],
+                     slave_registers[regnum + 3]) = (scalefunc(x, reverse=True) for x in self.thresholds[regname])
 
             try:
                 read_set, written_set = self.conn.listen_for_packet(listen_address=self.modbus_address,
@@ -236,7 +239,10 @@ class SimFNDH(fndh.FNDH):
             for regname in self.register_map['CONF']:
                 regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
                 if regnum in written_set:
-                    self.thresholds[regname] = [scalefunc(slave_registers[x]) for x in range(regnum, regnum + 4)]
+                    if numreg == 1:
+                        self.thresholds[regname] = scalefunc(slave_registers[regnum])
+                    else:
+                        self.thresholds[regname] = [scalefunc(slave_registers[x]) for x in range(regnum, regnum + 4)]
 
             if self.register_map['POLL']['SYS_LIGHTS'][0] in written_set:  # Wrote to SYS_LIGHTS, so set light attributes
                 msb, lsb = divmod(slave_registers[self.register_map['POLL']['SYS_LIGHTS'][0]], 256)
@@ -356,9 +362,11 @@ class SimFNDH(fndh.FNDH):
                     newstate = 'ALARM'
 
                 if curstate != newstate:
-                    self.logger.warning('Sensor %s transitioned from %s to ALARM with reading of %4.2f' % (regname[:-3],
-                                                                                                           curstate,
-                                                                                                           curvalue))
+                    msg = 'Sensor %s transitioned from %s to ALARM with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
+                    self.logger.warning(msg % (regname[:-3],
+                                               curstate,
+                                               curvalue,
+                                               ah,wh,wl,al))
 
                 self.sensor_states[regname] = newstate
 
