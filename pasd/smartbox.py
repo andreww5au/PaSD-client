@@ -145,11 +145,11 @@ SMARTBox at address: %(modbus_address)s:
     Firmware revision: %(firmware_version)s
     Uptime: %(uptime)s seconds
     R.Address: %(station_value)s
-    48V In: %(incoming_voltage)s V
-    5V out: %(psu_voltage)s V
-    PSU Temp: %(psu_temp)s deg C
-    PCB Temp: %(pcb_temp)s deg C
-    Outside Temp: %(outside_temp)s deg C
+    48V In: %(incoming_voltage)4.2f V
+    5V out: %(psu_voltage)4.2f V
+    PSU Temp: %(psu_temp)4.2f deg C
+    PCB Temp: %(pcb_temp)4.2f deg C
+    Outside Temp: %(outside_temp)4.2f deg C
     Status: %(statuscode)s (%(status)s)
     Service LED: %(service_led)s
     Indicator: %(indicator_code)s (%(indicator_state)s)

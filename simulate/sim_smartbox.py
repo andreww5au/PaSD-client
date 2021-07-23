@@ -14,7 +14,7 @@ logging.basicConfig()
 
 from pasd import smartbox
 
-RETURN_BIAS = 0.1
+RETURN_BIAS = 0.05
 
 
 def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
@@ -26,11 +26,11 @@ def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
 
     :param current_value: Current sensor value, arbitrary units
     :param mean: Desired mean value
-    :param scale: Scale factor for variations
-    :param return_bias: Defaults to 0.1, increase this to reduce variation around the mean
+    :param scale: Scale factor for variations - a scale of one means jumps of -1.0 to +1.0 every time step
+    :param return_bias: Dimensionless factor - increase this to reduce long-term variation around the mean
     :return: Next value for the sensor reading
     """
-    return current_value + scale * ((return_bias * (mean - current_value)) + (random.random() - 0.5))
+    return current_value + scale * 2.0 * ((return_bias * (mean - current_value)) + (random.random() - 0.5))
 
 
 class SimSMARTbox(smartbox.SMARTbox):
@@ -319,11 +319,11 @@ class SimSMARTbox(smartbox.SMARTbox):
             if not self.initialised:
                 continue   # Don't bother simulating sensor values until the thresholds have been set
 
-            self.incoming_voltage = random_walk(self.incoming_voltage, 48.1, scale=2.0)
-            self.psu_voltage = random_walk(self.psu_voltage, 5.1, scale=0.5)
-            self.psu_temp = random_walk(self.psu_temp, 58.3, scale=3.0)
-            self.pcb_temp = random_walk(self.pcb_temp, 38.0, scale=3.0)
-            self.outside_temp = random_walk(self.outside_temp, 34.0, scale=3.0)
+            self.incoming_voltage = random_walk(self.incoming_voltage, 46.1, scale=0.2)
+            self.psu_voltage = random_walk(self.psu_voltage, 5.1, scale=0.05)
+            self.psu_temp = random_walk(self.psu_temp, 28.3, scale=0.1)
+            self.pcb_temp = random_walk(self.pcb_temp, 27.0, scale=0.1)
+            self.outside_temp = random_walk(self.outside_temp, 34.0, scale=0.5)
 
             # Test current voltage/temp/current values against threshold and update states
             for regname in self.register_map['CONF']:
@@ -371,9 +371,10 @@ class SimSMARTbox(smartbox.SMARTbox):
                     newstate = 'ALARM'
 
                 if curstate != newstate:
-                    msg = 'Sensor %s transitioned from %s to ALARM with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
+                    msg = 'Sensor %s transitioned from %s to %s with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
                     self.logger.warning(msg % (regname[:-3],
                                                curstate,
+                                               newstate,
                                                curvalue,
                                                ah,wh,wl,al))
 

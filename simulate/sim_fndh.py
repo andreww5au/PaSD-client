@@ -362,9 +362,10 @@ class SimFNDH(fndh.FNDH):
                     newstate = 'ALARM'
 
                 if curstate != newstate:
-                    msg = 'Sensor %s transitioned from %s to ALARM with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
+                    msg = 'Sensor %s transitioned from %s to %s with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
                     self.logger.warning(msg % (regname[:-3],
                                                curstate,
+                                               newstate,
                                                curvalue,
                                                ah,wh,wl,al))
 
