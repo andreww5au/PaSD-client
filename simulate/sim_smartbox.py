@@ -6,12 +6,31 @@ to read and write registers. Used for testing PaSD code.
 """
 
 import logging
+import random
 import threading
 import time
 
 logging.basicConfig()
 
 from pasd import smartbox
+
+RETURN_BIAS = 0.1
+
+
+def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
+    """
+    Take the current and desired mean values of a simulated sensor value, and generate the next value,
+    to simulate a random walk around the mean value, with a bias towards returning to the mean.
+
+    With scale=1.0, typical variation over 1000 samples is roughly +/- 2.0
+
+    :param current_value: Current sensor value, arbitrary units
+    :param mean: Desired mean value
+    :param scale: Scale factor for variations
+    :param return_bias: Defaults to 0.1, increase this to reduce variation around the mean
+    :return: Next value for the sensor reading
+    """
+    return current_value + scale * ((return_bias * (mean - current_value)) + (random.random() - 0.5))
 
 
 class SimSMARTbox(smartbox.SMARTbox):
@@ -26,7 +45,7 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.codes = smartbox.SMARTBOX_CODES[1]
         self.mbrv = 1   # Modbus register-map revision number for this physical SMARTbox
         self.pcbrv = 1  # PCB revision number for this physical SMARTbox
-        self.fem_temps = {i:33.33 for i in range(1, 13)}  # Dictionary with FEM number (1-12) as key, and temperature as value
+        self.sensor_temps = {i:33.33 for i in range(1, 13)}  # Dictionary with sensor number (1-12) as key, and temperature as value
         self.cpuid = 1    # CPU identifier (integer)
         self.chipid = bytes([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])   # Unique ID number (16 bytes), different for every physical SMARTbox
         self.firmware_version = 1  # Firmware revision mumber for this physical SMARTbox
@@ -37,6 +56,7 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.psu_temp = 45.0    # Temperature of the internal 5V power supply (deg C)
         self.pcb_temp = 38.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 34.0    # Outside temperature (deg C)
+        self.initialised = False   # True if the system has been initialised by the LMC
         self.statuscode = 4    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'       # Status string, obtained from self.codes['status'] (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
@@ -46,6 +66,11 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.start_time = time.time()   # Unix timestamp when this instance started processing
         self.pdoc_number = None   # Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
         self.wants_exit = False  # Set to True externally to kill self.mainloop if the box is pseudo-powered-off
+        # Sensor states, with four thresholds for hysteris (alarm high, warning high, warning low, alarm low)
+        # Each has three possible values (OK, WARNING or RECOVERY)
+        self.sensor_states = {regname:'OK' for regname in self.register_map['CONF'] if not regname.endswith('_CURRENT_TH')}
+        # Port current states, with only one (high) threshold, and fault handling internally. Can only be OK or ALARM
+        self.portcurrent_states = {regname:'OK' for regname in self.register_map['CONF'] if regname.endswith('_CURRENT_TH')}
 
     def poll_data(self):
         """
@@ -138,9 +163,9 @@ class SimSMARTbox(smartbox.SMARTbox):
                     slave_registers[regnum] = self.statuscode
                 elif regname == 'SYS_LIGHTS':
                     slave_registers[regnum] = int(self.service_led) * 256 + self.indicator_code
-                elif (len(regname) >= 12) and ((regname[:7] + regname[-4:]) == 'SYS_FEMTEMP'):
-                    fem_num = int(regname[7:-4])
-                    slave_registers[regnum] = scalefunc(self.fem_temps[fem_num], reverse=True, pcb_version=self.pcbrv)
+                elif (regname[:9] == 'SYS_SENSE'):
+                    sensor_num = int(regname[9:])
+                    slave_registers[regnum] = scalefunc(self.sensor_temps[sensor_num], reverse=True, pcb_version=self.pcbrv)
                 elif (len(regname) >= 8) and ((regname[0] + regname[-6:]) == 'P_STATE'):
                     pnum = int(regname[1:-6])
                     slave_registers[regnum] = self.ports[pnum].status_to_integer(write_state=True, write_to=True)
@@ -148,8 +173,17 @@ class SimSMARTbox(smartbox.SMARTbox):
                     pnum = int(regname[1:-8])
                     slave_registers[regnum] = self.ports[pnum].current_raw
 
-            for regnum in range(1001, 1081):   # Zero all the threshold registers
-                slave_registers[regnum] = 0
+            for regname in self.register_map['CONF']:
+                regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
+                if numreg == 1:
+                    slave_registers[regnum] = scalefunc(self.thresholds[regname][0], reverse=True)
+                elif numreg == 4:
+                    (slave_registers[regnum],
+                     slave_registers[regnum + 1],
+                     slave_registers[regnum + 2],
+                     slave_registers[regnum + 3]) = (scalefunc(x, reverse=True) for x in self.thresholds[regname])
+                else:
+                    self.logger.critical('Unexpected number of registers for %s' % regname)
 
             try:
                 read_set, written_set = self.conn.listen_for_packet(listen_address=self.modbus_address,
@@ -211,6 +245,11 @@ class SimSMARTbox(smartbox.SMARTbox):
                     if bitstring[8] == '1':  # Reset breaker
                         port.breaker_tripped = False
 
+            for regname in self.register_map['CONF']:
+                regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
+                if regnum in written_set:
+                    self.thresholds[regname] = [scalefunc(slave_registers[x]) for x in range(regnum, regnum + 4)]
+
             if self.register_map['POLL']['SYS_LIGHTS'][0] in written_set:  # Wrote to SYS_LIGHTS, so set light attributes
                 msb, lsb = divmod(slave_registers[self.register_map['POLL']['SYS_LIGHTS'][0]], 256)
                 self.service_led = bool(msb)
@@ -218,8 +257,10 @@ class SimSMARTbox(smartbox.SMARTbox):
                 self.indicator_state = self.codes['led']['fromid'][lsb]
 
             if self.register_map['POLL']['SYS_STATUS'][0] in written_set:   # Wrote to SYS_STATUS, so clear UNINITIALISED state
-                self.statuscode = 0
-                self.status = self.codes['status']['fromid'][0]
+                self.initialised = True
+                # We can't write to the statuscode or status, because it might be in a WARNING, ALARM or RECOVERY state
+                # self.statuscode = 0
+                # self.status = self.codes['status']['fromid'][0]
 
             if (self.statuscode not in [0, 1]):   # If we're not OK or WARNING, disable all the outputs
                 for port in self.ports.values():
@@ -271,6 +312,87 @@ class SimSMARTbox(smartbox.SMARTbox):
                     port.system_online = True
 
             time.sleep(0.5)
+
+            if not self.initialised:
+                continue   # Don't bother simulating sensor values until the thresholds have been set
+
+            self.incoming_voltage = random_walk(self.incoming_voltage, 48.1, scale=2.0)
+            self.psu_voltage = random_walk(self.psu_voltage, 5.1, scale=0.5)
+            self.psu_temp = random_walk(self.psu_temp, 58.3, scale=3.0)
+            self.pcb_temp = random_walk(self.pcb_temp, 38.0, scale=3.0)
+            self.outside_temp = random_walk(self.outside_temp, 34.0, scale=3.0)
+
+            # Test current voltage/temp/current values against threshold and update states
+            for regname in self.register_map['CONF']:
+                if regname.endswith('_CURRENT_TH'):
+                    curstate = self.portcurrent_states[regname]
+                    ah = self.thresholds[regname][0]
+                    wh, wl, al = ah, -1, -2   # Only one threshold for port current, hysteresis handled in firmware
+                    curvalue = self.ports[int(regname[1:3])].current
+                    print(regname, ah, wh, wl, al, curvalue)
+                else:
+                    curstate = self.sensor_states[regname]
+                    ah, wh, wl, al = self.thresholds[regname]
+                    if regname == 'SYS_48V_V_TH':
+                        curvalue = self.incoming_voltage
+                    elif regname == 'SYS_PSU_V_TH':
+                        curvalue = self.psu_voltage
+                    elif regname == 'SYS_PSUTEMP_TH':
+                        curvalue = self.psu_temp
+                    elif regname == 'SYS_PCBTEMP_TH':
+                        curvalue = self.pcb_temp
+                    elif regname == 'SYS_OUTTEMP_TH':
+                        curvalue = self.outside_temp
+                    elif regname.startswith('SYS_SENSE'):
+                        curvalue = self.sensor_temps[int(regname[9:])]
+                    else:
+                        self.logger.critical('Configuration register %s not handled by simulation code')
+                        return
+                    print(regname, ah, wh, wl, al, curvalue)
+
+                newstate = curstate
+                if curvalue > ah:
+                    if curstate != 'ALARM':
+                        newstate = 'ALARM'
+                elif wh > curvalue >= ah:
+                    if curstate == 'ALARM':
+                        newstate = 'RECOVERY'
+                    elif curstate != 'WARNING':
+                        newstate = 'WARNING'
+                elif wl >= curvalue >= wh:
+                    newstate = 'OK'
+                elif al <= curvalue < wl:
+                    if curstate == 'ALARM':
+                        newstate = 'RECOVERY'
+                    else:
+                        newstate = 'WARNING'
+                elif curvalue < al:
+                    newstate = 'ALARM'
+
+                if curstate != newstate:
+                    self.logger.warning('Sensor %s transitioned from %s to ALARM with reading of %4.2f' % (regname[:-3],
+                                                                                                           curstate,
+                                                                                                           curvalue))
+
+                if regname.endswith('_CURRENT_TH'):
+                    self.portcurrent_states[regname] = newstate
+                else:
+                    self.sensor_states[regname] = newstate
+
+            if 'ALARM' in self.sensor_states.values():
+                self.status = 'ALARM'
+            elif 'WARNING' in self.sensor_states.values():
+                self.status = 'WARNING'
+            elif 'RECOVERY' in self.sensor_states.values():
+                self.status = 'RECOVERY'
+            elif not self.initialised:
+                self.status = 'UNINITIALISED'
+            else:
+                self.status = 'OK'
+
+            self.statuscode = self.codes['status']['fromname'][self.status]
+
+        self.logger.info('Ending sim_loop() in SimSMARTbox')
 
 
 """

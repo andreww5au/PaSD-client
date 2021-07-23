@@ -12,11 +12,22 @@ import time
 
 logging.basicConfig()
 
-from pasd import conversion
-from pasd import transport
+from pasd import conversion   # Conversion functions between register values and actual temps/voltages/currents
+from pasd import transport    # Modbus API
 
+# Register definitions and status code mapping - only one mapping here now (SMARTBOX_POLL_REGS_1,
+# SMARTBOX_CONF_REGS_1 and SMARTBOX_CODES_1), and these define the registers and codes for Modbus register map
+# revision 1 (where SYS_MBRV==1).
+#
+# When firmware updates require a new register map and status codes, define new dictionaries SMARTBOX_POLL_REGS_2,
+# SMARTBOX_CONF_REGS_2, and SMARTBOX_CODES_2, and add them to the SMARTBOX_REGISTERS and SMARTBOX_CODES dictionaries.
+#
+# When a SMARTbox is contacted, the SYS_MBRV register value (always defined to be in register 1) will be used to load
+# the appropriate register map and status codes.
+#
+# Register maps are dictionaries with register name as key, and a tuple of (register_number, number_of_registers,
+# description, scaling_function) as value.
 
-# Dicts with register name as key, and a tuple of (register_number, number_of_registers, description, scaling_function) as value
 SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
                         'SYS_MBRV':    (1, 1, 'Modbus register map revision', None),
                         'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
@@ -26,7 +37,7 @@ SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed,
                         'SYS_UPTIME':  (14, 2, 'Uptime in seconds', None),
                         'SYS_ADDRESS': (16, 1, 'MODBUS station ID', None),
 
-                        # From here on can change between firmware revisions
+                        # From here on register address and contents can change between firmware revisions
                         'SYS_48V_V':     (17, 1, 'Incoming 48VDC voltage', conversion.scale_48v),
                         'SYS_PSU_V':     (18, 1, 'PSU output voltage', conversion.scale_5v),
                         'SYS_PSUTEMP': (19, 1, 'PSU Temperature', conversion.scale_temp),
@@ -35,19 +46,19 @@ SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed,
                         'SYS_STATUS':  (22, 1, 'System status code', None),
                         'SYS_LIGHTS':  (23, 1, 'LED state codes', None),
 
-                        # Note - only a few of these FEM enclosure temps will return valid data
-                        'SYS_FEM01TEMP': (24, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM02TEMP': (25, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM03TEMP': (26, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM04TEMP': (27, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM05TEMP': (28, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM06TEMP': (29, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM07TEMP': (30, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM08TEMP': (31, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM09TEMP': (32, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM10TEMP': (33, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM11TEMP': (34, 1, 'FEM Temperature', conversion.scale_temp),
-                        'SYS_FEM12TEMP': (35, 1, 'FEM Temperature', conversion.scale_temp),
+                        # Additional sensor inputs, some not yet allocated to A/D inputs
+                        'SYS_SENSE01': (24, 1, 'Sensor 1 - usage TBD', conversion.scale_temp),
+                        'SYS_SENSE02': (25, 1, 'Sensor 2 - usage TBD', conversion.scale_temp),
+                        'SYS_SENSE03': (26, 1, 'Sensor 3 - usage TBD', conversion.scale_temp),
+                        'SYS_SENSE04': (27, 1, 'Sensor 4 - usage TBD', conversion.scale_temp),
+                        'SYS_SENSE05': (28, 1, 'Sensor 5 - usage TBD', conversion.scale_temp),
+                        'SYS_SENSE06': (29, 1, 'Sensor 6 - usage TBD', conversion.scale_temp),
+                        'SYS_SENSE07': (30, 1, 'Sensor 7 - usage TBD', conversion.scale_temp),
+                        'SYS_SENSE08': (31, 1, 'Sensor 8 - usage TBD', conversion.scale_temp),
+                        'SYS_SENSE09': (32, 1, 'Sensor 9 - usage TBD', conversion.scale_temp),
+                        'SYS_SENSE10': (33, 1, 'Sensor 10 - usage TBD', conversion.scale_temp),
+                        'SYS_SENSE11': (34, 1, 'Sensor 11 - usage TBD', conversion.scale_temp),
+                        'SYS_SENSE12': (35, 1, 'Sensor 12 - usage TBD', conversion.scale_temp),
 
                         # Per-port status variables
                         'P01_STATE': (36, 1, 'Port 01 state bitmap', None),
@@ -77,24 +88,24 @@ SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed,
 }
 
 # System threshold configuration registers (not polled)
-SMARTBOX_CONF_REGS_1 = {
+SMARTBOX_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as well as under-value alarm and warning
                         'SYS_48V_V_TH': (1001, 4, 'Incoming 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),
                         'SYS_PSU_V_TH': (1005, 4, 'PSU output voltage AH, WH, WL, AL', conversion.scale_5v),
                         'SYS_PSUTEMP_TH': (1009, 4, 'PSU temperature AH, WH, WL, AL', conversion.scale_temp),
                         'SYS_PCBTEMP_TH': (1013, 4, 'PCB temperature AH, WH, WL, AL', conversion.scale_temp),
                         'SYS_OUTTEMP_TH': (1017, 4, 'Outside temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM01TEMP_TH': (1021, 4, 'FEM 1 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM02TEMP_TH': (1025, 4, 'FEM 2 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM03TEMP_TH': (1029, 4, 'FEM 3 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM04TEMP_TH': (1033, 4, 'FEM 4 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM05TEMP_TH': (1037, 4, 'FEM 5 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM06TEMP_TH': (1041, 4, 'FEM 6 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM07TEMP_TH': (1045, 4, 'FEM 7 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM08TEMP_TH': (1049, 4, 'FEM 8 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM09TEMP_TH': (1053, 4, 'FEM 9 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM10TEMP_TH': (1057, 4, 'FEM 10 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM11TEMP_TH': (1061, 4, 'FEM 11 temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_FEM12TEMP_TH': (1065, 4, 'FEM 12 temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE01_TH': (1021, 4, 'Sensor 1 AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE02_TH': (1025, 4, 'Sensor 2 AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE03_TH': (1029, 4, 'Sensor 3 AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE04_TH': (1033, 4, 'Sensor 4 AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE05_TH': (1037, 4, 'Sensor 5 AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE06_TH': (1041, 4, 'Sensor 6 AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE07_TH': (1045, 4, 'Sensor 7 AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE08_TH': (1049, 4, 'Sensor 8 AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE09_TH': (1053, 4, 'Sensor 9 AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE10_TH': (1057, 4, 'Sensor 10 AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE11_TH': (1061, 4, 'Sensor 11 AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_SENSE12_TH': (1065, 4, 'Sensor 12 AH, WH, WL, AL', conversion.scale_temp),
 
                         # No hysteris or low-current limits for FEM currents, just a single value in ADC
                         'P01_CURRENT_TH':(1069, 1, 'Port 01 current trip threshold', conversion.scale_FEMcurrent),
@@ -111,8 +122,9 @@ SMARTBOX_CONF_REGS_1 = {
                         'P12_CURRENT_TH':(1080, 1, 'Port 12 current trip threshold', conversion.scale_FEMcurrent),
 }
 
-SMARTBOX_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED'},
-                              'fromname':{'OK':0, 'WARNING':1, 'ALARM':2, 'RECOVERY':3, 'UNINITIALISED':4}},
+# Translation between the integer in the SYS_STATUS and SYS_STATUS register bytes, and the meaning of the code
+SMARTBOX_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED', 5:'WANTS_POWERDOWN'},
+                              'fromname':{'OK':0, 'WARNING':1, 'ALARM':2, 'RECOVERY':3, 'UNINITIALISED':4, 'WANTS_POWERDOWN':5}},
                     'led':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW', 4:'WANTS_POWERDOWN'},
                            'fromname':{'OFF':0, 'GREEN':1, 'RED':2, 'YELLOW':3, 'WANTS_POWERDOWN':4}}}
 
@@ -371,7 +383,7 @@ class SMARTbox(transport.ModbusDevice):
     pcbrv: PCB revision number for this physical SMARTbox
     register_map: A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
     codes: A dictionary mapping status code integer (eg 0) to status code string (eg 'OK'), and LED codes to LED flash states
-    fem_temps: A dictionary with port number (1-12) as key, and temperature as value
+    sensor_temps: A dictionary with sensor number (1-12) as key, and temperature as value
     cpuid: CPU identifier (integer)
     chipid: Unique ID number (16 bytes), different for every physical SMARTbox
     firmware_version: Firmware revision mumber for this physical SMARTbox
@@ -412,7 +424,7 @@ class SMARTbox(transport.ModbusDevice):
         self.pcbrv = None  # PCB revision number for this physical SMARTbox
         self.register_map = {}  # A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
         self.codes = {}    # A dictionary mapping status code integer (eg 0) to status code string (eg 'OK'), and LED codes to LED flash states
-        self.fem_temps = {}  # Dictionary with FEM number (1-12) as key, and temperature as value
+        self.sensor_temps = {}  # Dictionary with sensor number (1-12) as key, and (probably) temperature as value
         self.cpuid = ''    # CPU identifier (integer)
         self.chipid = []   # Unique ID number (16 bytes), different for every physical SMARTbox
         self.firmware_version = 0  # Firmware revision mumber for this physical SMARTbox
@@ -495,7 +507,7 @@ class SMARTbox(transport.ModbusDevice):
         self.register_map = SMARTBOX_REGISTERS[self.mbrv]
         self.codes = SMARTBOX_CODES[self.mbrv]
 
-        self.fem_temps = {}  # Dictionary with FEM number (1-12) as key, and temperature as value
+        self.sensor_temps = {}  # Dictionary with sensor number (1-12) as key, and (probably) temperature as value
         for regname in self.register_map['POLL'].keys():  # Iterate over all the register names in the current register map
             regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
             raw_value = valuelist[regnum - 1:regnum + numreg - 1]
@@ -538,9 +550,9 @@ class SMARTbox(transport.ModbusDevice):
                 self.service_led = bool(raw_value[0][0])
                 self.indicator_code = raw_value[0][1]
                 self.indicator_state = self.codes['led']['fromid'][self.indicator_code]
-            elif (len(regname) >= 12) and ((regname[:7] + regname[-4:]) == 'SYS_FEMTEMP'):
-                fem_num = int(regname[7:-4])
-                self.fem_temps[fem_num] = scaled_float
+            elif (regname[:9] == 'SYS_SENSE'):
+                sensor_num = int(regname[9:])
+                self.sensor_temps[sensor_num] = scaled_float
             elif (len(regname) >= 8) and ((regname[0] + regname[-6:]) == 'P_STATE'):
                 pnum = int(regname[1:-6])
                 self.ports[pnum].set_status_data(status_bitmap=raw_int, read_timestamp=read_timestamp)

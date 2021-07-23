@@ -283,13 +283,14 @@ class Station(object):
                     self.logger.error('Error calling poll_data for SMARTbox %d' % sadd)
 
         # If any of the SMARTboxes have had a long button-press (indicating that a local technician wants that SMARTbox
-        # to be powered down), then it will set it's indicator LED to the 'WANTS_POWERDOWN' code. Check all the SMARTboxes
-        # for that LED code, and if set, force the matching PDoC port on the FNDH into the 'locally_forced_off' state.
+        # to be powered down), then it will set it's status code and indicator LED code to the 'WANTS_POWERDOWN' value.
+        # Check all the SMARTboxes for that LED code, and if set, force the matching PDoC port on the FNDH into the
+        # 'locally_forced_off' state.
         # Note that this can only be reversed by having the technician press the service button on the FNDH, to clear
         # the technician override bits.
         send_portstate = False
         for smb in self.smartboxes.values():
-            if smb.indicator_state == 'WANTS_POWERDOWN':
+            if smb.status == 'WANTS_POWERDOWN':
                 self.fndh.ports[smb.pdoc_number].locally_forced_off = True
                 send_portstate = True
 

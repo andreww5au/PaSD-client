@@ -5,73 +5,73 @@
         51.0,
         55.0
     ],
-    "SYS_FEM10TEMP_TH": [
+    "SYS_SENSE10_TH": [
         1.0,
         5.0,
         35.0,
         55.0
     ],
-    "SYS_FEM11TEMP_TH": [
+    "SYS_SENSE11_TH": [
         1.0,
         5.0,
         35.0,
         55.0
     ],
-    "SYS_FEM12TEMP_TH": [
+    "SYS_SENSE12_TH": [
         1.0,
         5.0,
         35.0,
         55.0
     ],
-    "SYS_FEM01TEMP_TH": [
+    "SYS_SENSE01_TH": [
         1.0,
         5.0,
         35.0,
         55.0
     ],
-    "SYS_FEM02TEMP_TH": [
+    "SYS_SENSE02_TH": [
         1.0,
         5.0,
         35.0,
         55.0
     ],
-    "SYS_FEM03TEMP_TH": [
+    "SYS_SENSE03_TH": [
         1.0,
         5.0,
         35.0,
         55.0
     ],
-    "SYS_FEM04TEMP_TH": [
+    "SYS_SENSE04_TH": [
         1.0,
         5.0,
         35.0,
         55.0
     ],
-    "SYS_FEM05TEMP_TH": [
+    "SYS_SENSE05_TH": [
         1.0,
         5.0,
         35.0,
         55.0
     ],
-    "SYS_FEM06TEMP_TH": [
+    "SYS_SENSE06_TH": [
         1.0,
         5.0,
         35.0,
         55.0
     ],
-    "SYS_FEM07TEMP_TH": [
+    "SYS_SENSE07_TH": [
         1.0,
         5.0,
         35.0,
         55.0
     ],
-    "SYS_FEM08TEMP_TH": [
+    "SYS_SENSE08_TH": [
         1.0,
         5.0,
         35.0,
         55.0
     ],
-    "SYS_FEM09TEMP_TH": [
+    "SYS_SENSE09_TH": [
         1.0,
         5.0,
         35.0,

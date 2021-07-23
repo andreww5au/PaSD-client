@@ -12,12 +12,23 @@ import time
 
 logging.basicConfig()
 
-from pasd import conversion
-from pasd import smartbox
-from pasd import transport
+from pasd import conversion   # Conversion functions between register values and actual temps/voltages/currents
+from pasd import smartbox     # SMARTbox controller, so we can subclass the PortStatus class
+from pasd import transport    # Modbus API
 
+# Register definitions and status code mapping - only one mapping here now (FNDH_POLL_REGS_1,
+# FNDH_CONF_REGS_1 and FNDH_CODES_1), and these define the registers and codes for Modbus register map
+# revision 1 (where SYS_MBRV==1).
+#
+# When firmware updates require a new register map and status codes, define new dictionaries FNDH_POLL_REGS_2,
+# FNDH_CONF_REGS_2, and FNDH_CODES_2, and add them to the FNDH_REGISTERS and FNDH_CODES dictionaries.
+#
+# When a FNDH is contacted, the SYS_MBRV register value (always defined to be in register 1) will be used to load
+# the appropriate register map and status codes.
+#
+# Register maps are dictionaries with register name as key, and a tuple of (register_number, number_of_registers,
+# description, scaling_function) as value.
 
-# Dicts with register name as key, and a tuple of (register_number, number_of_registers, name, scaling_function) as value
 FNDH_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
                         'SYS_MBRV':    (1, 1, 'Modbus register map revision', None),
                         'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
@@ -27,7 +38,7 @@ FNDH_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
                         'SYS_UPTIME':  (14, 2, 'Uptime in seconds', None),
                         'SYS_ADDRESS': (16, 1, 'MODBUS station ID', None),
 
-                        # From here on can change between firmware revisions
+                        # From here on register address and contents can change between firmware revisions
                         'SYS_48V1_V': (17, 1, '48VDC PSU 1 output voltage', conversion.scale_48v),
                         'SYS_48V2_V': (18, 1, '48VDC PSU 2 output voltage', conversion.scale_48v),
                         'SYS_5V_V':    (19, 1, '5VDC PSU output voltage', conversion.scale_5v),
@@ -70,7 +81,8 @@ FNDH_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
                         'P28_STATE': (54, 1, 'Port 28 state bitmap (r/w)', None),
 }
 
-FNDH_CONF_REGS_1 = {
+# System threshold configuration registers (not polled)
+FNDH_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as well as under-value alarm and warning
                     'SYS_48V1_V_TH':(1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),
                     'SYS_48V2_V_TH':(1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),
                     'SYS_5V_V_TH':(1009, 4, '5V PSU output voltage AH, WH, WL, AL', conversion.scale_5v),
@@ -81,10 +93,11 @@ FNDH_CONF_REGS_1 = {
                     'SYS_OUTTEMP_TH':(1029, 4, 'Outside temperature AH, WH, WL, AL', conversion.scale_temp),
 }
 
-FNDH_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED'},
-                          'fromname':{'OK':0, 'WARNING':1, 'ALARM':2, 'RECOVERY':3, 'UNINITIALISED':4}},
-                'leds':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW'},
-                        'fromname':{'OFF':0, 'GREEN':1, 'RED':2, 'YELLOW':3}}}
+# Translation between the integer in the SYS_STATUS and SYS_STATUS register bytes, and the meaning of the code
+FNDH_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED', 5:'WANTS_POWERDOWN'},
+                          'fromname':{'OK':0, 'WARNING':1, 'ALARM':2, 'RECOVERY':3, 'UNINITIALISED':4, 'WANTS_POWERDOWN':5}},
+                'leds':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW', 4:'WANTS_POWERDOWN'},
+                        'fromname':{'OFF':0, 'GREEN':1, 'RED':2, 'YELLOW':3, 'WANTS_POWERDOWN':4}}}
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value

@@ -15,6 +15,24 @@ logging.basicConfig()
 
 from pasd import fndh
 
+RETURN_BIAS = 0.1
+
+
+def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
+    """
+    Take the current and desired mean values of a simulated sensor value, and generate the next value,
+    to simulate a random walk around the mean value, with a bias towards returning to the mean.
+
+    With scale=1.0, typical variation over 1000 samples is roughly +/- 2.0
+
+    :param current_value: Current sensor value, arbitrary units
+    :param mean: Desired mean value
+    :param scale: Scale factor for variations
+    :param return_bias: Defaults to 0.1, increase this to reduce variation around the mean
+    :return: Next value for the sensor reading
+    """
+    return current_value + scale * ((return_bias * (mean - current_value)) + (random.random() - 0.5))
+
 
 class SimFNDH(fndh.FNDH):
     """
@@ -281,14 +299,19 @@ class SimFNDH(fndh.FNDH):
                 for port in self.ports.values():
                     port.system_online = True
 
-            self.psu48v1_voltage += (48.1 - self.psu48v1_voltage) * 0.1 + (random.random() - 0.5)
-            self.psu48v2_voltage += (48.1 - self.psu48v2_voltage) * 0.1 + (random.random() - 0.5)
-            self.psu5v_voltage += (5.1 - self.psu5v_voltage) * 0.01 + (random.random() - 0.05)
-            self.psu48v_current += (13.4 - self.psu48v_current) * 0.02 + (random.random() - 0.1)
-            self.psu48v_temp += (58.3 - self.psu48v_temp) * 0.1 + (random.random() - 0.5)
-            self.psu5v_temp += (55.1 - self.psu5v_temp) * 0.1 + (random.random() - 0.5)
-            self.pcb_temp += (38.0 - self.pcb_temp) * 0.1 + (random.random() - 0.5)
-            self.outside_temp += (34.0 - self.outside_temp) * 0.1 + (random.random() - 0.5)
+            time.sleep(0.5)
+
+            if not self.initialised:
+                continue   # Don't bother simulating sensor values until the thresholds have been set
+
+            self.psu48v1_voltage = random_walk(self.psu48v1_voltage, 48.1, scale=1.0)
+            self.psu48v2_voltage = random_walk(self.psu48v2_voltage, 48.1, scale=1.0)
+            self.psu5v_voltage = random_walk(self.psu5v_voltage, 5.1, scale=0.5)
+            self.psu48v_current = random_walk(self.psu48v_current, 13.4, scale=1.0)
+            self.psu48v_temp = random_walk(self.psu48v_temp, 58.3, scale=3.0)
+            self.psu5v_temp = random_walk(self.psu5v_temp, 55.1, scale=3.0)
+            self.pcb_temp = random_walk(self.pcb_temp, 48.1, scale=3.0)
+            self.outside_temp = random_walk(self.outside_temp, 48.1, scale=3.0)
 
             # Test current voltage/temp/current values against threshold and update states
             for regname in self.register_map['CONF']:
@@ -331,6 +354,12 @@ class SimFNDH(fndh.FNDH):
                         newstate = 'WARNING'
                 elif curvalue < al:
                     newstate = 'ALARM'
+
+                if curstate != newstate:
+                    self.logger.warning('Sensor %s transitioned from %s to ALARM with reading of %4.2f' % (regname[:-3],
+                                                                                                           curstate,
+                                                                                                           curvalue))
+
                 self.sensor_states[regname] = newstate
 
             if 'ALARM' in self.sensor_states.values():
@@ -345,8 +374,6 @@ class SimFNDH(fndh.FNDH):
                 self.status = 'OK'
 
             self.statuscode = self.codes['status']['fromname'][self.status]
-
-            time.sleep(0.5)
 
         self.logger.info('Ending sim_loop() in SimFNDH')
 
