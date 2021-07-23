@@ -360,7 +360,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                         newstate = 'RECOVERY'
                     elif curstate != 'WARNING':
                         newstate = 'WARNING'
-                elif wl >= curvalue >= wh:
+                elif wl <= curvalue <= wh:
                     newstate = 'OK'
                 elif al <= curvalue < wl:
                     if curstate == 'ALARM':

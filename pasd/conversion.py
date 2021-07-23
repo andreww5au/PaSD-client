@@ -63,6 +63,7 @@ def scale_temp(value, reverse=False, pcb_version=0):
         return value / 100.0     # raw_value is a signed 16-bit integer containing temp in 1/100th of a degree
 
 
+# TODO - fix all the uses (and simulated ports in sim_smartbox) to use no conversion, raw ADU values
 def scale_FEMcurrent(value, reverse=False, pcb_version=0):
     """
     Given a raw register value and the PCB version number, find out what scale and offset are needed, convert the raw
