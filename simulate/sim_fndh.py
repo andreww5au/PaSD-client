@@ -15,7 +15,7 @@ logging.basicConfig()
 
 from pasd import fndh
 
-RETURN_BIAS = 0.1
+RETURN_BIAS = 0.05
 
 
 def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
@@ -31,7 +31,7 @@ def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
     :param return_bias: Defaults to 0.1, increase this to reduce variation around the mean
     :return: Next value for the sensor reading
     """
-    return current_value + scale * ((return_bias * (mean - current_value)) + (random.random() - 0.5))
+    return current_value + scale * 2.0 * ((return_bias * (mean - current_value)) + (random.random() - 0.5))
 
 
 class SimFNDH(fndh.FNDH):
@@ -89,7 +89,7 @@ class SimFNDH(fndh.FNDH):
         """
         pass
 
-    def write_portconfig(self):
+    def write_portconfig(self, write_state=True, write_to=False, write_breaker=False):
         """
         Stub, not needed for simulated FNDH
         """
@@ -105,7 +105,10 @@ class SimFNDH(fndh.FNDH):
         """
         Stub, overwrite if you subclass this to handle more complex simulation. Called every time a packet has
         finished processing, or every few seconds if there haven't been any packets.
-        :return:
+
+        Don't do anything that takes a long time in here - this is called in the packet handler thread.
+
+        :return: None
         """
 
     def listen_loop(self):
@@ -122,7 +125,8 @@ class SimFNDH(fndh.FNDH):
         4) Uses the list of written registers to update the box state, and update the 'heard from MCCS' timestamp.
         5) If any registers are in the 'read' list, update the 'heard from MCCS' timestamp.
 
-        Note that we only traverse around the loop whenever we process an incoming packet
+        Note that we traverse around the loop whenever we process an incoming packet, or when waiting for a packet
+        times out after around a second.
 
         :return: None
         """
@@ -131,6 +135,7 @@ class SimFNDH(fndh.FNDH):
             slave_registers = {}
             self.uptime = int(time.time() - self.start_time)  # Set the current uptime value
 
+            # Copy the local simulated instance data to the temporary registers dictionary - first the POLL registers
             for regname in self.register_map['POLL']:
                 regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
                 if regname == 'SYS_MBRV':
@@ -172,6 +177,7 @@ class SimFNDH(fndh.FNDH):
                     pnum = int(regname[1:-6])
                     slave_registers[regnum] = self.ports[pnum].status_to_integer(write_state=True, write_to=True)
 
+            # Now copy the configuration data to the temporary register dictionary
             for regname in self.register_map['CONF']:
                 regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
                 if numreg == 1:
@@ -182,6 +188,9 @@ class SimFNDH(fndh.FNDH):
                      slave_registers[regnum + 2],
                      slave_registers[regnum + 3]) = (scalefunc(x, reverse=True) for x in self.thresholds[regname])
 
+            # Wait up to one second for an incoming packet. On return, we get a set of registers numbers that were
+            # read by that packet, and a set of register numbers that were written to by that packet. The
+            # temporary slave_registers dictionary has new values for each register in the written_set.
             try:
                 read_set, written_set = self.conn.listen_for_packet(listen_address=self.modbus_address,
                                                                     slave_registers=slave_registers,
@@ -195,74 +204,19 @@ class SimFNDH(fndh.FNDH):
             if read_set or written_set:  # The MCCS has talked to us, update the last_readtime timestamp
                 self.readtime = time.time()
 
-            for regnum in range(self.register_map['POLL']['P01_STATE'][0], self.register_map['POLL']['P28_STATE'][0] + 1):
-                if regnum in written_set:
-                    port = self.ports[(regnum - self.register_map['POLL']['P01_STATE'][0]) + 1]
-                    status_bitmap = slave_registers[regnum]
-                    bitstring = "{:016b}".format(status_bitmap)
+            # If any registers have been written to, update the local instance attributes from the new values
+            if written_set:
+                self.handle_register_writes(slave_registers, written_set)
 
-                    # Desired state online - R/W, write 00 if no change to current value
-                    if (bitstring[2:4] == '10'):
-                        port.desire_enabled_online = False
-                    elif (bitstring[2:4] == '11'):
-                        port.desire_enabled_online = True
-                    elif (bitstring[2:4] == '00'):
-                        pass
-                    else:
-                        self.logger.warning('Unknown desire enabled online flag: %s' % bitstring[2:4])
-                        port.desire_enabled_online = None
-
-                    # Desired state offline - R/W, write 00 if no change to current value
-                    if (bitstring[4:6] == '10'):
-                        port.desire_enabled_offline = False
-                    elif (bitstring[4:6] == '11'):
-                        port.desire_enabled_offline = True
-                    elif (bitstring[4:6] == '00'):
-                        pass
-                    else:
-                        self.logger.warning('Unknown desired state offline flag: %s' % bitstring[4:6])
-                        port.desire_enabled_offline = None
-
-                    # Technician override - R/W, write 00 if no change to current value
-                    if (bitstring[6:8] == '10'):
-                        port.locally_forced_on = False
-                        port.locally_forced_off = True
-                    elif (bitstring[6:8] == '11'):
-                        port.locally_forced_on = True
-                        port.locally_forced_off = False
-                    elif (bitstring[6:8] == '01'):
-                        port.locally_forced_on = False
-                        port.locally_forced_off = False
-                    else:
-                        pass
-
-            for regname in self.register_map['CONF']:
-                regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
-                if regnum in written_set:
-                    if numreg == 1:
-                        self.thresholds[regname] = scalefunc(slave_registers[regnum])
-                    else:
-                        self.thresholds[regname] = [scalefunc(slave_registers[x]) for x in range(regnum, regnum + 4)]
-
-            if self.register_map['POLL']['SYS_LIGHTS'][0] in written_set:  # Wrote to SYS_LIGHTS, so set light attributes
-                msb, lsb = divmod(slave_registers[self.register_map['POLL']['SYS_LIGHTS'][0]], 256)
-                self.service_led = bool(msb)
-                self.indicator_code = lsb
-                self.indicator_state = self.codes['led']['fromid'][lsb]
-
-            if self.register_map['POLL']['SYS_STATUS'][0] in written_set:   # Wrote to SYS_STATUS, so clear UNINITIALISED state
-                self.initialised = True
-                # We can't write to the statuscode or status, because it might be in a WARNING, ALARM or RECOVERY state
-                # self.statuscode = 0
-                # self.status = self.codes['status']['fromid'][0]
-
-            if (self.statuscode not in [0, 1]):   # If we're not OK or WARNING, disable all the outputs
+            # Update the on/off state of all the ports, based on local instance attributes
+            goodcodes = [self.codes['status']['fromname'][x] for x in ['OK', 'WARNING', 'RECOVERY']]
+            if (self.statuscode not in goodcodes):  # If we're not OK, WARNING, or RECOVERY disable all the outputs
                 for port in self.ports.values():
                     port.status_timestamp = time.time()
                     port.current_timestamp = port.status_timestamp
                     port.system_level_enabled = False
                     port.power_state = False
-            else:
+            else:  # Otherwise, set the output state based on online/offline status and the four desired_state bits
                 for port in self.ports.values():
                     port.status_timestamp = time.time()
                     port.current_timestamp = port.status_timestamp
@@ -281,10 +235,86 @@ class SimFNDH(fndh.FNDH):
 
         self.logger.info('Ending listen_loop() in SimFNDH')
 
+    def handle_register_writes(self, slave_registers, written_set):
+        """
+        Take the modified temporary slave_registers dictionary, and the set of register numbers that were modified by
+        the packet, and update the local instance attributes.
+
+        Note that writes to many registers are ignored by the FNDH, as the data is read-only, so this function
+        only needs to handle changes to registers that are R/W.
+
+        :param slave_registers: Dictionary, with register number as the key and register contents as the value
+        :param written_set: A set() of register numbers that were modified by the most revent packet.
+        :return: None
+        """
+        # First handle the port state bitmap registers
+        for regnum in range(self.register_map['POLL']['P01_STATE'][0], self.register_map['POLL']['P28_STATE'][0] + 1):
+            if regnum in written_set:
+                port = self.ports[(regnum - self.register_map['POLL']['P01_STATE'][0]) + 1]
+                status_bitmap = slave_registers[regnum]
+                bitstring = "{:016b}".format(status_bitmap)
+
+                # Desired state online - R/W, write 00 if no change to current value
+                if (bitstring[2:4] == '10'):
+                    port.desire_enabled_online = False
+                elif (bitstring[2:4] == '11'):
+                    port.desire_enabled_online = True
+                elif (bitstring[2:4] == '00'):
+                    pass
+                else:
+                    self.logger.warning('Unknown desire enabled online flag: %s' % bitstring[2:4])
+                    port.desire_enabled_online = None
+
+                # Desired state offline - R/W, write 00 if no change to current value
+                if (bitstring[4:6] == '10'):
+                    port.desire_enabled_offline = False
+                elif (bitstring[4:6] == '11'):
+                    port.desire_enabled_offline = True
+                elif (bitstring[4:6] == '00'):
+                    pass
+                else:
+                    self.logger.warning('Unknown desired state offline flag: %s' % bitstring[4:6])
+                    port.desire_enabled_offline = None
+
+                # Technician override - R/W, write 00 if no change to current value
+                if (bitstring[6:8] == '10'):
+                    port.locally_forced_on = False
+                    port.locally_forced_off = True
+                elif (bitstring[6:8] == '11'):
+                    port.locally_forced_on = True
+                    port.locally_forced_off = False
+                elif (bitstring[6:8] == '01'):
+                    port.locally_forced_on = False
+                    port.locally_forced_off = False
+                else:
+                    pass
+
+        # Now update ay new threshold data from the configuration registers.
+        for regname in self.register_map['CONF']:
+            regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
+            if regnum in written_set:
+                if numreg == 1:
+                    self.thresholds[regname] = scalefunc(slave_registers[regnum])
+                else:
+                    self.thresholds[regname] = [scalefunc(slave_registers[x]) for x in range(regnum, regnum + 4)]
+
+        # Now update the service LED state (data in the LSB is ignored, because the microcontroller handles the
+        # status LED).
+        if self.register_map['POLL']['SYS_LIGHTS'][0] in written_set:  # Wrote to SYS_LIGHTS, so set light attributes
+            msb, lsb = divmod(slave_registers[self.register_map['POLL']['SYS_LIGHTS'][0]], 256)
+            self.service_led = bool(msb)
+
+        if self.register_map['POLL']['SYS_STATUS'][0] in written_set:  # Wrote to SYS_STATUS, so clear UNINITIALISED state
+            self.initialised = True
+
     def sim_loop(self):
         """
         Runs continuously, simulating hardware processes independent of the communications packet handler
-        :return:
+
+        Starts the Modbus communications handler (receiving and processing packets) in a different thread, so simulation
+        actions don't hold up packet handling.
+
+        :return: None
         """
         self.start_time = time.time()
 
@@ -292,10 +322,12 @@ class SimFNDH(fndh.FNDH):
         listen_thread = threading.Thread(target=self.listen_loop, daemon=False, name=threading.current_thread().name + '-C')
         listen_thread.start()
 
-        self.logger.info('Started simulation loop for fndh')
+        self.logger.info('Started simulation loop for FNDH')
         while not self.wants_exit:  # Process packets until we are told to die
             self.uptime = int(time.time() - self.start_time)  # Set the current uptime value
 
+            # Update the online/offline state, depending on how long it's been since the MCCS last sent a packet to us
+            # Note that the port powerup/powerdown as a result of online/offline transitions is handled in the listen_loop
             if (time.time() - self.readtime >= 300) and self.online:  # More than 5 minutes since we heard from MCCS, go offline
                 self.online = False
                 for port in self.ports.values():
@@ -310,6 +342,7 @@ class SimFNDH(fndh.FNDH):
             if not self.initialised:
                 continue   # Don't bother simulating sensor values until the thresholds have been set
 
+            # Change the sensor values to generate a random walk around a mean value for each sensor
             self.psu48v1_voltage = random_walk(self.psu48v1_voltage, 48.1, scale=1.0)
             self.psu48v2_voltage = random_walk(self.psu48v2_voltage, 48.1, scale=1.0)
             self.psu5v_voltage = random_walk(self.psu5v_voltage, 5.1, scale=0.5)
@@ -319,7 +352,7 @@ class SimFNDH(fndh.FNDH):
             self.pcb_temp = random_walk(self.pcb_temp, 48.1, scale=3.0)
             self.outside_temp = random_walk(self.outside_temp, 48.1, scale=3.0)
 
-            # Test current voltage/temp/current values against threshold and update states
+            # For each threshold register, get the current value and threshold/s from the right local instance attribute
             for regname in self.register_map['CONF']:
                 ah, wh, wl, al = self.thresholds[regname]
                 curstate = self.sensor_states[regname]
@@ -343,6 +376,7 @@ class SimFNDH(fndh.FNDH):
                     self.logger.critical('Configuration register %s not handled by simulation code')
                     return
 
+                # Now use the current value and threshold/s to find the new state for that sensor
                 newstate = curstate
                 if curvalue > ah:
                     newstate = 'ALARM'
@@ -361,6 +395,7 @@ class SimFNDH(fndh.FNDH):
                 elif curvalue < al:
                     newstate = 'ALARM'
 
+                # Log any change in state
                 if curstate != newstate:
                     msg = 'Sensor %s transitioned from %s to %s with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
                     self.logger.warning(msg % (regname[:-3],
@@ -369,18 +404,19 @@ class SimFNDH(fndh.FNDH):
                                                curvalue,
                                                ah,wh,wl,al))
 
+                # Record the new state for that sensor in a dictionary with all sensor states
                 self.sensor_states[regname] = newstate
 
-            if 'ALARM' in self.sensor_states.values():
+            # Now update the overall box state, based on all of the sensor states
+            # We can't be in the UNINITIALISED state if we've reached this point, so it must be one of these four:
+            if 'ALARM' in self.sensor_states.values():  # If any sensor is in ALARM, so is thw whole box
                 self.status = 'ALARM'
-            elif 'WARNING' in self.sensor_states.values():
+            elif 'WARNING' in self.sensor_states.values():  # Otherwise, if any sensor is WARNING, so is the whole box
                 self.status = 'WARNING'
-            elif 'RECOVERY' in self.sensor_states.values():
+            elif 'RECOVERY' in self.sensor_states.values():  # Otherwise, if any sensor is RECOVERY, so is the whole box
                 self.status = 'RECOVERY'
-            elif not self.initialised:
-                self.status = 'UNINITIALISED'
             else:
-                self.status = 'OK'
+                self.status = 'OK'  # If all sensors are OK, so is the whole box
 
             self.statuscode = self.codes['status']['fromname'][self.status]
 

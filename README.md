@@ -97,7 +97,7 @@ Errors resulting from a multi-register write would have a function code of 0x90,
 
 ## SMARTbox register map
 
-SMARTboxes have Modbus addresses in the range 1-30, set by a pair of digital rotary switches on the box. The SMARTbox registers are divided into two blocks of contiguous addresses. The first block (starting at register 1) contains all of the values that need to be polled at regular intervals (mostly read-only registers). The second block (starting at register 1001) contains configuration data written by the MCCS after power-up, and does not need to be read after that.
+SMARTboxes have a pair of digital rotary switches on the fixed (non field-replaceable) chassis to set the Modbus address, allowing a range from 00-00. Values from 1-24 will be used as Modbus addresses for the 24 physical SMARTboxes in a station, the rest of the range is reserved for use in development and maintenance/testing. The SMARTbox registers are divided into two blocks of contiguous addresses. The first block (starting at register 1) contains all of the values that need to be polled at regular intervals (mostly read-only registers). The second block (starting at register 1001) contains configuration data written by the MCCS after power-up, and does not need to be read after that.
 
 ### Polled registers:
 
@@ -119,26 +119,26 @@ The polled register block has 59 two-byte registers, starting at register 1. Two
 | 21 | SYS\_OUTTEMP | 1 | Outside temperature (deg C / 100). RO. |
 | 22 | SYS\_STATUS | 1 | System status (see text). R/W. |
 | 23 | SYS\_LIGHTS | 1 | LED status (see text). R/W. |
-| 24 | SYS\_FEM01TEMP | 1 | FEM 1 enclosure temperature (deg C / 100). RO. |
-| 25 | SYS\_FEM02TEMP | 1 | FEM 2 enclosure temperature (deg C / 100). RO. |
-| 26 | SYS\_FEM03TEMP | 1 | FEM 3 enclosure temperature (deg C / 100). RO. |
-| 27 | SYS\_FEM04TEMP | 1 | FEM 4 enclosure temperature (deg C / 100). RO. |
-| 28 | SYS\_FEM05TEMP | 1 | FEM 5 enclosure temperature (deg C / 100). RO. |
-| 29 | SYS\_FEM06TEMP | 1 | FEM 6 enclosure temperature (deg C / 100). RO. |
-| 30 | SYS\_FEM07TEMP | 1 | FEM 7 enclosure temperature (deg C / 100). RO. |
-| 31 | SYS\_FEM08TEMP | 1 | FEM 8 enclosure temperature (deg C / 100). RO. |
-| 32 | SYS\_FEM09TEMP | 1 | FEM 9 enclosure temperature (deg C / 100). RO. |
-| 33 | SYS\_FEM10TEMP | 1 | FEM 10 enclosure temperature (deg C / 100). RO. |
-| 34 | SYS\_FEM11TEMP | 1 | FEM 11 enclosure temperature (deg C / 100). RO. |
-| 35 | SYS\_FEM12TEMP | 1 | FEM 12 enclosure temperature (deg C / 100). RO. |
+| 24 | SYS\_SENSE01 | 1 | Sensor 1 - usage TBD. RO. |
+| 25 | SYS\_SENSE02 | 1 | Sensor 2 - usage TBD. RO. |
+| 26 | SYS\_SENSE03 | 1 | Sensor 3 - usage TBD. RO. |
+| 27 | SYS\_SENSE04 | 1 | Sensor 4 - usage TBD. RO. |
+| 28 | SYS\_SENSE05 | 1 | Sensor 5 - usage TBD. RO. |
+| 29 | SYS\_SENSE06 | 1 | Sensor 6 - usage TBD. RO. |
+| 30 | SYS\_SENSE07 | 1 | Sensor 7 - usage TBD. RO. |
+| 31 | SYS\_SENSE08 | 1 | Sensor 8 - usage TBD. RO. |
+| 32 | SYS\_SENSE09 | 1 | Sensor 9 - usage TBD. RO. |
+| 33 | SYS\_SENSE10 | 1 | Sensor 10 - usage TBD. RO. |
+| 34 | SYS\_SENSE11 | 1 | Sensor 11 - usage TBD. RO. |
+| 35 | SYS\_SENSE12 | 1 | Sensor 12 - usage TBD. RO. |
 
 The SYS\_STATUS is one of the two status registers that are read/write. When read, it contains the current status code – 0=OK, 1=WARNING, 2=ALARM, 3=RECOVERY, 4=UNINITIALISED. The SMARTbox will boot into the UNINITIALISED state, and stay in that state until any value is written into the SYS\_STATUS register. That register write will result in a transition to one of the other states (OK if temperatures and currents are in-spec, WARNING, ALARM or RECOVERY if not). Two of the states (OK and WARNING) allow ports to be turned on, the rest result in the ports being forced off.
 
 The microcontroller also keeps track of MCCS communications. If the microcontroller has received any serial data from the MCCS recently, it defines the system as &#39;online&#39; (for the purposes of the port state registers described below). If a significant time has elapsed since the last serial communications, the system is defined as &#39;offline&#39;.
 
-The SYS\_LIGHTS register is also read/write. It controls the state of the two LEDs on the SMARTbox. The first (MSB) byte controls the state of the blue service indicator LED (0 is off, 255 is on). Intermediate values may control brightness, depending on the hardware. The second (LSB) byte controls the state of the tri-colour (red-yellow-green) status LED, including flash patterns. These are represented by codes (TBD) – for example, 0 might be off, 1 might represent flashing bright red for 0.2 seconds every 1 second, etc.
+The SYS\_LIGHTS register is also read/write. It controls the state of the two LEDs on the SMARTbox. The first (MSB) byte controls the state of the blue service indicator LED (0 is off, 255 is on). Intermediate values may control brightness, depending on the hardware. The second (LSB) byte controls the state of the tri-colour (red-yellow-green) status LED, including flash patterns. These are represented by codes (TBD) – for example, 0 might be off, 1 might represent flashing bright red for 0.2 seconds every 1 second, etc. The state of the tri-colour LED, and the value of that byte of the register, are controlled by the microcontroller, and writes to that byte of the register are ignored.
 
-The hardware won&#39;t allow all 12 FEM enclosure temperatures to be measured, so many of the twelve SYS\_FEM\&lt;N\&gt;TEMP registers will contain zero, meaning that there is no sensor for that FEM. Valid ADC readings for an FEM enclosure would be in a few of those registers. This is the reason the FEM enclosure temperatures are in the system registers, section, rather than port registers.
+The hardware has an additional few (currently around 7) analogue inputs available for monitoring sensor readings. To allow room for expansion, 12 registers (and a matching set of 48 threshold registers) are allocated, as SYS_SENSE01 through SYS_SENSE12. Most of these will probably used to monitor temperatures at various points in the engineering prototypes.
 
 The port registers are:
 
@@ -215,18 +215,18 @@ The configuration register block, starting at register 1001 (all read/write), co
 | 1009 | SYS\_PSUTEMP\_TH | 4 | PSU temperature (deg C / 100). AH, WH, WL, AL. |
 | 1013 | SYS\_PCBTEMP\_TH | 4 | PCB temperature (deg C / 100). AH, WH, WL, AL. |
 | 1017 | SYS\_OUTTEMP\_TH | 4 | Outside temperature (deg C / 100). AH, WH, WL, AL. |
-| 1021 | SYS\_FEM01TEMP\_TH | 4 | FEM 1 temperature (deg C / 100). AH, WH, WL, AL. |
-| 1025 | SYS\_FEM02TEMP\_TH | 4 | FEM 2 temperature (deg C / 100). AH, WH, WL, AL. |
-| 1029 | SYS\_FEM03TEMP\_TH | 4 | FEM 3 temperature (deg C / 100). AH, WH, WL, AL. |
-| 1033 | SYS\_FEM04TEMP\_TH | 4 | FEM 4 temperature (deg C / 100). AH, WH, WL, AL. |
-| 1037 | SYS\_FEM05TEMP\_TH | 4 | FEM 5 temperature (deg C / 100). AH, WH, WL, AL. |
-| 1041 | SYS\_FEM06TEMP\_TH | 4 | FEM 6 temperature (deg C / 100). AH, WH, WL, AL. |
-| 1045 | SYS\_FEM07TEMP\_TH | 4 | FEM 7 temperature (deg C / 100). AH, WH, WL, AL. |
-| 1049 | SYS\_FEM08TEMP\_TH | 4 | FEM 8 temperature (deg C / 100). AH, WH, WL, AL. |
-| 1053 | SYS\_FEM09TEMP\_TH | 4 | FEM 9 temperature (deg C / 100). AH, WH, WL, AL. |
-| 1057 | SYS\_FEM10TEMP\_TH | 4 | FEM 10 temperature (deg C / 100). AH, WH, WL, AL. |
-| 1061 | SYS\_FEM11TEMP\_TH | 4 | FEM 11 temperature (deg C / 100). AH, WH, WL, AL. |
-| 1065 | SYS\_FEM12TEMP\_TH | 4 | FEM 12 temperature (deg C / 100). AH, WH, WL, AL. |
+| 1021 | SYS\_SENSE01\_TH | 4 | Sensor 1 - usage TBD. AH, WH, WL, AL. |
+| 1025 | SYS\_SENSE02\_TH | 4 | Sensor 2 - usage TBD. AH, WH, WL, AL. |
+| 1029 | SYS\_SENSE03\_TH | 4 | Sensor 3 - usage TBD. AH, WH, WL, AL. |
+| 1033 | SYS\_SENSE04\_TH | 4 | Sensor 4 - usage TBD. AH, WH, WL, AL. |
+| 1037 | SYS\_SENSE05\_TH | 4 | Sensor 5 - usage TBD. AH, WH, WL, AL. |
+| 1041 | SYS\_SENSE06\_TH | 4 | Sensor 6 - usage TBD. AH, WH, WL, AL. |
+| 1045 | SYS\_SENSE07\_TH | 4 | Sensor 7 - usage TBD. AH, WH, WL, AL. |
+| 1049 | SYS\_SENSE08\_TH | 4 | Sensor 8 - usage TBD. AH, WH, WL, AL. |
+| 1053 | SYS\_SENSE09\_TH | 4 | Sensor 9 - usage TBD. AH, WH, WL, AL. |
+| 1057 | SYS\_SENSE10\_TH | 4 | Sensor 10 - usage TBD. AH, WH, WL, AL. |
+| 1061 | SYS\_SENSE11\_TH | 4 | Sensor 11 - usage TBD. AH, WH, WL, AL. |
+| 1065 | SYS\_SENSE12\_TH | 4 | Sensor 12 - usage TBD. AH, WH, WL, AL. |
 | 1069 | P01\_CURRENT\_TH | 1 | Port 01 current trip threshold (format TBD). |
 | 1070 | P02\_CURRENT\_TH | 1 | Port 02 current trip threshold (format TBD). |
 | 1071 | P03\_CURRENT\_TH | 1 | Port 03 current trip threshold (format TBD). |
@@ -274,7 +274,7 @@ The SYS\_STATUS is one of the two status registers that are read/write. When rea
 
 The microcontroller also keeps track of MCCS communications. If the microcontroller has received any serial data from the MCCS recently, it defines the system as &#39;online&#39; (for the purposes of the port state registers described below). If a significant time has elapsed since the last serial communications, the system is defined as &#39;offline&#39;.
 
-The SYS\_LIGHTS register is also read/write. It controls the state of the two LEDs on the FNDH. The first (MSB) byte controls the state of the blue service indicator LED (0 is off, 255 is on). Intermediate values may control brightness, depending on the hardware. The second (LSB) byte controls the state of the tri-colour (red-yellow-green) status LED, including flash patterns. These are represented by codes (TBD) – for example, 0 might be off, 1 might represent flashing bright red for 0.2 seconds every 1 second, etc.
+The SYS\_LIGHTS register is also read/write. It controls the state of the two LEDs on the FNDH. The first (MSB) byte controls the state of the blue service indicator LED (0 is off, 255 is on). Intermediate values may control brightness, depending on the hardware. The second (LSB) byte controls the state of the tri-colour (red-yellow-green) status LED, including flash patterns. These are represented by codes (TBD) – for example, 0 might be off, 1 might represent flashing bright red for 0.2 seconds every 1 second, etc.The state of the tri-colour LED, and the value of that byte of the register, are controlled by the microcontroller, and writes to that byte of the register are ignored.
 
 The port registers are:
 
