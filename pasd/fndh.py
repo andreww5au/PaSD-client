@@ -81,6 +81,8 @@ FNDH_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
                         'P28_STATE': (54, 1, 'Port 28 state bitmap (r/w)', None),
 }
 
+# TODO - add PDoC port serial number block (28 * 4 registers) in here, to be read once on boot, not polled.
+
 # System threshold configuration registers (not polled)
 FNDH_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as well as under-value alarm and warning
                     'SYS_48V1_V_TH':(1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),
@@ -94,10 +96,22 @@ FNDH_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as well as
 }
 
 # Translation between the integer in the SYS_STATUS and SYS_STATUS register bytes, and the meaning of the code
-FNDH_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED', 5:'WANTS_POWERDOWN'},
-                          'fromname':{'OK':0, 'WARNING':1, 'ALARM':2, 'RECOVERY':3, 'UNINITIALISED':4, 'WANTS_POWERDOWN':5}},
-                'leds':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW', 4:'WANTS_POWERDOWN'},
-                        'fromname':{'OFF':0, 'GREEN':1, 'RED':2, 'YELLOW':3, 'WANTS_POWERDOWN':4}}}
+FNDH_CODES_1 = {'status':{'fromcode':{0:'OK',
+                                      1:'WARNING',
+                                      2:'ALARM',
+                                      3:'RECOVERY',
+                                      4:'UNINITIALISED',
+                                      5:'WANTS_POWERUP'}},  # Means 'Long press on service button, Tech requested startup sequence
+                'leds':{'fromcode':{0:'OFF',         # Means 'No power to box'
+                                    1:'GREENFLASH',  # Means 'UNINITIALISED'
+                                    2:'GREEN',       # Means 'OK'
+                                    3:'YELLOW',      # Means 'WARNING'
+                                    4:'RED',         # Means 'ALARM'
+                                    5:'ORANGE',      # Means 'RECOVERY'
+                                    6:'BLUE'}}}      # Means 'Long press on service button, Tech requested startup sequence
+for codetype in ['status', 'led']:
+    FNDH_CODES_1[codetype]['fromname'] = {regname:regcode for (regcode, regname)
+                                          in FNDH_CODES_1[codetype]['fromcode'].items()}
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
@@ -395,11 +409,11 @@ class FNDH(transport.ModbusDevice):
                 self.outside_temp = scaled_float
             elif regname == 'SYS_STATUS':
                 self.statuscode = raw_int
-                self.status = self.codes['status']['fromid'][self.statuscode]
+                self.status = self.codes['status']['fromcode'][self.statuscode]
             elif regname == 'SYS_LIGHTS':
                 self.service_led = bool(raw_value[0][0])
                 self.indicator_code = raw_value[0][1]
-                self.indicator_state = self.codes['leds']['fromid'][self.indicator_code]
+                self.indicator_state = self.codes['leds']['fromcode'][self.indicator_code]
             elif (len(regname) >= 8) and ((regname[0] + regname[-6:]) == 'P_STATE'):
                 pnum = int(regname[1:-6])
                 self.ports[pnum].set_status_data(status_bitmap=raw_int, read_timestamp=read_timestamp)

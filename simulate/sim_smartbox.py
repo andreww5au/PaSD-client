@@ -57,8 +57,8 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.pcb_temp = 38.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 34.0    # Outside temperature (deg C)
         self.initialised = False   # True if the system has been initialised by the LMC
-        self.statuscode = 4    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
-        self.status = 'UNINITIALISED'       # Status string, obtained from self.codes['status'] (eg 'OK')
+        self.statuscode = 0    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
+        self.status = ''       # Status string, obtained from self.codes['status'] (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
         self.indicator_code = 0  # LED status value, used as a key for self.codes['led']
         self.indicator_state = 'OFF'   # LED status, obtained from self.codes['led']
@@ -331,6 +331,9 @@ class SimSMARTbox(smartbox.SMARTbox):
         listen_thread = threading.Thread(target=self.listen_loop, daemon=False, name=threading.current_thread().name + '-C')
         listen_thread.start()
 
+        self.statuscode = self.codes['status']['UNINITIALISED']
+        self.indicator_state = self.codes['led']['fromname']['GREENFLASH']
+
         self.logger.info('Started simulation loop for SMARTbox')
         while not self.wants_exit:  # Process packets until we are told to die
             self.uptime = int(time.time() - self.start_time)  # Set the current uptime value
@@ -445,5 +448,5 @@ conn = transport.Connection(hostname='134.7.50.185')  # address of ethernet-seri
 conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
 
 s = sim_smartbox.SimSMARTbox(conn=conn, modbus_address=1)
-s.mainloop()
+s.sim_loop()
 """

@@ -37,6 +37,8 @@ SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed,
                         'SYS_UPTIME':  (14, 2, 'Uptime in seconds', None),
                         'SYS_ADDRESS': (16, 1, 'MODBUS station ID', None),
 
+                        # TODO - add PDoC port serial number block (4 registers) in here, to be read once on boot, not polled.
+
                         # From here on register address and contents can change between firmware revisions
                         'SYS_48V_V':     (17, 1, 'Incoming 48VDC voltage', conversion.scale_48v),
                         'SYS_PSU_V':     (18, 1, 'PSU output voltage', conversion.scale_5v),
@@ -123,10 +125,22 @@ SMARTBOX_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as wel
 }
 
 # Translation between the integer in the SYS_STATUS and SYS_STATUS register bytes, and the meaning of the code
-SMARTBOX_CODES_1 = {'status':{'fromid':{0:'OK', 1:'WARNING', 2:'ALARM', 3:'RECOVERY', 4:'UNINITIALISED', 5:'WANTS_POWERDOWN'},
-                              'fromname':{'OK':0, 'WARNING':1, 'ALARM':2, 'RECOVERY':3, 'UNINITIALISED':4, 'WANTS_POWERDOWN':5}},
-                    'led':{'fromid':{0:'OFF', 1:'GREEN', 2:'RED', 3:'YELLOW', 4:'WANTS_POWERDOWN'},
-                           'fromname':{'OFF':0, 'GREEN':1, 'RED':2, 'YELLOW':3, 'WANTS_POWERDOWN':4}}}
+SMARTBOX_CODES_1 = {'status':{'fromcode':{0:'OK',
+                                          1:'WARNING',
+                                          2:'ALARM',
+                                          3:'RECOVERY',
+                                          4:'UNINITIALISED',
+                                          5:'WANTS_POWERDOWN'}},  # Means 'Long press on service button, Tech requested powerdown
+                    'led':{'fromcode':{0:'OFF',         # Means 'No power to box'
+                                       1:'GREENFLASH',  # Means 'UNINITIALISED'
+                                       2:'GREEN',       # Means 'OK'
+                                       3:'YELLOW',      # Means 'WARNING'
+                                       4:'RED',         # Means 'ALARM'
+                                       5:'ORANGE',      # Means 'RECOVERY'
+                                       6:'BLUE'}}}      # Means 'Long press on service button, Tech requested powerdown
+for codetype in ['status', 'led']:
+    SMARTBOX_CODES_1[codetype]['fromname'] = {regname:regcode for (regcode, regname)
+                                              in SMARTBOX_CODES_1[codetype]['fromcode'].items()}
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
@@ -435,8 +449,8 @@ class SMARTbox(transport.ModbusDevice):
         self.psu_temp = 0.0    # Temperature of the internal 5V power supply (deg C)
         self.pcb_temp = 0.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 0.0    # Outside temperature (deg C)
-        self.statuscode = 0    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
-        self.status = ''       # Status string, obtained from self.codes['status'] (eg 'OK')
+        self.statuscode = self.codes['status']['OFF']    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
+        self.status = 'OFF'       # Status string, obtained from self.codes['status'] (eg 'OK')
         self.service_led = None    # True if the blue service indicator LED is switched ON.
         self.indicator_code = None  # LED status value, used as a key for self.codes['led']
         self.indicator_state = ''   # LED status, obtained from self.codes['led']
@@ -545,11 +559,11 @@ class SMARTbox(transport.ModbusDevice):
                 self.outside_temp = scaled_float
             elif regname == 'SYS_STATUS':
                 self.statuscode = raw_int
-                self.status = self.codes['status']['fromid'][self.statuscode]
+                self.status = self.codes['status']['fromcode'][self.statuscode]
             elif regname == 'SYS_LIGHTS':
                 self.service_led = bool(raw_value[0][0])
                 self.indicator_code = raw_value[0][1]
-                self.indicator_state = self.codes['led']['fromid'][self.indicator_code]
+                self.indicator_state = self.codes['led']['fromcode'][self.indicator_code]
             elif (regname[:9] == 'SYS_SENSE'):
                 sensor_num = int(regname[9:])
                 self.sensor_temps[sensor_num] = scaled_float
