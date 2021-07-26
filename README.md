@@ -156,18 +156,18 @@ The port registers are:
 | 45 | P10\_STATE | 1 | Port 10 state bitmap (see text). R/W. |
 | 46 | P11\_STATE | 1 | Port 11 state bitmap (see text). R/W. |
 | 47 | P12\_STATE | 1 | Port 12 state bitmap (see text). R/W. |
-| 48 | P01\_CURRENT | 1 | Port 1 current (1/100ths of a degree C, signed integer). RO. |
-| 49 | P02\_CURRENT | 1 | Port 2 current (1/100ths of a degree C, signed integer). RO. |
-| 50 | P03\_CURRENT | 1 | Port 3 current (1/100ths of a degree C, signed integer). RO. |
-| 51 | P04\_CURRENT | 1 | Port 4 current (1/100ths of a degree C, signed integer). RO. |
-| 52 | P05\_CURRENT | 1 | Port 5 current (1/100ths of a degree C, signed integer). RO. |
-| 53 | P06\_CURRENT | 1 | Port 6 current (1/100ths of a degree C, signed integer). RO. |
-| 54 | P07\_CURRENT | 1 | Port 7 current (1/100ths of a degree C, signed integer). RO. |
-| 55 | P08\_CURRENT | 1 | Port 8 current (1/100ths of a degree C, signed integer). RO. |
-| 56 | P09\_CURRENT | 1 | Port 9 current (1/100ths of a degree C, signed integer). RO. |
-| 57 | P10\_CURRENT | 1 | Port 10 current (1/100ths of a degree C, signed integer). RO. |
-| 58 | P11\_CURRENT | 1 | Port 11 current (1/100ths of a degree C, signed integer). RO. |
-| 59 | P12\_CURRENT | 1 | Port 12 current (1/100ths of a degree C, signed integer). RO. |
+| 48 | P01\_CURRENT | 1 | Port 1 current (format TBD). RO. |
+| 49 | P02\_CURRENT | 1 | Port 2 current (format TBD). RO. |
+| 50 | P03\_CURRENT | 1 | Port 3 current (format TBD). RO. |
+| 51 | P04\_CURRENT | 1 | Port 4 current (format TBD). RO. |
+| 52 | P05\_CURRENT | 1 | Port 5 current (format TBD). RO. |
+| 53 | P06\_CURRENT | 1 | Port 6 current (format TBD). RO. |
+| 54 | P07\_CURRENT | 1 | Port 7 current (format TBD). RO. |
+| 55 | P08\_CURRENT | 1 | Port 8 current format TBDr). RO. |
+| 56 | P09\_CURRENT | 1 | Port 9 current (format TBD). RO. |
+| 57 | P10\_CURRENT | 1 | Port 10 current (format TBD). RO. |
+| 58 | P11\_CURRENT | 1 | Port 11 current (format TBD). RO. |
+| 59 | P12\_CURRENT | 1 | Port 12 current (format TBD). RO. |
 
 Each of the 12 FEM ports has a state register (described below), which is Read/Write, and a current register containing reading for the current to that port, in a format TBD (read only).
 
