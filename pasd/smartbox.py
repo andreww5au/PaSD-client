@@ -15,15 +15,14 @@ logging.basicConfig()
 from pasd import conversion   # Conversion functions between register values and actual temps/voltages/currents
 from pasd import transport    # Modbus API
 
-# Register definitions and status code mapping - only one mapping here now (SMARTBOX_POLL_REGS_1,
-# SMARTBOX_CONF_REGS_1 and SMARTBOX_CODES_1), and these define the registers and codes for Modbus register map
-# revision 1 (where SYS_MBRV==1).
+# Register definitions - only one mapping here now (SMARTBOX_POLL_REGS_1 and SMARTBOX_CONF_REGS_1 ), and these define
+# the registers and codes for Modbus register map revision 1 (where SYS_MBRV==1).
 #
-# When firmware updates require a new register map and status codes, define new dictionaries SMARTBOX_POLL_REGS_2,
-# SMARTBOX_CONF_REGS_2, and SMARTBOX_CODES_2, and add them to the SMARTBOX_REGISTERS and SMARTBOX_CODES dictionaries.
+# When firmware updates require a new register map and status codes, define new dictionaries SMARTBOX_POLL_REGS_2
+# and SMARTBOX_CONF_REGS_2, and add them to the SMARTBOX_REGISTERS dictionary.
 #
 # When a SMARTbox is contacted, the SYS_MBRV register value (always defined to be in register 1) will be used to load
-# the appropriate register map and status codes.
+# the appropriate register map.
 #
 # Register maps are dictionaries with register name as key, and a tuple of (register_number, number_of_registers,
 # description, scaling_function) as value.
@@ -109,7 +108,7 @@ SMARTBOX_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as wel
                         'SYS_SENSE11_TH': (1061, 4, 'Sensor 11 AH, WH, WL, AL', conversion.scale_temp),
                         'SYS_SENSE12_TH': (1065, 4, 'Sensor 12 AH, WH, WL, AL', conversion.scale_temp),
 
-                        # No hysteris or low-current limits for FEM currents, just a single value in ADC
+                        # No hysteresis or low-current limits for FEM currents, just a single value in ADC
                         'P01_CURRENT_TH':(1069, 1, 'Port 01 current trip threshold', conversion.scale_FEMcurrent),
                         'P02_CURRENT_TH':(1070, 1, 'Port 02 current trip threshold', conversion.scale_FEMcurrent),
                         'P03_CURRENT_TH':(1071, 1, 'Port 03 current trip threshold', conversion.scale_FEMcurrent),
@@ -124,28 +123,53 @@ SMARTBOX_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as wel
                         'P12_CURRENT_TH':(1080, 1, 'Port 12 current trip threshold', conversion.scale_FEMcurrent),
 }
 
-# Translation between the integer in the SYS_STATUS and SYS_STATUS register bytes, and the meaning of the code
-SMARTBOX_CODES_1 = {'status':{'fromcode':{0:'OK',
-                                          1:'WARNING',
-                                          2:'ALARM',
-                                          3:'RECOVERY',
-                                          4:'UNINITIALISED',
-                                          5:'WANTS_POWERDOWN'}},  # Means 'Long press on service button, Tech requested powerdown
-                    'led':{'fromcode':{0:'OFF',         # Means 'No power to box'
-                                       1:'GREENFLASH',  # Means 'UNINITIALISED'
-                                       2:'GREEN',       # Means 'OK'
-                                       3:'YELLOW',      # Means 'WARNING'
-                                       4:'RED',         # Means 'ALARM'
-                                       5:'ORANGE',      # Means 'RECOVERY'
-                                       6:'BLUE'}}}      # Means 'Long press on service button, Tech requested powerdown
-for codetype in ['status', 'led']:
-    SMARTBOX_CODES_1[codetype]['fromname'] = {regname:regcode for (regcode, regname)
-                                              in SMARTBOX_CODES_1[codetype]['fromcode'].items()}
+# Translation between the integer in the SYS_STATUS register (.statuscode), and .status string
+STATUS_UNKNOWN = -1
+STATUS_OK = 0
+STATUS_WARNING = 1
+STATUS_ALARM = 2
+STATUS_RECOVERY = 3
+STATUS_UNINITIALISED = 4
+STATUS_POWERDOWN = 5
+STATUS_CODES = {-1:'UNKNOWN',
+                0:'OK',
+                1:'WARNING',
+                2:'ALARM',
+                3:'RECOVERY',
+                4:'UNINITIALISED',
+                5:'POWERDOWN'}
+
+# Translation between the integer the SYS_LIGHTS MSB (.indicator_code) and the .indicator_status string
+LED_UNKNOWN = -1       # No contact with hardware yet, we don't know what the LED state is
+LED_OFF = 0            # Probably never used, so we can tell if the power is on or off
+LED_GREENFAST = 1      # Uninitialised - thresholds not written
+LED_GREEN = 2          # OK and 'online'
+LED_GREENSLOW = 3      # OK and 'offline' (haven't heard from MCCS lately)
+LED_YELLOW = 4         # WARNING
+LED_YELLOWSLOW = 5     # WARNING and 'offline'
+LED_RED = 6            # ALARM
+LED_REDSLOW = 7        # ALARM and 'offline'
+LED_ORANGE = 8         # RECOVERY
+LED_ORANGESLOW = 9     # RECOVERY and 'offline'
+LED_BLUE = 10          # Waiting for 48V power-down by MCCS
+LED_BLUESLOW = 11      # TBD
+LED_CODES = {-1:'UKNOWN',
+             0:'OFF',
+             1:'GREENFAST',
+             2:'GREEN',
+             3:'GREENSLOW',
+             4:'YELLOW',
+             5:'YELLOWSLOW',
+             6:'RED',
+             7:'REDSLOW',
+             8:'ORANGE',
+             9:'ORANGESLOW',
+             10:'BLUE',
+             11:'BLUESLOW'}
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
 SMARTBOX_REGISTERS = {1: {'POLL':SMARTBOX_POLL_REGS_1, 'CONF':SMARTBOX_CONF_REGS_1}}
-SMARTBOX_CODES = {1: SMARTBOX_CODES_1}
 
 THRESHOLD_FILENAME = 'pasd/smartbox_thresholds.json'
 PORTCONFIG_FILENAME = 'pasd/smartbox_ports.json'
@@ -396,7 +420,6 @@ class SMARTbox(transport.ModbusDevice):
     mbrv: Modbus register-map revision number for this physical SMARTbox
     pcbrv: PCB revision number for this physical SMARTbox
     register_map: A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
-    codes: A dictionary mapping status code integer (eg 0) to status code string (eg 'OK'), and LED codes to LED flash states
     sensor_temps: A dictionary with sensor number (1-12) as key, and temperature as value
     cpuid: CPU identifier (integer)
     chipid: Unique ID number (16 bytes), different for every physical SMARTbox
@@ -437,7 +460,6 @@ class SMARTbox(transport.ModbusDevice):
         self.mbrv = None   # Modbus register-map revision number for this physical SMARTbox
         self.pcbrv = None  # PCB revision number for this physical SMARTbox
         self.register_map = {}  # A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
-        self.codes = {}    # A dictionary mapping status code integer (eg 0) to status code string (eg 'OK'), and LED codes to LED flash states
         self.sensor_temps = {}  # Dictionary with sensor number (1-12) as key, and (probably) temperature as value
         self.cpuid = ''    # CPU identifier (integer)
         self.chipid = []   # Unique ID number (16 bytes), different for every physical SMARTbox
@@ -449,11 +471,11 @@ class SMARTbox(transport.ModbusDevice):
         self.psu_temp = 0.0    # Temperature of the internal 5V power supply (deg C)
         self.pcb_temp = 0.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 0.0    # Outside temperature (deg C)
-        self.statuscode = self.codes['status']['OFF']    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
-        self.status = 'OFF'       # Status string, obtained from self.codes['status'] (eg 'OK')
-        self.service_led = None    # True if the blue service indicator LED is switched ON.
-        self.indicator_code = None  # LED status value, used as a key for self.codes['led']
-        self.indicator_state = ''   # LED status, obtained from self.codes['led']
+        self.statuscode = STATUS_UNKNOWN    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
+        self.status = 'UNKNOWN'       # Status string, obtained from self.codes['status'] (eg 'OK')
+        self.service_led = False    # True if the blue service indicator LED is switched ON.
+        self.indicator_code = LED_UNKNOWN  # LED status value, used as a key for self.codes['led']
+        self.indicator_state = 'UNKNOWN'   # LED status, obtained from self.codes['led']
         self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
         self.pdoc_number = None   # Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
         try:
@@ -519,7 +541,6 @@ class SMARTbox(transport.ModbusDevice):
         self.mbrv = valuelist[0][0] * 256 + valuelist[0][1]
         self.pcbrv = valuelist[1][0] * 256 + valuelist[1][1]
         self.register_map = SMARTBOX_REGISTERS[self.mbrv]
-        self.codes = SMARTBOX_CODES[self.mbrv]
 
         self.sensor_temps = {}  # Dictionary with sensor number (1-12) as key, and (probably) temperature as value
         for regname in self.register_map['POLL'].keys():  # Iterate over all the register names in the current register map
@@ -559,11 +580,11 @@ class SMARTbox(transport.ModbusDevice):
                 self.outside_temp = scaled_float
             elif regname == 'SYS_STATUS':
                 self.statuscode = raw_int
-                self.status = self.codes['status']['fromcode'][self.statuscode]
+                self.status = STATUS_CODES[self.statuscode]
             elif regname == 'SYS_LIGHTS':
                 self.service_led = bool(raw_value[0][0])
                 self.indicator_code = raw_value[0][1]
-                self.indicator_state = self.codes['led']['fromcode'][self.indicator_code]
+                self.indicator_state = LED_CODES[self.indicator_code]
             elif (regname[:9] == 'SYS_SENSE'):
                 sensor_num = int(regname[9:])
                 self.sensor_temps[sensor_num] = scaled_float
@@ -602,7 +623,6 @@ class SMARTbox(transport.ModbusDevice):
         self.mbrv = valuelist[0][0] * 256 + valuelist[0][1]
         self.pcbrv = valuelist[1][0] * 256 + valuelist[1][1]
         self.register_map = SMARTBOX_REGISTERS[self.mbrv]
-        self.codes = SMARTBOX_CODES[self.mbrv]
         regnum, numreg, regdesc, scalefunc = self.register_map['POLL']['SYS_UPTIME']
         raw_value = valuelist[regnum - 1:regnum + numreg - 1]
         self.uptime = transport.bytestoN(raw_value)   # I know uptime is 2 registers, 4 bytes

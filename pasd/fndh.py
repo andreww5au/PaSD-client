@@ -95,28 +95,50 @@ FNDH_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as well as
                     'SYS_OUTTEMP_TH':(1029, 4, 'Outside temperature AH, WH, WL, AL', conversion.scale_temp),
 }
 
-# Translation between the integer in the SYS_STATUS and SYS_STATUS register bytes, and the meaning of the code
-FNDH_CODES_1 = {'status':{'fromcode':{0:'OK',
-                                      1:'WARNING',
-                                      2:'ALARM',
-                                      3:'RECOVERY',
-                                      4:'UNINITIALISED',
-                                      5:'WANTS_POWERUP'}},  # Means 'Long press on service button, Tech requested startup sequence
-                'leds':{'fromcode':{0:'OFF',         # Means 'No power to box'
-                                    1:'GREENFLASH',  # Means 'UNINITIALISED'
-                                    2:'GREEN',       # Means 'OK'
-                                    3:'YELLOW',      # Means 'WARNING'
-                                    4:'RED',         # Means 'ALARM'
-                                    5:'ORANGE',      # Means 'RECOVERY'
-                                    6:'BLUE'}}}      # Means 'Long press on service button, Tech requested startup sequence
-for codetype in ['status', 'led']:
-    FNDH_CODES_1[codetype]['fromname'] = {regname:regcode for (regcode, regname)
-                                          in FNDH_CODES_1[codetype]['fromcode'].items()}
 
+# Translation between the integer in the SYS_STATUS register (.statuscode), and .status string
+STATUS_OK = 0
+STATUS_WARNING = 1
+STATUS_ALARM = 2
+STATUS_RECOVERY = 3
+STATUS_UNINITIALISED = 4
+STATUS_POWERUP = 5
+STATUS_CODES = {0:'STATUS_OK',
+                1:'STATUS_WANRING',
+                2:'STATUS_ALARM',
+                3:'STATUS_RECOVERY',
+                4:'STATUS_UNINITIALISED'}
+
+# Translation between the integer the SYS_LIGHTS MSB (.indicator_code) and the .indicator_status string
+LED_UNKNOWN = -1       # No contact with hardware yet, we don't know what the LED state is
+LED_OFF = 0            # Probably never used, so we can tell if the power is on or off
+LED_GREENFAST = 1      # Uninitialised - thresholds not written
+LED_GREEN = 2          # OK and 'online'
+LED_GREENSLOW = 3      # OK and 'offline' (haven't heard from MCCS lately)
+LED_YELLOW = 4         # WARNING
+LED_YELLOWSLOW = 5     # WARNING and 'offline'
+LED_RED = 6            # ALARM
+LED_REDSLOW = 7        # ALARM and 'offline'
+LED_ORANGE = 8         # RECOVERY
+LED_ORANGESLOW = 9     # RECOVERY and 'offline'
+LED_BLUE = 10          # TBD
+LED_BLUESLOW = 11      # TBD
+LED_CODES = {-1:'UKNOWN',
+             0:'OFF',
+             1:'GREENFAST',
+             2:'GREEN',
+             3:'GREENSLOW',
+             4:'YELLOW',
+             5:'YELLOWSLOW',
+             6:'RED',
+             7:'REDSLOW',
+             8:'ORANGE',
+             9:'ORANGESLOW',
+             10:'BLUE',
+             11:'BLUESLOW'}
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
 FNDH_REGISTERS = {1: {'POLL':FNDH_POLL_REGS_1, 'CONF':FNDH_CONF_REGS_1}}
-FNDH_CODES = {1: FNDH_CODES_1}
 
 THRESHOLD_FILENAME = 'pasd/fndh_thresholds.json'
 PORTCONFIG_FILENAME = 'pasd/fndh_ports.json'
@@ -245,7 +267,6 @@ class FNDH(transport.ModbusDevice):
     mbrv: Modbus register-map revision number for this physical FNDH
     pcbrv: PCB revision number for this physical FNDH
     register_map: A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
-    codes: A dictionary mapping status code integer (eg 0) to status code string (eg 'OK'), and LED codes to LED flash states
     cpuid: CPU identifier (integer)
     chipid: Unique ID number (16 bytes), different for every physical FNDH
     firmware_version: Firmware revision mumber for this physical FNDH
@@ -287,7 +308,6 @@ class FNDH(transport.ModbusDevice):
         self.mbrv = None   # Modbus register-map revision number for this physical FNDH
         self.pcbrv = None  # PCB revision number for this physical FNDH
         self.register_map = {}  # A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
-        self.codes = {}  # A dictionary mapping status code integer (eg 0) to status code string (eg 'OK'), and LED codes to LED flash states
         self.cpuid = ''  # CPU identifier (integer)
         self.chipid = []  # Unique ID number (16 bytes), different for every physical FNDH
         self.firmware_version = 0  # Firmware revision mumber for this physical FNDH
@@ -364,7 +384,6 @@ class FNDH(transport.ModbusDevice):
         self.mbrv = transport.bytestoN(valuelist[0])
         self.pcbrv = transport.bytestoN(valuelist[1])
         self.register_map = FNDH_REGISTERS[self.mbrv]
-        self.codes = FNDH_CODES[self.mbrv]
 
         for regname in self.register_map['POLL'].keys():  # Iterate over all the register names in the current register map
             regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
@@ -409,11 +428,11 @@ class FNDH(transport.ModbusDevice):
                 self.outside_temp = scaled_float
             elif regname == 'SYS_STATUS':
                 self.statuscode = raw_int
-                self.status = self.codes['status']['fromcode'][self.statuscode]
+                self.status = STATUS_CODES[self.statuscode]
             elif regname == 'SYS_LIGHTS':
                 self.service_led = bool(raw_value[0][0])
                 self.indicator_code = raw_value[0][1]
-                self.indicator_state = self.codes['leds']['fromcode'][self.indicator_code]
+                self.indicator_state = LED_CODES[self.indicator_code]
             elif (len(regname) >= 8) and ((regname[0] + regname[-6:]) == 'P_STATE'):
                 pnum = int(regname[1:-6])
                 self.ports[pnum].set_status_data(status_bitmap=raw_int, read_timestamp=read_timestamp)

@@ -42,7 +42,6 @@ class SimSMARTbox(smartbox.SMARTbox):
         smartbox.SMARTbox.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
         self.online = False   # Will be True if we've heard from the MCCS in the last 300 seconds.
         self.register_map = smartbox.SMARTBOX_REGISTERS[1]  # Assume register map version 1
-        self.codes = smartbox.SMARTBOX_CODES[1]
         self.mbrv = 1   # Modbus register-map revision number for this physical SMARTbox
         self.pcbrv = 1  # PCB revision number for this physical SMARTbox
         self.sensor_temps = {i:33.33 for i in range(1, 13)}  # Dictionary with sensor number (1-12) as key, and temperature as value
@@ -57,11 +56,11 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.pcb_temp = 38.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 34.0    # Outside temperature (deg C)
         self.initialised = False   # True if the system has been initialised by the LMC
-        self.statuscode = 0    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
-        self.status = ''       # Status string, obtained from self.codes['status'] (eg 'OK')
+        self.statuscode = smartbox.STATUS_UNINITIALISED    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
+        self.status = 'UNINITIALISED'       # Status string, obtained from self.codes['status'] (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
-        self.indicator_code = 0  # LED status value, used as a key for self.codes['led']
-        self.indicator_state = 'OFF'   # LED status, obtained from self.codes['led']
+        self.indicator_code = smartbox.LED_GREENFAST  # LED status value, used as a key for self.codes['led']
+        self.indicator_state = 'GREENFAST'   # LED status, obtained from self.codes['led']
         self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
         self.start_time = time.time()   # Unix timestamp when this instance started processing
         self.pdoc_number = None   # Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
@@ -205,7 +204,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                 time.sleep(1)
                 continue
 
-            if read_set or written_set:  # The MCCS has talked to us, update the last_readtime timestamp
+            if read_set or written_set:  # The MCCS has talked to us, update the self.readtime timestamp
                 self.readtime = time.time()
 
             # If any registers have been written to, update the local instance attributes from the new values
@@ -213,7 +212,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                 self.handle_register_writes(slave_registers, written_set)
 
             # Update the on/off state of all the ports, based on local instance attributes
-            goodcodes = [self.codes['status']['fromname'][x] for x in ['OK', 'WARNING', 'RECOVERY']]
+            goodcodes = [smartbox.STATUS_OK, smartbox.STATUS_WARNING, smartbox.STATUS_RECOVERY]
             if (self.statuscode not in goodcodes):   # If we're not OK, WARNING, or RECOVERY disable all the outputs
                 for port in self.ports.values():
                     port.status_timestamp = time.time()
@@ -331,8 +330,10 @@ class SimSMARTbox(smartbox.SMARTbox):
         listen_thread = threading.Thread(target=self.listen_loop, daemon=False, name=threading.current_thread().name + '-C')
         listen_thread.start()
 
-        self.statuscode = self.codes['status']['UNINITIALISED']
-        self.indicator_state = self.codes['led']['fromname']['GREENFLASH']
+        self.statuscode = smartbox.STATUS_UNINITIALISED
+        self.status = 'UNINITIALISED'
+        self.indicator_code = smartbox.LED_GREENFAST  # Fast flash green - uninitialised
+        self.indicator_state = 'GREENFAST'
 
         self.logger.info('Started simulation loop for SMARTbox')
         while not self.wants_exit:  # Process packets until we are told to die
@@ -425,15 +426,33 @@ class SimSMARTbox(smartbox.SMARTbox):
             # Now update the overall box state, based on all of the sensor states
             # We can't be in the UNINITIALISED state if we've reached this point, so it must be one of these four:
             if 'ALARM' in self.sensor_states.values():  # If any sensor is in ALARM, so is thw whole box
-                self.status = 'ALARM'
+                self.statuscode = smartbox.STATUS_ALARM
+                if self.online:
+                    self.indicator_code = smartbox.LED_RED
+                else:
+                    self.indicator_code = smartbox.LED_REDSLOW
             elif 'WARNING' in self.sensor_states.values():  # Otherwise, if any sensor is WARNING, so is the whole box
-                self.status = 'WARNING'
+                self.statuscode = smartbox.STATUS_WARNING
+                if self.online:
+                    self.indicator_code = smartbox.LED_YELLOW
+                else:
+                    self.indicator_code = smartbox.LED_YELLOWSLOW
             elif 'RECOVERY' in self.sensor_states.values():  # Otherwise, if any sensor is RECOVERY, so is the whole box
-                self.status = 'RECOVERY'
-            else:
-                self.status = 'OK'  # If all sensors are OK, so is the whole box
+                self.statuscode = smartbox.STATUS_RECOVERY
+                if self.online:
+                    self.indicator_code = smartbox.LED_ORANGE
+                else:
+                    self.indicator_code = smartbox.LED_ORANGESLOW
 
-            self.statuscode = self.codes['status']['fromname'][self.status]
+            else:
+                self.statuscode = smartbox.STATUS_OK  # If all sensors are OK, so is the whole box
+                if self.online:
+                    self.indicator_code = smartbox.LED_GREEN
+                else:
+                    self.indicator_code = smartbox.LED_GREENSLOW
+
+            self.status = smartbox.STATUS_CODES[self.statuscode]
+            self.indicator_state = smartbox.LED_CODES[self.indicator_code]
 
         self.logger.info('Ending sim_loop() in SimSMARTbox')
 

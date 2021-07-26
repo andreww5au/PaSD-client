@@ -43,7 +43,6 @@ class SimFNDH(fndh.FNDH):
         fndh.FNDH.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
         self.online = False   # Will be True if we've heard from the MCCS in the last 300 seconds.
         self.register_map = fndh.FNDH_REGISTERS[1]  # Assume register map version 1
-        self.codes = fndh.FNDH_CODES[1]
         self.mbrv = 1   # Modbus register-map revision number for this physical FNDH
         self.pcbrv = 1  # PCB revision number for this physical FNDH
         self.fem_temps = {i:1500 for i in range(1, 13)}  # Dictionary with FEM number (1-12) as key, and temperature as value
@@ -61,11 +60,11 @@ class SimFNDH(fndh.FNDH):
         self.pcb_temp = 38.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 34.0    # Outside temperature (deg C)
         self.initialised = False   # True if the system has been initialised by the LMC
-        self.statuscode = 4    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
+        self.statuscode = fndh.STATUS_UNINITIALISED    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'       # Status string, obtained from self.codes['status'] (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
-        self.indicator_code = 0  # LED status value, used as a key for self.codes['led']
-        self.indicator_state = 'OFF'   # LED status, obtained from self.codes['led']
+        self.indicator_code = fndh.LED_GREENFAST  # LED status value, used as a key for self.codes['led']
+        self.indicator_state = 'GREENFAST'   # LED status, obtained from self.codes['led']
         self.readtime = 0    # Unix timestamp for the last successful polled data from this FNDH
         self.start_time = 0   # Unix timestamp when this instance started processing
         self.wants_exit = False  # Set to True externally to kill self.mainloop if the box is pseudo-powered-off
@@ -209,7 +208,7 @@ class SimFNDH(fndh.FNDH):
                 self.handle_register_writes(slave_registers, written_set)
 
             # Update the on/off state of all the ports, based on local instance attributes
-            goodcodes = [self.codes['status']['fromname'][x] for x in ['OK', 'WARNING', 'RECOVERY']]
+            goodcodes = [fndh.STATUS_OK, fndh.STATUS_WARNING, fndh.STATUS_RECOVERY]
             if (self.statuscode not in goodcodes):  # If we're not OK, WARNING, or RECOVERY disable all the outputs
                 for port in self.ports.values():
                     port.status_timestamp = time.time()
@@ -318,6 +317,11 @@ class SimFNDH(fndh.FNDH):
         """
         self.start_time = time.time()
 
+        self.statuscode = fndh.STATUS_UNINITIALISED
+        self.status = 'UNINITIALISED'
+        self.indicator_code = fndh.LED_GREENFAST  # Fast flash green - uninitialised
+        self.indicator_state = 'GREENFAST'
+
         self.logger.info('Started comms thread for FNDH')
         listen_thread = threading.Thread(target=self.listen_loop, daemon=False, name=threading.current_thread().name + '-C')
         listen_thread.start()
@@ -410,15 +414,33 @@ class SimFNDH(fndh.FNDH):
             # Now update the overall box state, based on all of the sensor states
             # We can't be in the UNINITIALISED state if we've reached this point, so it must be one of these four:
             if 'ALARM' in self.sensor_states.values():  # If any sensor is in ALARM, so is thw whole box
-                self.status = 'ALARM'
+                self.statuscode = fndh.STATUS_ALARM
+                if self.online:
+                    self.indicator_code = fndh.LED_RED
+                else:
+                    self.indicator_code = fndh.LED_REDSLOW
             elif 'WARNING' in self.sensor_states.values():  # Otherwise, if any sensor is WARNING, so is the whole box
-                self.status = 'WARNING'
+                self.statuscode = fndh.STATUS_WARNING
+                if self.online:
+                    self.indicator_code = fndh.LED_YELLOW
+                else:
+                    self.indicator_code = fndh.LED_YELLOWSLOW
             elif 'RECOVERY' in self.sensor_states.values():  # Otherwise, if any sensor is RECOVERY, so is the whole box
-                self.status = 'RECOVERY'
-            else:
-                self.status = 'OK'  # If all sensors are OK, so is the whole box
+                self.statuscode = fndh.STATUS_RECOVERY
+                if self.online:
+                    self.indicator_code = fndh.LED_ORANGE
+                else:
+                    self.indicator_code = fndh.LED_ORANGESLOW
 
-            self.statuscode = self.codes['status']['fromname'][self.status]
+            else:
+                self.statuscode = fndh.STATUS_OK  # If all sensors are OK, so is the whole box
+                if self.online:
+                    self.indicator_code = fndh.LED_GREEN
+                else:
+                    self.indicator_code = fndh.LED_GREENSLOW
+
+            self.status = fndh.STATUS_CODES[self.statuscode]
+            self.indicator_state = fndh.LED_CODES[self.indicator_code]
 
         self.logger.info('Ending sim_loop() in SimFNDH')
 
