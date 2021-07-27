@@ -97,45 +97,76 @@ FNDH_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as well as
 
 
 # Translation between the integer in the SYS_STATUS register (.statuscode), and .status string
-STATUS_OK = 0
-STATUS_WARNING = 1
-STATUS_ALARM = 2
-STATUS_RECOVERY = 3
-STATUS_UNINITIALISED = 4
-STATUS_POWERUP = 5
-STATUS_CODES = {0:'STATUS_OK',
-                1:'STATUS_WANRING',
+# Note that the -1 (UNKNOWN) is for internal use only, if we haven't polled the hardware yet - we can't ever
+# receive a -1 from the actual hardware.
+STATUS_UNKNOWN = -1       # No contact with hardware yet, we don't know the status code
+STATUS_OK = 0             # Initialised, system health OK
+STATUS_WARNING = 1        # Initialised, and at least on sensor in WARNING, but none in ALARM or RECOVERY
+STATUS_ALARM = 2          # Initialised, and at least one sensor in ALARM
+STATUS_RECOVERY = 3       # Initialised, and at least one sensor in RECOVERY, but none in ALARM
+STATUS_UNINITIALISED = 4  # NOT initialised, regardless of sensor states
+STATUS_POWERUP = 5        # Local tech wants the MCCS to turn off all ports, then go through full powerup sequence (long press)
+STATUS_CODES = {-1:'STATUS_UNKNOWN',
+                0:'STATUS_OK',
+                1:'STATUS_WARNING',
                 2:'STATUS_ALARM',
                 3:'STATUS_RECOVERY',
-                4:'STATUS_UNINITIALISED'}
+                4:'STATUS_UNINITIALISED',
+                5:'STATUS_POWERUP'}
+
 
 # Translation between the integer the SYS_LIGHTS MSB (.indicator_code) and the .indicator_status string
-LED_UNKNOWN = -1       # No contact with hardware yet, we don't know what the LED state is
-LED_OFF = 0            # Probably never used, so we can tell if the power is on or off
-LED_GREENFAST = 1      # Uninitialised - thresholds not written
-LED_GREEN = 2          # OK and 'online'
-LED_GREENSLOW = 3      # OK and 'offline' (haven't heard from MCCS lately)
-LED_YELLOW = 4         # WARNING
-LED_YELLOWSLOW = 5     # WARNING and 'offline'
-LED_RED = 6            # ALARM
-LED_REDSLOW = 7        # ALARM and 'offline'
-LED_ORANGE = 8         # RECOVERY
-LED_ORANGESLOW = 9     # RECOVERY and 'offline'
-LED_BLUE = 10          # TBD
-LED_BLUESLOW = 11      # TBD
+# Note that the -1 (UNKNOWN) is for internal use only, if we haven't polled the hardware yet - we can't ever
+# receive a -1 from the actual hardware.
+LED_UNKNOWN = -1        # No contact with hardware yet, we don't know what the LED state is
+LED_OFF = 0             # Probably never used, so we can tell if the power is on or off
+
+LED_GREEN = 10          # OK and 'offline' (haven't heard from MCCS lately)
+LED_GREENSLOW = 11      # OK and 'online'
+LED_GREENFAST = 12
+LED_GREENVFAST = 13
+LED_GREENDOTDASH = 14
+
+LED_YELLOW = 20         # WARNING and 'offline'
+LED_YELLOWSLOW = 21     # WARNING
+LED_YELLOWFAST = 22     # Uninitialised - thresholds not written
+LED_YELLOWVFAST = 23
+LED_YELLOWDOTDASH = 24
+
+LED_RED = 30            # ALARM and 'offline'
+LED_REDSLOW = 31        # ALARM
+LED_REDFAST = 32
+LED_REDVFAST = 33
+LED_REDDOTDASH = 34
+
+LED_YELLOWRED = 40      # RECOVERY and 'offline' (alternating yellow and red with no off-time)
+LED_YELLOWREDSLOW = 41  # RECOVERY (alternating short yellow and short red flashes)
+
+LED_GREENRED = 50       # Waiting for restart from MCCS after long button press
+
 LED_CODES = {-1:'UKNOWN',
              0:'OFF',
-             1:'GREENFAST',
-             2:'GREEN',
-             3:'GREENSLOW',
-             4:'YELLOW',
-             5:'YELLOWSLOW',
-             6:'RED',
-             7:'REDSLOW',
-             8:'ORANGE',
-             9:'ORANGESLOW',
-             10:'BLUE',
-             11:'BLUESLOW'}
+             10:'GREEN',
+             11:'GREENSLOW',
+             12:'GREENFAST',
+             13:'GREENVFAST',
+             14:'GREENDOTDASH',
+
+             20:'YELLOW',
+             21:'YELLOWSLOW',
+             22:'YELLOWFAST',
+             23:'YELLOWVFAST',
+             24:'YELLOWDOTDASH',
+
+             30:'RED',
+             31:'REDSLOW',
+             32:'REDFAST',
+             33:'REDVFAST',
+             34:'REDDOTDASH',
+
+             40:'YELLOWRED',
+             41:'YELLOWREDSLOW'}
+
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
 FNDH_REGISTERS = {1: {'POLL':FNDH_POLL_REGS_1, 'CONF':FNDH_CONF_REGS_1}}
@@ -153,9 +184,9 @@ FNDH at address: %(modbus_address)s:
     Uptime: %(uptime)s seconds
     R.Address: %(station_value)s
     48V Out 1: %(psu48v1_voltage)s V
-    48V Out 2: %(psu48v1_voltage)s V
+    48V Out 2: %(psu48v2_voltage)s V
     5V out: %(psu5v_voltage)s V
-    48V Current: %(psu48v_current)s V 
+    48V Current: %(psu48v_current)s A 
     48V Temp: %(psu48v_temp)s deg C
     5V Temp: %(psu5v_temp)s deg C
     PCB Temp: %(pcb_temp)s deg C
@@ -316,11 +347,11 @@ class FNDH(transport.ModbusDevice):
         self.psu5v_temp = 0.0  # Temperature of the 5VDC power supply (Volts)
         self.pcb_temp = 0.0  # Temperature on the internal PCB (deg C)
         self.outside_temp = 0.0  # Outside temperature (deg C)
-        self.statuscode = 0  # Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
-        self.status = ''  # Status string, obtained from STATUS_CODES global (eg 'OK')
-        self.service_led = None  # True if the blue service indicator LED is switched ON.
-        self.indicator_code = None  # LED status value, one of the LED_* globals, and used as a key for LED_CODES
-        self.indicator_state = ''  # LED status string, obtained from LED_CODES
+        self.statuscode = STATUS_UNINITIALISED  # Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
+        self.status = 'UNINITIALISED'  # Status string, obtained from STATUS_CODES global (eg 'OK')
+        self.service_led = False  # True if the blue service indicator LED is switched ON.
+        self.indicator_code = -1  # LED status value, one of the LED_* globals, and used as a key for LED_CODES
+        self.indicator_state = 'UNKNOWN'  # LED status string, obtained from LED_CODES
         self.readtime = 0    # Unix timestamp for the last successful polled data from this FNDH
         try:
             # JSON structure containing the analog threshold values for each analogue sensor on this FNDH

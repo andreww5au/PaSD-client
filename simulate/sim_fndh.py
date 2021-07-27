@@ -63,8 +63,8 @@ class SimFNDH(fndh.FNDH):
         self.statuscode = fndh.STATUS_UNINITIALISED    # Status value, one of the fndh.STATUS_* globals, and used as a key for fndh.STATUS_CODES (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'       # Status string, obtained from fndh.STATUS_CODES global (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
-        self.indicator_code = fndh.LED_GREENFAST  # LED status value, one of the fndh.LED_* globals, and used as a key for fndh.LED_CODES
-        self.indicator_state = 'GREENFAST'   # LED status string, obtained from fndh.LED_CODES
+        self.indicator_code = fndh.LED_YELLOWFAST  # LED status value, one of the fndh.LED_* globals, and used as a key for fndh.LED_CODES
+        self.indicator_state = 'YELLOWFAST'   # LED status string, obtained from fndh.LED_CODES
         self.readtime = 0    # Unix timestamp for the last successful polled data from this FNDH
         self.start_time = 0   # Unix timestamp when this instance started processing
         self.wants_exit = False  # Set to True externally to kill self.mainloop if the box is pseudo-powered-off
@@ -154,7 +154,6 @@ class SimFNDH(fndh.FNDH):
                     slave_registers[regnum] = self.station_value
                 elif regname == 'SYS_48V1_V':
                     slave_registers[regnum] = scalefunc(self.psu48v1_voltage, reverse=True, pcb_version=self.pcbrv)
-                    print('Putting %d in register for value of %4.2f' % (slave_registers[regnum], self.psu48v1_voltage))
                 elif regname == 'SYS_48V2_V':
                     slave_registers[regnum] = scalefunc(self.psu48v2_voltage, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_5V_V':
@@ -209,8 +208,8 @@ class SimFNDH(fndh.FNDH):
                 self.handle_register_writes(slave_registers, written_set)
 
             # Update the on/off state of all the ports, based on local instance attributes
-            goodcodes = [fndh.STATUS_OK, fndh.STATUS_WARNING, fndh.STATUS_RECOVERY]
-            if (self.statuscode not in goodcodes):  # If we're not OK, WARNING, or RECOVERY disable all the outputs
+            goodcodes = [fndh.STATUS_OK, fndh.STATUS_WARNING]
+            if (self.statuscode not in goodcodes):  # If we're not OK or WARNING disable all the outputs
                 for port in self.ports.values():
                     port.status_timestamp = time.time()
                     port.current_timestamp = port.status_timestamp
@@ -320,8 +319,8 @@ class SimFNDH(fndh.FNDH):
 
         self.statuscode = fndh.STATUS_UNINITIALISED
         self.status = 'UNINITIALISED'
-        self.indicator_code = fndh.LED_GREENFAST  # Fast flash green - uninitialised
-        self.indicator_state = 'GREENFAST'
+        self.indicator_code = fndh.LED_YELLOWFAST  # Fast flash green - uninitialised
+        self.indicator_state = 'YELLOWFAST'
 
         self.logger.info('Started comms thread for FNDH')
         listen_thread = threading.Thread(target=self.listen_loop, daemon=False, name=threading.current_thread().name + '-C')
@@ -417,28 +416,27 @@ class SimFNDH(fndh.FNDH):
             if 'ALARM' in self.sensor_states.values():  # If any sensor is in ALARM, so is thw whole box
                 self.statuscode = fndh.STATUS_ALARM
                 if self.online:
-                    self.indicator_code = fndh.LED_RED
-                else:
                     self.indicator_code = fndh.LED_REDSLOW
-            elif 'WARNING' in self.sensor_states.values():  # Otherwise, if any sensor is WARNING, so is the whole box
-                self.statuscode = fndh.STATUS_WARNING
-                if self.online:
-                    self.indicator_code = fndh.LED_YELLOW
                 else:
-                    self.indicator_code = fndh.LED_YELLOWSLOW
+                    self.indicator_code = fndh.LED_RED
             elif 'RECOVERY' in self.sensor_states.values():  # Otherwise, if any sensor is RECOVERY, so is the whole box
                 self.statuscode = fndh.STATUS_RECOVERY
                 if self.online:
-                    self.indicator_code = fndh.LED_ORANGE
+                    self.indicator_code = fndh.LED_YELLOWREDSLOW
                 else:
-                    self.indicator_code = fndh.LED_ORANGESLOW
-
+                    self.indicator_code = fndh.LED_YELLOWRED
+            elif 'WARNING' in self.sensor_states.values():  # Otherwise, if any sensor is WARNING, so is the whole box
+                self.statuscode = fndh.STATUS_WARNING
+                if self.online:
+                    self.indicator_code = fndh.LED_YELLOWSLOW
+                else:
+                    self.indicator_code = fndh.LED_YELLOW
             else:
                 self.statuscode = fndh.STATUS_OK  # If all sensors are OK, so is the whole box
                 if self.online:
-                    self.indicator_code = fndh.LED_GREEN
-                else:
                     self.indicator_code = fndh.LED_GREENSLOW
+                else:
+                    self.indicator_code = fndh.LED_GREEN
 
             self.status = fndh.STATUS_CODES[self.statuscode]
             self.indicator_state = fndh.LED_CODES[self.indicator_code]

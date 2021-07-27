@@ -124,13 +124,15 @@ SMARTBOX_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as wel
 }
 
 # Translation between the integer in the SYS_STATUS register (.statuscode), and .status string
-STATUS_UNKNOWN = -1
-STATUS_OK = 0
-STATUS_WARNING = 1
-STATUS_ALARM = 2
-STATUS_RECOVERY = 3
-STATUS_UNINITIALISED = 4
-STATUS_POWERDOWN = 5
+# Note that the -1 (UNKNOWN) is for internal use only, if we haven't polled the hardware yet - we can't ever
+# receive a -1 from the actual hardware.
+STATUS_UNKNOWN = -1       # No contact with hardware yet, we don't know the status code
+STATUS_OK = 0             # Initialised, system health OK
+STATUS_WARNING = 1        # Initialised, and at least on sensor in WARNING, but none in ALARM or RECOVERY
+STATUS_ALARM = 2          # Initialised, and at least one sensor in ALARM
+STATUS_RECOVERY = 3       # Initialised, and at least one sensor in RECOVERY, but none in ALARM
+STATUS_UNINITIALISED = 4  # NOT initialised, regardless of sensor states
+STATUS_POWERDOWN = 5      # Local tech wants the MCCS to turn off 48V to all FNDH ports in the station (long press)
 STATUS_CODES = {-1:'UNKNOWN',
                 0:'OK',
                 1:'WARNING',
@@ -140,32 +142,56 @@ STATUS_CODES = {-1:'UNKNOWN',
                 5:'POWERDOWN'}
 
 # Translation between the integer the SYS_LIGHTS MSB (.indicator_code) and the .indicator_status string
-LED_UNKNOWN = -1       # No contact with hardware yet, we don't know what the LED state is
-LED_OFF = 0            # Probably never used, so we can tell if the power is on or off
-LED_GREENFAST = 1      # Uninitialised - thresholds not written
-LED_GREEN = 2          # OK and 'online'
-LED_GREENSLOW = 3      # OK and 'offline' (haven't heard from MCCS lately)
-LED_YELLOW = 4         # WARNING
-LED_YELLOWSLOW = 5     # WARNING and 'offline'
-LED_RED = 6            # ALARM
-LED_REDSLOW = 7        # ALARM and 'offline'
-LED_ORANGE = 8         # RECOVERY
-LED_ORANGESLOW = 9     # RECOVERY and 'offline'
-LED_BLUE = 10          # Waiting for 48V power-down by MCCS
-LED_BLUESLOW = 11      # TBD
+# Note that the -1 (UNKNOWN) is for internal use only, if we haven't polled the hardware yet - we can't ever
+# receive a -1 from the actual hardware.
+LED_UNKNOWN = -1        # No contact with hardware yet, we don't know what the LED state is
+LED_OFF = 0             # Probably never used, so we can tell if the power is on or off
+
+LED_GREEN = 10          # OK and 'offline' (haven't heard from MCCS lately)
+LED_GREENSLOW = 11      # OK and 'online'
+LED_GREENFAST = 12
+LED_GREENVFAST = 13
+LED_GREENDOTDASH = 14
+
+LED_YELLOW = 20         # WARNING and 'offline'
+LED_YELLOWSLOW = 21     # WARNING
+LED_YELLOWFAST = 22     # Uninitialised - thresholds not written
+LED_YELLOWVFAST = 23
+LED_YELLOWDOTDASH = 24
+
+LED_RED = 30            # ALARM and 'offline'
+LED_REDSLOW = 31        # ALARM
+LED_REDFAST = 32
+LED_REDVFAST = 33
+LED_REDDOTDASH = 34
+
+LED_YELLOWRED = 40      # RECOVERY and 'offline' (alternating yellow and red with no off-time)
+LED_YELLOWREDSLOW = 41  # RECOVERY (alternating short yellow and short red flashes)
+
+LED_GREENRED = 50       # Waiting for power-down from MCCS after long button press
+
 LED_CODES = {-1:'UKNOWN',
              0:'OFF',
-             1:'GREENFAST',
-             2:'GREEN',
-             3:'GREENSLOW',
-             4:'YELLOW',
-             5:'YELLOWSLOW',
-             6:'RED',
-             7:'REDSLOW',
-             8:'ORANGE',
-             9:'ORANGESLOW',
-             10:'BLUE',
-             11:'BLUESLOW'}
+             10:'GREEN',
+             11:'GREENSLOW',
+             12:'GREENFAST',
+             13:'GREENVFAST',
+             14:'GREENDOTDASH',
+
+             20:'YELLOW',
+             21:'YELLOWSLOW',
+             22:'YELLOWFAST',
+             23:'YELLOWVFAST',
+             24:'YELLOWDOTDASH',
+
+             30:'RED',
+             31:'REDSLOW',
+             32:'REDFAST',
+             33:'REDVFAST',
+             34:'REDDOTDASH',
+
+             40:'YELLOWRED',
+             41:'YELLOWREDSLOW'}
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value

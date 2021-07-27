@@ -212,8 +212,8 @@ class SimSMARTbox(smartbox.SMARTbox):
                 self.handle_register_writes(slave_registers, written_set)
 
             # Update the on/off state of all the ports, based on local instance attributes
-            goodcodes = [smartbox.STATUS_OK, smartbox.STATUS_WARNING, smartbox.STATUS_RECOVERY]
-            if (self.statuscode not in goodcodes):   # If we're not OK, WARNING, or RECOVERY disable all the outputs
+            goodcodes = [smartbox.STATUS_OK, smartbox.STATUS_WARNING]
+            if (self.statuscode not in goodcodes):   # If we're not OK or WARNING disable all the outputs
                 for port in self.ports.values():
                     port.status_timestamp = time.time()
                     port.current_timestamp = port.status_timestamp
@@ -332,8 +332,8 @@ class SimSMARTbox(smartbox.SMARTbox):
 
         self.statuscode = smartbox.STATUS_UNINITIALISED
         self.status = 'UNINITIALISED'
-        self.indicator_code = smartbox.LED_GREENFAST  # Fast flash green - uninitialised
-        self.indicator_state = 'GREENFAST'
+        self.indicator_code = smartbox.LED_YELLOWFAST  # Fast flash green - uninitialised
+        self.indicator_state = 'YELLOWFAST'
 
         self.logger.info('Started simulation loop for SMARTbox')
         while not self.wants_exit:  # Process packets until we are told to die
@@ -428,28 +428,27 @@ class SimSMARTbox(smartbox.SMARTbox):
             if 'ALARM' in self.sensor_states.values():  # If any sensor is in ALARM, so is thw whole box
                 self.statuscode = smartbox.STATUS_ALARM
                 if self.online:
-                    self.indicator_code = smartbox.LED_RED
-                else:
                     self.indicator_code = smartbox.LED_REDSLOW
-            elif 'WARNING' in self.sensor_states.values():  # Otherwise, if any sensor is WARNING, so is the whole box
-                self.statuscode = smartbox.STATUS_WARNING
-                if self.online:
-                    self.indicator_code = smartbox.LED_YELLOW
                 else:
-                    self.indicator_code = smartbox.LED_YELLOWSLOW
+                    self.indicator_code = smartbox.LED_RED
             elif 'RECOVERY' in self.sensor_states.values():  # Otherwise, if any sensor is RECOVERY, so is the whole box
                 self.statuscode = smartbox.STATUS_RECOVERY
                 if self.online:
-                    self.indicator_code = smartbox.LED_ORANGE
+                    self.indicator_code = smartbox.LED_YELLOWREDSLOW
                 else:
-                    self.indicator_code = smartbox.LED_ORANGESLOW
-
+                    self.indicator_code = smartbox.LED_YELLOWRED
+            elif 'WARNING' in self.sensor_states.values():  # Otherwise, if any sensor is WARNING, so is the whole box
+                self.statuscode = smartbox.STATUS_WARNING
+                if self.online:
+                    self.indicator_code = smartbox.LED_YELLOWSLOW
+                else:
+                    self.indicator_code = smartbox.LED_YELLOW
             else:
                 self.statuscode = smartbox.STATUS_OK  # If all sensors are OK, so is the whole box
                 if self.online:
-                    self.indicator_code = smartbox.LED_GREEN
-                else:
                     self.indicator_code = smartbox.LED_GREENSLOW
+                else:
+                    self.indicator_code = smartbox.LED_GREEN
 
             self.status = smartbox.STATUS_CODES[self.statuscode]
             self.indicator_state = smartbox.LED_CODES[self.indicator_code]
