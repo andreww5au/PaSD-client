@@ -276,7 +276,7 @@ class PortStatus(object):
                 lfstring = 'Forced:OFF'
             else:
                 lfstring = 'NotForced'
-            status_items = ['Status(%1.1f s):' % (time.time() - self.current_timestamp),
+            status_items = ['Status(%1.1f s):' % (time.time() - self.status_timestamp),
                             {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled],
                             {False:'Offline', True:'Online', None:'??line?'}[self.system_online],
                             'DesEnableOnline=%s' % self.desire_enabled_online,

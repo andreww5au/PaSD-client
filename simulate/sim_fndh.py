@@ -347,14 +347,14 @@ class SimFNDH(fndh.FNDH):
                 continue   # Don't bother simulating sensor values until the thresholds have been set
 
             # Change the sensor values to generate a random walk around a mean value for each sensor
-            self.psu48v1_voltage = random_walk(self.psu48v1_voltage, 48.1, scale=1.0)
-            self.psu48v2_voltage = random_walk(self.psu48v2_voltage, 48.1, scale=1.0)
-            self.psu5v_voltage = random_walk(self.psu5v_voltage, 5.1, scale=0.5)
+            self.psu48v1_voltage = random_walk(self.psu48v1_voltage, 48.1, scale=0.2)
+            self.psu48v2_voltage = random_walk(self.psu48v2_voltage, 48.1, scale=0.2)
+            self.psu5v_voltage = random_walk(self.psu5v_voltage, 5.1, scale=0.05)
             self.psu48v_current = random_walk(self.psu48v_current, 13.4, scale=1.0)
-            self.psu48v_temp = random_walk(self.psu48v_temp, 58.3, scale=3.0)
-            self.psu5v_temp = random_walk(self.psu5v_temp, 55.1, scale=3.0)
-            self.pcb_temp = random_walk(self.pcb_temp, 48.1, scale=3.0)
-            self.outside_temp = random_walk(self.outside_temp, 48.1, scale=3.0)
+            self.psu48v_temp = random_walk(self.psu48v_temp, 58.3, scale=1.0)
+            self.psu5v_temp = random_walk(self.psu5v_temp, 55.1, scale=1.0)
+            self.pcb_temp = random_walk(self.pcb_temp, 48.1, scale=0.5)
+            self.outside_temp = random_walk(self.outside_temp, 48.1, scale=1.0)
 
             # For each threshold register, get the current value and threshold/s from the right local instance attribute
             for regname in self.register_map['CONF']:

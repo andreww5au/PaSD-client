@@ -229,11 +229,6 @@ class PdocStatus(smartbox.PortStatus):
         self.breaker_tripped = None
 
     def __str__(self):
-        if self.current_timestamp is None:
-            current_string = "Current:Unknown"
-        else:
-            current_string = "Current:%4.1f(%1.1f s)" % (self.current, time.time() - self.current_timestamp)
-
         if self.status_timestamp is None:
             status_string = "Unknown"
         else:
@@ -243,7 +238,7 @@ class PdocStatus(smartbox.PortStatus):
                 lfstring = 'Forced:OFF'
             else:
                 lfstring = 'NotForced'
-            status_items = ['Status(%1.1f s) on FNDH %s:' % (time.time() - self.current_timestamp, self.modbus_address),
+            status_items = ['Status(%1.1f s) on FNDH %s:' % (time.time() - self.status_timestamp, self.modbus_address),
                             {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled],
                             {False:'Offline', True:'Online', None:'??line?'}[self.system_online],
                             'DesEnableOnline=%s' % self.desire_enabled_online,
@@ -254,7 +249,7 @@ class PdocStatus(smartbox.PortStatus):
                             ]
             status_string = ' '.join(status_items)
 
-        return "P%02d: %s %s" % (self.port_number, current_string, status_string)
+        return "P%02d: %s" % (self.port_number, status_string)
 
 
 class FNDH(transport.ModbusDevice):
