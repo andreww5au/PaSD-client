@@ -354,7 +354,7 @@ class SimFNDH(fndh.FNDH):
             self.psu48v_temp = random_walk(self.psu48v_temp, 58.3, scale=1.0)
             self.psu5v_temp = random_walk(self.psu5v_temp, 55.1, scale=1.0)
             self.pcb_temp = random_walk(self.pcb_temp, 48.1, scale=0.5)
-            self.outside_temp = random_walk(self.outside_temp, 48.1, scale=1.0)
+            self.outside_temp = random_walk(self.outside_temp, 38.1, scale=1.0)
 
             # For each threshold register, get the current value and threshold/s from the right local instance attribute
             for regname in self.register_map['CONF']:
