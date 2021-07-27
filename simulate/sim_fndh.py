@@ -154,6 +154,7 @@ class SimFNDH(fndh.FNDH):
                     slave_registers[regnum] = self.station_value
                 elif regname == 'SYS_48V1_V':
                     slave_registers[regnum] = scalefunc(self.psu48v1_voltage, reverse=True, pcb_version=self.pcbrv)
+                    print('Putting %d in register for value of %4.2f' % (slave_registers[regnum], self.psu48v1_voltage))
                 elif regname == 'SYS_48V2_V':
                     slave_registers[regnum] = scalefunc(self.psu48v2_voltage, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_5V_V':

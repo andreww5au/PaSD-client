@@ -407,6 +407,7 @@ class FNDH(transport.ModbusDevice):
                 self.station_value = raw_int
             elif regname == 'SYS_48V1_V':
                 self.psu48v1_voltage = scaled_float
+                print('Putting value of %4.2f in attribute for %d from register' % (scaled_float, raw_int))
             elif regname == 'SYS_48V2_V':
                 self.psu48v2_voltage = scaled_float
             elif regname == 'SYS_5V_V':
