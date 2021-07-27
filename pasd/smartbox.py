@@ -431,11 +431,11 @@ class SMARTbox(transport.ModbusDevice):
     psu_temp: Temperature of the internal 5V power supply (deg C)
     pcb_temp: Temperature on the internal PCB (deg C)
     outside_temp: Outside temperature (deg C)
-    statuscode: Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
-    status: Status string, obtained from self.codes['status'] (eg 'OK')
+    statuscode: Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
+    status: Status string, obtained from STATUS_CODES global (eg 'OK')
     service_led: True if the blue service indicator LED is switched ON.
-    indicator_code: LED status value, used as a key for self.codes['led']
-    indicator_state: LED status, obtained from self.codes['led']
+    indicator_code: LED status value, one of the LED_* globals, and used as a key for LED_CODES
+    indicator_state: LED status string, obtained from LED_CODES
     readtime: Unix timestamp for the last successful polled data from this SMARTbox
     pdoc_number: Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
     thresholds: JSON structure containing the analog threshold values for each port on this SMARTbox
@@ -471,11 +471,11 @@ class SMARTbox(transport.ModbusDevice):
         self.psu_temp = 0.0    # Temperature of the internal 5V power supply (deg C)
         self.pcb_temp = 0.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 0.0    # Outside temperature (deg C)
-        self.statuscode = STATUS_UNKNOWN    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
-        self.status = 'UNKNOWN'       # Status string, obtained from self.codes['status'] (eg 'OK')
+        self.statuscode = STATUS_UNKNOWN    # Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
+        self.status = 'UNKNOWN'       # Status string, obtained from STATUS_CODES global (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
-        self.indicator_code = LED_UNKNOWN  # LED status value, used as a key for self.codes['led']
-        self.indicator_state = 'UNKNOWN'   # LED status, obtained from self.codes['led']
+        self.indicator_code = LED_UNKNOWN  # LED status value, one of the LED_* globals, and used as a key for LED_CODES
+        self.indicator_state = 'UNKNOWN'   # LED status string, obtained from LED_CODES
         self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
         self.pdoc_number = None   # Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
         try:

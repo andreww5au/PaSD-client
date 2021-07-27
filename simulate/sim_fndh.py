@@ -60,11 +60,11 @@ class SimFNDH(fndh.FNDH):
         self.pcb_temp = 38.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 34.0    # Outside temperature (deg C)
         self.initialised = False   # True if the system has been initialised by the LMC
-        self.statuscode = fndh.STATUS_UNINITIALISED    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
-        self.status = 'UNINITIALISED'       # Status string, obtained from self.codes['status'] (eg 'OK')
+        self.statuscode = fndh.STATUS_UNINITIALISED    # Status value, one of the fndh.STATUS_* globals, and used as a key for fndh.STATUS_CODES (eg 0 meaning 'OK')
+        self.status = 'UNINITIALISED'       # Status string, obtained from fndh.STATUS_CODES global (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
-        self.indicator_code = fndh.LED_GREENFAST  # LED status value, used as a key for self.codes['led']
-        self.indicator_state = 'GREENFAST'   # LED status, obtained from self.codes['led']
+        self.indicator_code = fndh.LED_GREENFAST  # LED status value, one of the fndh.LED_* globals, and used as a key for fndh.LED_CODES
+        self.indicator_state = 'GREENFAST'   # LED status string, obtained from fndh.LED_CODES
         self.readtime = 0    # Unix timestamp for the last successful polled data from this FNDH
         self.start_time = 0   # Unix timestamp when this instance started processing
         self.wants_exit = False  # Set to True externally to kill self.mainloop if the box is pseudo-powered-off

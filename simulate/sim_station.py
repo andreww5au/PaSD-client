@@ -6,7 +6,6 @@ Simulates a full PaSD station, including an FNDH and 24 SMARTboxes. Used for tes
 
 import logging
 import threading
-import time
 
 logging.basicConfig()
 
@@ -50,5 +49,5 @@ conn = transport.Connection(hostname='134.7.50.185')  # address of ethernet-seri
 conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
 
 s = sim_station.Sim_Station(conn=conn, modbus_address=31)
-s.mainloop()
+s.sim_loop()
 """

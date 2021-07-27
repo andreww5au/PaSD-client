@@ -56,11 +56,11 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.pcb_temp = 38.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 34.0    # Outside temperature (deg C)
         self.initialised = False   # True if the system has been initialised by the LMC
-        self.statuscode = smartbox.STATUS_UNINITIALISED    # Status value, used as a key for self.codes['status'] (eg 0 meaning 'OK')
-        self.status = 'UNINITIALISED'       # Status string, obtained from self.codes['status'] (eg 'OK')
+        self.statuscode = smartbox.STATUS_UNINITIALISED    # Status value, one of the smartbox.STATUS_* globals, and used as a key for smartbox.STATUS_CODES (eg 0 meaning 'OK')
+        self.status = 'UNINITIALISED'       # Status string, obtained from smartbox.STATUS_CODES global (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
-        self.indicator_code = smartbox.LED_GREENFAST  # LED status value, used as a key for self.codes['led']
-        self.indicator_state = 'GREENFAST'   # LED status, obtained from self.codes['led']
+        self.indicator_code = smartbox.LED_GREENFAST  # LED status value, one of the smartbox.LED_* globals, and used as a key for smartbox.LED_CODES
+        self.indicator_state = 'GREENFAST'   # LED status string, obtained from smartbox.LED_CODES
         self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
         self.start_time = time.time()   # Unix timestamp when this instance started processing
         self.pdoc_number = None   # Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup

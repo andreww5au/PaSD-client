@@ -259,9 +259,9 @@ class Station(object):
         # First, check the FNDH, and go through the full startup procedure if it's been power cycled since the last poll
         fndh_ok = self.fndh.poll_data()
         if fndh_ok:
-            if self.fndh.statuscode > 0:
+            if self.fndh.statuscode != fndh.STATUS_OK:
                 self.logger.warning('FNDH has status %d (%s)' % (self.fndh.statuscode, self.fndh.status))
-            if self.fndh.statuscode == 4:  # UNINITIALISED
+            if self.fndh.statuscode == fndh.STATUS_UNINITIALISED:  # UNINITIALISED
                 fndh_ok = self.startup()     # In a real setting, pass in static configuration data from config file or database
                 if fndh_ok:
                     self.logger.info('FNDH configured, it is now online with all PDoC ports mapped.')
@@ -290,7 +290,7 @@ class Station(object):
         # the technician override bits.
         send_portstate = False
         for smb in self.smartboxes.values():
-            if smb.status == 'WANTS_POWERDOWN':
+            if smb.statuscode == smartbox.STATUS_POWERDOWN:
                 self.fndh.ports[smb.pdoc_number].locally_forced_off = True
                 send_portstate = True
 
@@ -301,10 +301,10 @@ class Station(object):
         for sadd in range(1, 31):
             if sadd in self.smartboxes:
                 smb = self.smartboxes[sadd]
-                if smb.statuscode > 0:
+                if smb.statuscode != smartbox.STATUS_OK:
                     self.logger.warning('SMARTbox %d has status %d (%s)' % (sadd, smb.statuscode, smb.status))
 
-                if smb.statuscode == 4:  # UNINITIALISED
+                if smb.statuscode == smartbox.STATUS_UNINITIALISED:  # UNINITIALISED
                     ok = smb.configure()    # In a real setting, pass in static configuration data from config file or database
                     if ok:
                         self.logger.info('SMARTbox %d configured, it is now online' % sadd)
