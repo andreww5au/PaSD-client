@@ -389,7 +389,7 @@ class FNDH(transport.ModbusDevice):
             if numreg <= 2:
                 raw_int = transport.bytestoN(raw_value)
             if scalefunc:
-                scaled_float = scalefunc(raw_int, self.pcbrv)
+                scaled_float = scalefunc(raw_int, pcb_version=self.pcbrv)
             # print("    int=%s, float=%s"  % (raw_int, scaled_float))
             # Go through all the registers and update the instance data.
             if regname == 'SYS_CPUID':
@@ -457,7 +457,7 @@ class FNDH(transport.ModbusDevice):
         for regname in conf_reglist:
             regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
             # Convert the list of threshold values in physical units into the 16 bit integers to be passed in registers
-            values = [scalefunc(v, reverse=True) for v in self.thresholds[regname]]
+            values = [scalefunc(v, pcb_version=self.pcbrv, reverse=True) for v in self.thresholds[regname]]
             assert len(values) == numreg
             vlist[(regnum - startreg):(regnum - startreg) + numreg] = values
 

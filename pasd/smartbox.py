@@ -650,7 +650,7 @@ class SMARTbox(transport.ModbusDevice):
         for regname in conf_reglist:
             regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
             # Convert the list of threshold values in physical units into the 16 bit integers to be passed in registers
-            values = [scalefunc(v, reverse=True, pcb_version=self.pcbrv) for v in self.thresholds[regname]]
+            values = [scalefunc(v, pcb_version=self.pcbrv, reverse=True) for v in self.thresholds[regname]]
             assert len(values) == numreg
             vlist[(regnum - startreg):(regnum - startreg) + numreg] = values
 

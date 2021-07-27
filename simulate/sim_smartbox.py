@@ -182,12 +182,12 @@ class SimSMARTbox(smartbox.SMARTbox):
             for regname in self.register_map['CONF']:
                 regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
                 if numreg == 1:
-                    slave_registers[regnum] = scalefunc(self.thresholds[regname], reverse=True)
+                    slave_registers[regnum] = scalefunc(self.thresholds[regname], pcb_version=self.pcbrv, reverse=True)
                 elif numreg == 4:
                     (slave_registers[regnum],
                      slave_registers[regnum + 1],
                      slave_registers[regnum + 2],
-                     slave_registers[regnum + 3]) = (scalefunc(x, reverse=True) for x in self.thresholds[regname])
+                     slave_registers[regnum + 3]) = (scalefunc(x, pcb_version=self.pcbrv, reverse=True) for x in self.thresholds[regname])
                 else:
                     self.logger.critical('Unexpected number of registers for %s' % regname)
 
@@ -302,9 +302,9 @@ class SimSMARTbox(smartbox.SMARTbox):
             regnum, numreg, regdesc, scalefunc = self.register_map['CONF'][regname]
             if regnum in written_set:
                 if numreg == 1:
-                    self.thresholds[regname] = scalefunc(slave_registers[regnum])
+                    self.thresholds[regname] = scalefunc(slave_registers[regnum], pcb_version=self.pcbrv)
                 else:
-                    self.thresholds[regname] = [scalefunc(slave_registers[x]) for x in range(regnum, regnum + 4)]
+                    self.thresholds[regname] = [scalefunc(slave_registers[x], pcb_version=self.pcbrv) for x in range(regnum, regnum + 4)]
 
         # Now update the service LED state (data in the LSB is ignored, because the microcontroller handles the
         # status LED).
