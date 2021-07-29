@@ -71,6 +71,10 @@ class SimSMARTbox(smartbox.SMARTbox):
         # Port current states, with only one (high) threshold, and fault handling internally. Can only be OK or ALARM
         self.portcurrent_states = {regname:'OK' for regname in self.register_map['CONF'] if regname.endswith('_CURRENT_TH')}
 
+        self.shortpress = False   # Set to True to simulate a short button press (cleared when it's handled)
+        self.mediumpress = False  # Set to True to simulate a medium button press (cleared when it's handled)
+        self.longpress = False    # Set to True to simulate a long button press (never cleared)
+
     def poll_data(self):
         """
         Stub, not needed for simulated SMARTbox
@@ -422,6 +426,35 @@ class SimSMARTbox(smartbox.SMARTbox):
                     self.portcurrent_states[regname] = newstate
                 else:
                     self.sensor_states[regname] = newstate
+
+            if self.shortpress:   # Unhandled short button press
+                # Change any 'RECOVERY' sensor states to WARNING
+                for regname, value in self.portcurrent_states.items():
+                    if value == 'RECOVERY':
+                        self.portcurrent_states[regname] = 'WARNING'
+                for regname, value in self.sensor_states.items():
+                    if value == 'RECOVERY':
+                        self.sensor_states[regname] = 'WARNING'
+
+                # Clear any port locally_forced_* bits - TODO - prevent MCCS from writing to these bits
+                # And reset any tripped software breakers
+                for p in self.ports.values():
+                    p.locally_forced_on = False
+                    p.locally_forced_off = False
+                    p.breaker_tripped = False
+
+                self.shortpress = False   # Handled, so clear the flag
+
+            if self.mediumpress:
+                # Force all the FEM ports off
+                for p in self.ports.values():
+                    p.locally_forced_on = False
+                    p.locally_forced_off = True
+                self.mediumpress = False
+
+            if self.longpress:
+                # Ask for a shutdown
+                
 
             # Now update the overall box state, based on all of the sensor states
             # We can't be in the UNINITIALISED state if we've reached this point, so it must be one of these four:
