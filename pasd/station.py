@@ -171,7 +171,7 @@ class Station(object):
             time.sleep(10)
             self.fndh.ports[portnum].desire_enabled_online = True
             self.logger.info('Turning on PDoC port %d' % portnum)
-            ok = self.fndh.write_portconfig()
+            ok = self.fndh.write_portconfig(write_state=True, write_to=True)
             port_on_times[portnum] = int(time.time())
             if not ok:
                 self.logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
@@ -291,8 +291,9 @@ class Station(object):
         send_portstate = False
         for smb in self.smartboxes.values():
             if smb.statuscode == smartbox.STATUS_POWERDOWN:
-                self.fndh.ports[smb.pdoc_number].locally_forced_off = True
-                send_portstate = True
+                for p in self.fndh.ports.values():
+                    p.locally_forced_off = True
+                    send_portstate = True
 
         if send_portstate:
             self.fndh.write_portconfig(write_to=True)
@@ -310,6 +311,12 @@ class Station(object):
                         self.logger.info('SMARTbox %d configured, it is now online' % sadd)
                     else:
                         self.logger.error('Error configuring SMARTbox %d' % sadd)
+
+        # If the FNDH has had a long button-press (indicating that a local technician wants that station
+        # to be powered down and restarted with a full smartbox address detection sequence), then it will set it's
+        # status code and indicator LED code to the 'POWERUP' value.
+        if self.fndh.statuscode == fndh.STATUS_POWERUP:
+            self.startup()
 
     def listen(self, maxtime=60.0):
         """

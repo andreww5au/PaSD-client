@@ -165,7 +165,9 @@ LED_CODES = {-1:'UKNOWN',
              34:'REDDOTDASH',
 
              40:'YELLOWRED',
-             41:'YELLOWREDSLOW'}
+             41:'YELLOWREDSLOW',
+
+             50:'GREENRED'}
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
@@ -572,10 +574,12 @@ class FNDH(transport.ModbusDevice):
             self.logger.error('Could not load and write threshold data.')
             return False
 
-        # Make sure all the ports are off, both online and offline
+        # Make sure all the ports are off, both online and offline, and clear technician override bits
         for portnum in range(1, 29):
             self.ports[portnum].desire_enabled_online = False
             self.ports[portnum].desire_enabled_offline = False
+            self.ports[portnum].locally_forced_off = False
+            self.ports[portnum].locally_forced_on = False
         ok = self.write_portconfig()
         if not ok:
             self.logger.error('Could not write port configuration to the FNDH.')

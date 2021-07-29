@@ -70,6 +70,10 @@ class SimFNDH(fndh.FNDH):
         self.wants_exit = False  # Set to True externally to kill self.mainloop if the box is pseudo-powered-off
         self.sensor_states = {regname:'OK' for regname in self.register_map['CONF']}  # OK, WARNING or RECOVERY
 
+        self.shortpress = False   # Set to True to simulate a short button press (cleared when it's handled)
+        self.mediumpress = False  # Set to True to simulate a medium button press (cleared when it's handled)
+        self.longpress = False    # Set to True to simulate a long button press (never cleared)
+
     def poll_data(self):
         """
         Stub, not needed for simulated FNDH
@@ -232,6 +236,7 @@ class SimFNDH(fndh.FNDH):
 
             self.loophook()
 
+        self.loophook()   # Guarantee we run this at least once if self.wants_exit becomes True
         self.logger.info('Ending listen_loop() in SimFNDH')
 
     def handle_register_writes(self, slave_registers, written_set):
@@ -305,6 +310,7 @@ class SimFNDH(fndh.FNDH):
 
         if self.register_map['POLL']['SYS_STATUS'][0] in written_set:  # Wrote to SYS_STATUS, so clear UNINITIALISED state
             self.initialised = True
+            self.longpress = False    # Clear the 'long button press' flag, because the restart process is happening
 
     def sim_loop(self):
         """
@@ -343,9 +349,6 @@ class SimFNDH(fndh.FNDH):
 
             time.sleep(0.5)
 
-            if not self.initialised:
-                continue   # Don't bother simulating sensor values until the thresholds have been set
-
             # Change the sensor values to generate a random walk around a mean value for each sensor
             self.psu48v1_voltage = random_walk(self.psu48v1_voltage, 48.1, scale=0.2)
             self.psu48v2_voltage = random_walk(self.psu48v2_voltage, 48.1, scale=0.2)
@@ -356,60 +359,94 @@ class SimFNDH(fndh.FNDH):
             self.pcb_temp = random_walk(self.pcb_temp, 48.1, scale=0.5)
             self.outside_temp = random_walk(self.outside_temp, 38.1, scale=1.0)
 
-            # For each threshold register, get the current value and threshold/s from the right local instance attribute
-            for regname in self.register_map['CONF']:
-                ah, wh, wl, al = self.thresholds[regname]
-                curstate = self.sensor_states[regname]
-                if regname == 'SYS_48V1_V_TH':
-                    curvalue = self.psu48v1_voltage
-                elif regname == 'SYS_48V2_V_TH':
-                    curvalue = self.psu48v2_voltage
-                elif regname == 'SYS_5V_V_TH':
-                    curvalue = self.psu5v_voltage
-                elif regname == 'SYS_48V_I_TH':
-                    curvalue = self.psu48v_current
-                elif regname == 'SYS_48V_TEMP_TH':
-                    curvalue = self.psu48v_temp
-                elif regname == 'SYS_5V_TEMP_TH':
-                    curvalue = self.psu5v_temp
-                elif regname == 'SYS_PCBTEMP_TH':
-                    curvalue = self.pcb_temp
-                elif regname == 'SYS_OUTTEMP_TH':
-                    curvalue = self.outside_temp
-                else:
-                    self.logger.critical('Configuration register %s not handled by simulation code')
-                    return
-
-                # Now use the current value and threshold/s to find the new state for that sensor
-                newstate = curstate
-                if curvalue > ah:
-                    newstate = 'ALARM'
-                elif wh > curvalue >= ah:
-                    if curstate == 'ALARM':
-                        newstate = 'RECOVERY'
+            if self.initialised:     # Don't bother thresholding sensor values until the thresholds have been set
+                # For each threshold register, get the current value and threshold/s from the right local instance attribute
+                for regname in self.register_map['CONF']:
+                    ah, wh, wl, al = self.thresholds[regname]
+                    curstate = self.sensor_states[regname]
+                    if regname == 'SYS_48V1_V_TH':
+                        curvalue = self.psu48v1_voltage
+                    elif regname == 'SYS_48V2_V_TH':
+                        curvalue = self.psu48v2_voltage
+                    elif regname == 'SYS_5V_V_TH':
+                        curvalue = self.psu5v_voltage
+                    elif regname == 'SYS_48V_I_TH':
+                        curvalue = self.psu48v_current
+                    elif regname == 'SYS_48V_TEMP_TH':
+                        curvalue = self.psu48v_temp
+                    elif regname == 'SYS_5V_TEMP_TH':
+                        curvalue = self.psu5v_temp
+                    elif regname == 'SYS_PCBTEMP_TH':
+                        curvalue = self.pcb_temp
+                    elif regname == 'SYS_OUTTEMP_TH':
+                        curvalue = self.outside_temp
                     else:
-                        newstate = 'WARNING'
-                elif wl >= curvalue >= wh:
-                    newstate = 'OK'
-                elif al <= curvalue < wl:
-                    if curstate == 'ALARM':
-                        newstate = 'RECOVERY'
-                    else:
-                        newstate = 'WARNING'
-                elif curvalue < al:
-                    newstate = 'ALARM'
+                        self.logger.critical('Configuration register %s not handled by simulation code')
+                        return
 
-                # Log any change in state
-                if curstate != newstate:
-                    msg = 'Sensor %s transitioned from %s to %s with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
-                    self.logger.warning(msg % (regname[:-3],
-                                               curstate,
-                                               newstate,
-                                               curvalue,
-                                               ah,wh,wl,al))
+                    # Now use the current value and threshold/s to find the new state for that sensor
+                    newstate = curstate
+                    if curvalue > ah:
+                        newstate = 'ALARM'
+                    elif wh > curvalue >= ah:
+                        if curstate == 'ALARM':
+                            newstate = 'RECOVERY'
+                        else:
+                            newstate = 'WARNING'
+                    elif wl >= curvalue >= wh:
+                        newstate = 'OK'
+                    elif al <= curvalue < wl:
+                        if curstate == 'ALARM':
+                            newstate = 'RECOVERY'
+                        else:
+                            newstate = 'WARNING'
+                    elif curvalue < al:
+                        newstate = 'ALARM'
 
-                # Record the new state for that sensor in a dictionary with all sensor states
-                self.sensor_states[regname] = newstate
+                    # Log any change in state
+                    if curstate != newstate:
+                        msg = 'Sensor %s transitioned from %s to %s with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
+                        self.logger.warning(msg % (regname[:-3],
+                                                   curstate,
+                                                   newstate,
+                                                   curvalue,
+                                                   ah,wh,wl,al))
+
+                    # Record the new state for that sensor in a dictionary with all sensor states
+                    self.sensor_states[regname] = newstate
+
+            if self.shortpress:   # Unhandled short button press - reset any faults and technician overrides, try again
+                # Change any 'RECOVERY' sensor states to WARNING
+                for regname, value in self.sensor_states.items():
+                    if value == 'RECOVERY':
+                        self.sensor_states[regname] = 'WARNING'
+
+                # Clear any port locally_forced_* bits
+                # And reset any tripped software breakers
+                for p in self.ports.values():
+                    p.locally_forced_on = False
+                    p.locally_forced_off = False
+                    p.breaker_tripped = False
+
+                self.shortpress = False   # Handled, so clear the flag
+
+            if self.mediumpress:
+                # Force all the FEM ports off
+                for p in self.ports.values():
+                    p.locally_forced_on = False
+                    p.locally_forced_off = True
+                self.mediumpress = False
+
+            if self.longpress:
+                # Ask for a restart (all ports off, then on again every 10 seconds to map smartboxes to PDoC ports)
+                # Force all the FEM ports off
+                for p in self.ports.values():
+                    p.locally_forced_on = False
+                    p.locally_forced_off = True
+                self.statuscode = fndh.STATUS_POWERUP
+                self.indicator_code = fndh.LED_GREENRED
+                self.indicator_state = 'GREENRED'
+                continue
 
             # Now update the overall box state, based on all of the sensor states
             # We can't be in the UNINITIALISED state if we've reached this point, so it must be one of these four:

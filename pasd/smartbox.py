@@ -191,7 +191,9 @@ LED_CODES = {-1:'UKNOWN',
              34:'REDDOTDASH',
 
              40:'YELLOWRED',
-             41:'YELLOWREDSLOW'}
+             41:'YELLOWREDSLOW',
+
+             50:'GREENRED'}
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value

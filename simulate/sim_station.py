@@ -22,6 +22,9 @@ class Sim_Station(sim_fndh.SimFNDH):
             port.old_power_state = False   # Used to detect PDoC port state changes
 
     def loophook(self):
+        if self.wants_exit:   # Propagate this to all of the simulated smartboxes, so their threads end too
+            for smb in self.smartboxes.values():
+                smb.wants_exit = True
         for portnum, port in self.ports.items():
             if port.power_state != port.old_power_state:
                 if port.power_state:

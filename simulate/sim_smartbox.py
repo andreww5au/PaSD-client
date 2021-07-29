@@ -356,9 +356,6 @@ class SimSMARTbox(smartbox.SMARTbox):
 
             time.sleep(0.5)
 
-            if not self.initialised:
-                continue   # Don't bother simulating sensor values until the thresholds have been set
-
             # Change the sensor values to generate a random walk around a mean value for each sensor
             self.incoming_voltage = random_walk(self.incoming_voltage, 46.1, scale=0.2)
             self.psu_voltage = random_walk(self.psu_voltage, 5.1, scale=0.05)
@@ -366,68 +363,70 @@ class SimSMARTbox(smartbox.SMARTbox):
             self.pcb_temp = random_walk(self.pcb_temp, 27.0, scale=0.1)
             self.outside_temp = random_walk(self.outside_temp, 34.0, scale=0.5)
 
-            # For each threshold register, get the current value and threshold/s from the right local instance attribute
-            for regname in self.register_map['CONF']:
-                if regname.endswith('_CURRENT_TH'):
-                    curstate = self.portcurrent_states[regname]
-                    ah = self.thresholds[regname]
-                    wh, wl, al = ah, -1, -2   # Only one threshold for port current, hysteresis handled in firmware
-                    curvalue = self.ports[int(regname[1:3])].current
-                else:
-                    curstate = self.sensor_states[regname]
-                    ah, wh, wl, al = self.thresholds[regname]
-                    if regname == 'SYS_48V_V_TH':
-                        curvalue = self.incoming_voltage
-                    elif regname == 'SYS_PSU_V_TH':
-                        curvalue = self.psu_voltage
-                    elif regname == 'SYS_PSUTEMP_TH':
-                        curvalue = self.psu_temp
-                    elif regname == 'SYS_PCBTEMP_TH':
-                        curvalue = self.pcb_temp
-                    elif regname == 'SYS_OUTTEMP_TH':
-                        curvalue = self.outside_temp
-                    elif regname.startswith('SYS_SENSE'):
-                        curvalue = self.sensor_temps[int(regname[9:11])]
+            if self.initialised:     # Don't bother thresholding sensor values until the thresholds have been set
+                # For each threshold register, get the current value and threshold/s from the right local instance attribute
+                for regname in self.register_map['CONF']:
+                    if regname.endswith('_CURRENT_TH'):
+                        curstate = self.portcurrent_states[regname]
+                        ah = self.thresholds[regname]
+                        wh, wl, al = ah, -1, -2   # Only one threshold for port current, hysteresis handled in firmware
+                        curvalue = self.ports[int(regname[1:3])].current
                     else:
-                        self.logger.critical('Configuration register %s not handled by simulation code')
-                        return
+                        curstate = self.sensor_states[regname]
+                        ah, wh, wl, al = self.thresholds[regname]
+                        if regname == 'SYS_48V_V_TH':
+                            curvalue = self.incoming_voltage
+                        elif regname == 'SYS_PSU_V_TH':
+                            curvalue = self.psu_voltage
+                        elif regname == 'SYS_PSUTEMP_TH':
+                            curvalue = self.psu_temp
+                        elif regname == 'SYS_PCBTEMP_TH':
+                            curvalue = self.pcb_temp
+                        elif regname == 'SYS_OUTTEMP_TH':
+                            curvalue = self.outside_temp
+                        elif regname.startswith('SYS_SENSE'):
+                            curvalue = self.sensor_temps[int(regname[9:11])]
+                        else:
+                            self.logger.critical('Configuration register %s not handled by simulation code')
+                            return
 
-                # Now use the current value and threshold/s to find the new state for that sensor
-                newstate = curstate
-                if curvalue > ah:
-                    if curstate != 'ALARM':
+                    # Now use the current value and threshold/s to find the new state for that sensor
+                    newstate = curstate
+                    if curvalue > ah:
+                        if curstate != 'ALARM':
+                            newstate = 'ALARM'
+                    elif wh > curvalue >= ah:
+                        if curstate == 'ALARM':
+                            newstate = 'RECOVERY'
+                        elif curstate != 'WARNING':
+                            newstate = 'WARNING'
+                    elif wl <= curvalue <= wh:
+                        newstate = 'OK'
+                    elif al <= curvalue < wl:
+                        if curstate == 'ALARM':
+                            newstate = 'RECOVERY'
+                        else:
+                            newstate = 'WARNING'
+                    elif curvalue < al:
                         newstate = 'ALARM'
-                elif wh > curvalue >= ah:
-                    if curstate == 'ALARM':
-                        newstate = 'RECOVERY'
-                    elif curstate != 'WARNING':
-                        newstate = 'WARNING'
-                elif wl <= curvalue <= wh:
-                    newstate = 'OK'
-                elif al <= curvalue < wl:
-                    if curstate == 'ALARM':
-                        newstate = 'RECOVERY'
+
+                    # Log any change in state
+                    if curstate != newstate:
+                        msg = 'Sensor %s transitioned from %s to %s with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
+                        self.logger.warning(msg % (regname[:-3],
+                                                   curstate,
+                                                   newstate,
+                                                   curvalue,
+                                                   ah,wh,wl,al))
+
+                    # Record the new state for that sensor in a dictionary with all sensor states
+                    if regname.endswith('_CURRENT_TH'):
+                        self.portcurrent_states[regname] = newstate
                     else:
-                        newstate = 'WARNING'
-                elif curvalue < al:
-                    newstate = 'ALARM'
+                        self.sensor_states[regname] = newstate
 
-                # Log any change in state
-                if curstate != newstate:
-                    msg = 'Sensor %s transitioned from %s to %s with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
-                    self.logger.warning(msg % (regname[:-3],
-                                               curstate,
-                                               newstate,
-                                               curvalue,
-                                               ah,wh,wl,al))
-
-                # Record the new state for that sensor in a dictionary with all sensor states
-                if regname.endswith('_CURRENT_TH'):
-                    self.portcurrent_states[regname] = newstate
-                else:
-                    self.sensor_states[regname] = newstate
-
-            if self.shortpress:   # Unhandled short button press
+            if self.shortpress:   # Unhandled short button press - reset any faults and technician overrides, try again
+                self.logger.info('Short button press detected.')
                 # Change any 'RECOVERY' sensor states to WARNING
                 for regname, value in self.portcurrent_states.items():
                     if value == 'RECOVERY':
@@ -436,7 +435,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                     if value == 'RECOVERY':
                         self.sensor_states[regname] = 'WARNING'
 
-                # Clear any port locally_forced_* bits - TODO - prevent MCCS from writing to these bits
+                # Clear any port locally_forced_* bits
                 # And reset any tripped software breakers
                 for p in self.ports.values():
                     p.locally_forced_on = False
@@ -446,6 +445,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                 self.shortpress = False   # Handled, so clear the flag
 
             if self.mediumpress:
+                self.logger.info('Medium button press detected.')
                 # Force all the FEM ports off
                 for p in self.ports.values():
                     p.locally_forced_on = False
@@ -453,8 +453,17 @@ class SimSMARTbox(smartbox.SMARTbox):
                 self.mediumpress = False
 
             if self.longpress:
+                if self.statuscode != smartbox.STATUS_POWERDOWN:
+                    self.logger.info('Long button press detected.')   # Only log this once, not every loop
                 # Ask for a shutdown
-                
+                # Force all the FEM ports off
+                for p in self.ports.values():
+                    p.locally_forced_on = False
+                    p.locally_forced_off = True
+                self.statuscode = smartbox.STATUS_POWERDOWN
+                self.indicator_code = smartbox.LED_GREENRED
+                self.indicator_state = 'GREENRED'
+                continue
 
             # Now update the overall box state, based on all of the sensor states
             # We can't be in the UNINITIALISED state if we've reached this point, so it must be one of these four:
