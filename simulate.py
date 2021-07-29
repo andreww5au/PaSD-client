@@ -14,6 +14,7 @@ def cleanup():
     """Called automatically on exit - sets .wants_exit=True on the simulated object, so that the transport
        and simulation threads shut down cleanly.
     """
+    print('Cleanup called.')
     if SIM_OBJECT is not None:
         SIM_OBJECT.wants_ext = True
 
@@ -86,7 +87,7 @@ if __name__ == '__main__':
             args.address = 99
         mlogger = logging.getLogger('MCCS:%d' % int(args.address))
         s = SIM_OBJECT = station.Station(conn=conn, station_id=int(args.address), logger=mlogger)
-        simthread = threading.Thread(target=s.listen, kwargs={'maxtime':999999}, name='MCCS.thread')
+        simthread = threading.Thread(target=s.listen, daemon=False, kwargs={'maxtime':999999}, name='MCCS.thread')
         print('Simulating the MCCS as "s" in slave mode, listening on address %d' % int(args.address))
     else:
         print('Task must be one of smartbox, fndh, station or mccs - not %s. Exiting.' % args.task)

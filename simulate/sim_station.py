@@ -32,6 +32,7 @@ class Sim_Station(sim_fndh.SimFNDH):
                                                                         modbus_address=portnum,
                                                                         logger=logging.getLogger('SB:%d' % portnum))
                     self.threads[portnum] = threading.Thread(target=self.smartboxes[portnum].sim_loop,
+                                                             daemon=False,
                                                              name='SB:%d.thread' % portnum)
                     self.threads[portnum].start()
                     self.logger.info('Started a new comms thread for smartbox %d' % portnum)

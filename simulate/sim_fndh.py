@@ -439,7 +439,8 @@ class SimFNDH(fndh.FNDH):
 
             if self.longpress:
                 # Ask for a restart (all ports off, then on again every 10 seconds to map smartboxes to PDoC ports)
-                # Force all the FEM ports off
+                # Force all the FEM ports off  - TODO - this must only be one port to be compliant, so we need to maintain
+                # our mapping of modbus address to PDoC port over individual port outages
                 for p in self.ports.values():
                     p.locally_forced_on = False
                     p.locally_forced_off = True
