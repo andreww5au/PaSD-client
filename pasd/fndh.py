@@ -271,14 +271,16 @@ class PdocStatus(smartbox.PortStatus):
                 lfstring = 'Forced:OFF'
             else:
                 lfstring = 'NotForced'
-            status_items = ['Status(%1.1f s) on FNDH %s:' % (time.time() - self.status_timestamp, self.modbus_address),
-                            {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled],
-                            {False:'Offline', True:'Online', None:'??line?'}[self.system_online],
-                            'DesEnableOnline=%s' % self.desire_enabled_online,
-                            'DesEnableOffline=%s' % self.desire_enabled_offline,
+            enstring = '(DesireEnabled:%s)' % ','.join([{False:'', True:'Online', None:'?'}[self.desire_enabled_online],
+                                                       {False:'', True:'Offline', None:'?'}[self.desire_enabled_offline]])
+            sysstring = '(System:%s,%s)' % ({False:'Offline', True:'Online', None:'??line?'}[self.system_online],
+                                            {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled])
+            status_items = ['Status(%1.1f s):' % (time.time() - self.status_timestamp),
+                            {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[self.power_state],
+                            sysstring,
+                            enstring,
                             lfstring,
-                            {False:'Power:TurnedON', True:'Power:TurnedOFF', None:'Power:?'}[self.power_state],
-                            {False:'PowerSense:ON', True:'PowerSense:OFF', None:'PowerSense:?'}[self.breaker_tripped]
+                            {False:'PowerSense:ON', True:'PowerSense:OFF', None:'PowerSense:?'}[self.power_sense]
                             ]
             status_string = ' '.join(status_items)
 

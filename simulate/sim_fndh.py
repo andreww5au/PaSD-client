@@ -415,25 +415,26 @@ class SimFNDH(fndh.FNDH):
                     # Now use the current value and threshold/s to find the new state for that sensor
                     newstate = curstate
                     if curvalue > ah:
-                        newstate = 'ALARM'
-                    elif wh > curvalue >= ah:
+                        if curstate != 'ALARM':
+                            newstate = 'ALARM'
+                    elif wh < curvalue <= ah:
                         if curstate == 'ALARM':
                             newstate = 'RECOVERY'
-                        else:
+                        elif curstate != 'RECOVERY':
                             newstate = 'WARNING'
-                    elif wl >= curvalue >= wh:
+                    elif wl <= curvalue <= wh:
                         newstate = 'OK'
                     elif al <= curvalue < wl:
                         if curstate == 'ALARM':
                             newstate = 'RECOVERY'
-                        else:
+                        elif curstate != 'RECOVERY':
                             newstate = 'WARNING'
                     elif curvalue < al:
                         newstate = 'ALARM'
 
                     # Log any change in state
                     if curstate != newstate:
-                        msg = 'Sensor %s transitioned from %s to %s with reading of %4.2f and thresholds of %3.1f,%3.1f,%3.1f,%3.1f'
+                        msg = 'Sensor %s transitioned from %s to %s with reading of %4.2f and thresholds of %3.1f, %3.1f, %3.1f, %3.1f'
                         self.logger.warning(msg % (regname[:-3],
                                                    curstate,
                                                    newstate,

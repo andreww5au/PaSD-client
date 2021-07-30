@@ -307,7 +307,7 @@ class PortStatus(object):
             enstring = '(DesireEnabled:%s)' % ','.join([{False:'', True:'Online', None:'?'}[self.desire_enabled_online],
                                                        {False:'', True:'Offline', None:'?'}[self.desire_enabled_offline]])
             sysstring = '(System:%s,%s)' % ({False:'Offline', True:'Online', None:'??line?'}[self.system_online],
-                                              {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled])
+                                            {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled])
             status_items = ['Status(%1.1f s):' % (time.time() - self.status_timestamp),
                             {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[self.power_state],
                             sysstring,

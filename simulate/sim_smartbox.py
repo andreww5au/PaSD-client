@@ -263,7 +263,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                          and (not port.locally_forced_off) ):
                         port_on = True
                         port.current_raw = 2048
-                        port.current = 50.0
+                        port.current = 2048.0
                     port.power_state = port_on
 
             self.loophook()
@@ -421,17 +421,17 @@ class SimSMARTbox(smartbox.SMARTbox):
                     if curvalue > ah:
                         if curstate != 'ALARM':
                             newstate = 'ALARM'
-                    elif wh > curvalue >= ah:
+                    elif wh < curvalue <= ah:
                         if curstate == 'ALARM':
                             newstate = 'RECOVERY'
-                        elif curstate != 'WARNING':
+                        elif curstate != 'RECOVERY':
                             newstate = 'WARNING'
                     elif wl <= curvalue <= wh:
                         newstate = 'OK'
                     elif al <= curvalue < wl:
                         if curstate == 'ALARM':
                             newstate = 'RECOVERY'
-                        else:
+                        elif curstate != 'RECOVERY':
                             newstate = 'WARNING'
                     elif curvalue < al:
                         newstate = 'ALARM'
