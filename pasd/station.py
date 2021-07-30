@@ -192,10 +192,11 @@ class Station(object):
                 pass
 
             if uptime is None:
+                address_on_times[sadd] = 0
                 continue
-
             else:
                 self.logger.info('Uptime of %d (%d) from SMARTbox at address %d' % (uptime, time.time() - uptime, sadd))
+
             address_on_times[sadd] = time.time() - uptime
             if sadd not in self.smartboxes:  # If this SMARTbox isn't in the antenna map, save it in the the smartbox dictionary
                 self.smartboxes[sadd] = smb

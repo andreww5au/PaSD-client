@@ -638,7 +638,10 @@ class SMARTbox(transport.ModbusDevice):
         """
         try:
             valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=16)
-        except Exception:
+        except IOError:
+            self.logger.info('No data returned in read_uptime for SMARTbox %d' % self.modbus_address)
+            return None
+        except:
             self.logger.exception('Exception in readReg in read_uptime for SMARTbox %d' % self.modbus_address)
             return None
 
