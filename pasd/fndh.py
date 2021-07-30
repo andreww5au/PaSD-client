@@ -280,7 +280,7 @@ class PdocStatus(smartbox.PortStatus):
                             sysstring,
                             enstring,
                             lfstring,
-                            {False:'PowerSense:ON', True:'PowerSense:OFF', None:'PowerSense:?'}[self.power_sense]
+                            {False:'PowerSense:OFF', True:'PowerSense:ON', None:'PowerSense:?'}[self.power_sense]
                             ]
             status_string = ' '.join(status_items)
 

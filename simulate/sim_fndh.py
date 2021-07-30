@@ -26,14 +26,14 @@ FNDH at address: %(modbus_address)s:
     Firmware revision: %(firmware_version)s
     Uptime: %(uptime)s seconds
     R.Address: %(station_value)s
-    48V Out 1: %(psu48v1_voltage)s V
-    48V Out 2: %(psu48v2_voltage)s V
-    5V out: %(psu5v_voltage)s V
-    48V Current: %(psu48v_current)s A 
-    48V Temp: %(psu48v_temp)s deg C
-    5V Temp: %(psu5v_temp)s deg C
-    PCB Temp: %(pcb_temp)s deg C
-    Outside Temp: %(outside_temp)s deg C
+    48V Out 1: %(psu48v1_voltage)4.2f V (%(psu48v1_voltage_state)s)
+    48V Out 2: %(psu48v2_voltage)4.2f V (%(psu48v2_voltage_state)s)
+    5V out: %(psu5v_voltage)4.2f V (%(psu5v_voltage_state)s)
+    48V Current: %(psu48v_current)4.2f A  (%(psu48v_current_state)s)
+    48V Temp: %(psu48v_temp)4.2f deg C (%(psu48v_temp_state)s)
+    5V Temp: %(psu5v_temp)4.2f deg C (%(psu5v_temp_state)s)
+    PCB Temp: %(pcb_temp)4.2f deg C (%(pcb_temp_state)s)
+    Outside Temp: %(outside_temp)4.2f deg C (%(outside_temp_state)s)
     Status: %(statuscode)s (%(status)s)
     Service LED: %(service_led)s
     Indicator: %(indicator_code)s (%(indicator_state)s)
@@ -92,7 +92,7 @@ class SimFNDH(fndh.FNDH):
         # Only in the FNDH simulator class
         self.start_time = 0   # Unix timestamp when this instance started processing
         self.wants_exit = False  # Set to True externally to kill self.mainloop if the box is pseudo-powered-off
-        self.sensor_states = {regname:'OK' for regname in self.register_map['CONF']}  # OK, WARNING or RECOVERY
+        self.sensor_states = {regname:'UNINITIALISED' for regname in self.register_map['CONF']}  # OK, WARNING or RECOVERY
         self.online = False   # Will be True if we've heard from the MCCS in the last 300 seconds.
         self.initialised = False   # True if the system has been initialised by the LMC
         self.shortpress = False   # Set to True to simulate a short button press (cleared when it's handled)
@@ -100,7 +100,16 @@ class SimFNDH(fndh.FNDH):
         self.longpress = False    # Set to True to simulate a long button press (never cleared)
 
     def __str__(self):
-        return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 29)]))
+        tmpdict = self.__dict__.copy()
+        tmpdict['psu48v1_voltage_state'] = self.sensor_states['SYS_48V1_V_TH']
+        tmpdict['psu48v2_voltage_state'] = self.sensor_states['SYS_48V2_V_TH']
+        tmpdict['psu5v_voltage_state'] = self.sensor_states['SYS_5V_V_TH']
+        tmpdict['psu48v_current_state'] = self.sensor_states['SYS_48V_I_TH']
+        tmpdict['psu48v_temp_state'] = self.sensor_states['SYS_48V_TEMP_TH']
+        tmpdict['psu5v_temp_state'] = self.sensor_states['SYS_5V_TEMP_TH']
+        tmpdict['pcb_temp_state'] = self.sensor_states['SYS_PCBTEMP_TH']
+        tmpdict['outside_temp_state'] = self.sensor_states['SYS_OUTTEMP_TH']
+        return STATUS_STRING % (tmpdict) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 29)]))
 
     def poll_data(self):
         """
@@ -420,8 +429,7 @@ class SimFNDH(fndh.FNDH):
                     # Now use the current value and threshold/s to find the new state for that sensor
                     newstate = curstate
                     if curvalue > ah:
-                        if curstate != 'ALARM':
-                            newstate = 'ALARM'
+                        newstate = 'ALARM'
                     elif wh < curvalue <= ah:
                         if curstate == 'ALARM':
                             newstate = 'RECOVERY'

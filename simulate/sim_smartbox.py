@@ -25,11 +25,11 @@ Simulated SMARTBox at address: %(modbus_address)s:
     Firmware revision: %(firmware_version)s
     Uptime: %(uptime)s seconds
     R.Address: %(station_value)s
-    48V In: %(incoming_voltage)4.2f V
-    5V out: %(psu_voltage)4.2f V
-    PSU Temp: %(psu_temp)4.2f deg C
-    PCB Temp: %(pcb_temp)4.2f deg C
-    Outside Temp: %(outside_temp)4.2f deg C
+    48V In: %(incoming_voltage)4.2f V (%(incoming_voltage_state)s)
+    5V out: %(psu_voltage)4.2f V (%(psu_voltage_state)s)
+    PSU Temp: %(psu_temp)4.2f deg C (%(psu_temp_state)s)
+    PCB Temp: %(pcb_temp)4.2f deg C (%(pcb_temp_state)s)
+    Outside Temp: %(outside_temp)4.2f deg C (%(outside_temp_state)s)
     Status: %(statuscode)s (%(status)s)
     Service LED: %(service_led)s
     Indicator: %(indicator_code)s (%(indicator_state)s)
@@ -94,12 +94,18 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.wants_exit = False  # Set to True externally to kill self.mainloop if the box is pseudo-powered-off
         # Sensor states, with four thresholds for hysteris (alarm high, warning high, warning low, alarm low)
         # Each has three possible values (OK, WARNING or RECOVERY)
-        self.sensor_states = {regname:'OK' for regname in self.register_map['CONF'] if not regname.endswith('_CURRENT_TH')}
+        self.sensor_states = {regname:'UNINITIALISED' for regname in self.register_map['CONF'] if not regname.endswith('_CURRENT_TH')}
         # Port current states, with only one (high) threshold, and fault handling internally. Can only be OK or ALARM
         self.portcurrent_states = {regname:'OK' for regname in self.register_map['CONF'] if regname.endswith('_CURRENT_TH')}
 
     def __str__(self):
-        return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)]))
+        tmpdict = self.__dict__.copy()
+        tmpdict['incoming_voltage_state'] = self.sensor_states['SYS_48V_V_TH']
+        tmpdict['psu_voltage_state'] = self.sensor_states['SYS_PSU_V_TH']
+        tmpdict['psu_temp_state'] = self.sensor_states['SYS_PSUTEMP_TH']
+        tmpdict['pcb_temp_state'] = self.sensor_states['SYS_PCBTEMP_TH']
+        tmpdict['outside_temp_state'] = self.sensor_states['SYS_OUTTEMP_TH']
+        return STATUS_STRING % (tmpdict) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)]))
 
     def poll_data(self):
         """
@@ -419,8 +425,7 @@ class SimSMARTbox(smartbox.SMARTbox):
                     # Now use the current value and threshold/s to find the new state for that sensor
                     newstate = curstate
                     if curvalue > ah:
-                        if curstate != 'ALARM':
-                            newstate = 'ALARM'
+                        newstate = 'ALARM'
                     elif wh < curvalue <= ah:
                         if curstate == 'ALARM':
                             newstate = 'RECOVERY'
