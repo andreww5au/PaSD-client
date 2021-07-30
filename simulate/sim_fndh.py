@@ -206,7 +206,9 @@ class SimFNDH(fndh.FNDH):
                     slave_registers[regnum] = int(self.service_led) * 256 + self.indicator_code
                 elif (len(regname) >= 8) and ((regname[0] + regname[-6:]) == 'P_STATE'):
                     pnum = int(regname[1:-6])
-                    slave_registers[regnum] = self.ports[pnum].status_to_integer(write_state=True, write_to=True)
+                    slave_registers[regnum] = self.ports[pnum].status_to_integer(write_state=True,
+                                                                                 write_to=True,
+                                                                                 write_breaker=self.ports[pnum].power_sense)
 
             # Now copy the configuration data to the temporary register dictionary
             for regname in self.register_map['CONF']:
@@ -246,21 +248,24 @@ class SimFNDH(fndh.FNDH):
                     port.status_timestamp = time.time()
                     port.current_timestamp = port.status_timestamp
                     port.system_level_enabled = False
+                    port.system_online = self.online
                     port.power_state = False
+                    port.power_sense = False
             else:  # Otherwise, set the output state based on online/offline status and the four desired_state bits
                 for port in self.ports.values():
                     port.status_timestamp = time.time()
                     port.current_timestamp = port.status_timestamp
                     port.system_level_enabled = True
+                    port.system_online = self.online
                     port_on = False
-                    port.power_sense = False
                     if ( ( (self.online and port.desire_enabled_online)
                            or ((not self.online) and port.desire_enabled_offline)
                            or (port.locally_forced_on) )
                          and (not port.locally_forced_off) ):
                         port_on = True
-                        port.power_sense = True
+
                     port.power_state = port_on
+                    port.power_sense = port_on
 
             self.loophook()
 
