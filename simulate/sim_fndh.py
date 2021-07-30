@@ -17,6 +17,30 @@ from pasd import fndh
 
 RETURN_BIAS = 0.05
 
+STATUS_STRING = """\
+FNDH at address: %(modbus_address)s:
+    ModBUS register revision: %(mbrv)s
+    PCB revision: %(pcbrv)s
+    CPU ID: %(cpuid)s
+    CHIP ID: %(chipid)s
+    Firmware revision: %(firmware_version)s
+    Uptime: %(uptime)s seconds
+    R.Address: %(station_value)s
+    48V Out 1: %(psu48v1_voltage)s V
+    48V Out 2: %(psu48v2_voltage)s V
+    5V out: %(psu5v_voltage)s V
+    48V Current: %(psu48v_current)s A 
+    48V Temp: %(psu48v_temp)s deg C
+    5V Temp: %(psu5v_temp)s deg C
+    PCB Temp: %(pcb_temp)s deg C
+    Outside Temp: %(outside_temp)s deg C
+    Status: %(statuscode)s (%(status)s)
+    Service LED: %(service_led)s
+    Indicator: %(indicator_code)s (%(indicator_state)s)
+    Initialised: %(initialised)s
+    Online: %(online)s
+"""
+
 
 def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
     """
@@ -41,11 +65,10 @@ class SimFNDH(fndh.FNDH):
     """
     def __init__(self, conn=None, modbus_address=None, logger=None):
         fndh.FNDH.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
-        self.online = False   # Will be True if we've heard from the MCCS in the last 300 seconds.
-        self.register_map = fndh.FNDH_REGISTERS[1]  # Assume register map version 1
+        # Inherited from the controller code in pasd/smartbox.py
         self.mbrv = 1   # Modbus register-map revision number for this physical FNDH
         self.pcbrv = 1  # PCB revision number for this physical FNDH
-        self.fem_temps = {i:1500 for i in range(1, 13)}  # Dictionary with FEM number (1-12) as key, and temperature as value
+        self.register_map = fndh.FNDH_REGISTERS[1]  # Assume register map version 1
         self.cpuid = 1    # CPU identifier (integer)
         self.chipid = bytes([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16])   # Unique ID number (16 bytes), different for every physical SMARTbox
         self.firmware_version = 1  # Firmware revision mumber for this physical SMARTbox
@@ -59,20 +82,25 @@ class SimFNDH(fndh.FNDH):
         self.psu5v_temp = 55.1  # Temperature of the 5VDC power supply (Volts)
         self.pcb_temp = 38.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 34.0    # Outside temperature (deg C)
-        self.initialised = False   # True if the system has been initialised by the LMC
         self.statuscode = fndh.STATUS_UNINITIALISED    # Status value, one of the fndh.STATUS_* globals, and used as a key for fndh.STATUS_CODES (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'       # Status string, obtained from fndh.STATUS_CODES global (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
         self.indicator_code = fndh.LED_YELLOWFAST  # LED status value, one of the fndh.LED_* globals, and used as a key for fndh.LED_CODES
         self.indicator_state = 'YELLOWFAST'   # LED status string, obtained from fndh.LED_CODES
         self.readtime = 0    # Unix timestamp for the last successful polled data from this FNDH
+
+        # Only in the FNDH simulator class
         self.start_time = 0   # Unix timestamp when this instance started processing
         self.wants_exit = False  # Set to True externally to kill self.mainloop if the box is pseudo-powered-off
         self.sensor_states = {regname:'OK' for regname in self.register_map['CONF']}  # OK, WARNING or RECOVERY
-
+        self.online = False   # Will be True if we've heard from the MCCS in the last 300 seconds.
+        self.initialised = False   # True if the system has been initialised by the LMC
         self.shortpress = False   # Set to True to simulate a short button press (cleared when it's handled)
         self.mediumpress = False  # Set to True to simulate a medium button press (cleared when it's handled)
         self.longpress = False    # Set to True to simulate a long button press (never cleared)
+
+    def __str__(self):
+        return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 29)]))
 
     def poll_data(self):
         """
@@ -450,31 +478,34 @@ class SimFNDH(fndh.FNDH):
                 continue
 
             # Now update the overall box state, based on all of the sensor states
-            # We can't be in the UNINITIALISED state if we've reached this point, so it must be one of these four:
-            if 'ALARM' in self.sensor_states.values():  # If any sensor is in ALARM, so is thw whole box
-                self.statuscode = fndh.STATUS_ALARM
-                if self.online:
-                    self.indicator_code = fndh.LED_REDSLOW
+            if self.initialised:
+                if 'ALARM' in self.sensor_states.values():  # If any sensor is in ALARM, so is thw whole box
+                    self.statuscode = fndh.STATUS_ALARM
+                    if self.online:
+                        self.indicator_code = fndh.LED_REDSLOW
+                    else:
+                        self.indicator_code = fndh.LED_RED
+                elif 'RECOVERY' in self.sensor_states.values():  # Otherwise, if any sensor is RECOVERY, so is the whole box
+                    self.statuscode = fndh.STATUS_RECOVERY
+                    if self.online:
+                        self.indicator_code = fndh.LED_YELLOWREDSLOW
+                    else:
+                        self.indicator_code = fndh.LED_YELLOWRED
+                elif 'WARNING' in self.sensor_states.values():  # Otherwise, if any sensor is WARNING, so is the whole box
+                    self.statuscode = fndh.STATUS_WARNING
+                    if self.online:
+                        self.indicator_code = fndh.LED_YELLOWSLOW
+                    else:
+                        self.indicator_code = fndh.LED_YELLOW
                 else:
-                    self.indicator_code = fndh.LED_RED
-            elif 'RECOVERY' in self.sensor_states.values():  # Otherwise, if any sensor is RECOVERY, so is the whole box
-                self.statuscode = fndh.STATUS_RECOVERY
-                if self.online:
-                    self.indicator_code = fndh.LED_YELLOWREDSLOW
-                else:
-                    self.indicator_code = fndh.LED_YELLOWRED
-            elif 'WARNING' in self.sensor_states.values():  # Otherwise, if any sensor is WARNING, so is the whole box
-                self.statuscode = fndh.STATUS_WARNING
-                if self.online:
-                    self.indicator_code = fndh.LED_YELLOWSLOW
-                else:
-                    self.indicator_code = fndh.LED_YELLOW
+                    self.statuscode = fndh.STATUS_OK  # If all sensors are OK, so is the whole box
+                    if self.online:
+                        self.indicator_code = fndh.LED_GREENSLOW
+                    else:
+                        self.indicator_code = fndh.LED_GREEN
             else:
-                self.statuscode = fndh.STATUS_OK  # If all sensors are OK, so is the whole box
-                if self.online:
-                    self.indicator_code = fndh.LED_GREENSLOW
-                else:
-                    self.indicator_code = fndh.LED_GREEN
+                self.statuscode = fndh.STATUS_UNINITIALISED
+                self.indicator_code = fndh.LED_YELLOWFAST  # Fast flash green - uninitialised
 
             self.status = fndh.STATUS_CODES[self.statuscode]
             self.indicator_state = fndh.LED_CODES[self.indicator_code]

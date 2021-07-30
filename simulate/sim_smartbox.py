@@ -16,6 +16,27 @@ from pasd import smartbox
 
 RETURN_BIAS = 0.05
 
+STATUS_STRING = """\
+Simulated SMARTBox at address: %(modbus_address)s:
+    ModBUS register revision: %(mbrv)s
+    PCB revision: %(pcbrv)s
+    CPU ID: %(cpuid)s
+    CHIP ID: %(chipid)s
+    Firmware revision: %(firmware_version)s
+    Uptime: %(uptime)s seconds
+    R.Address: %(station_value)s
+    48V In: %(incoming_voltage)4.2f V
+    5V out: %(psu_voltage)4.2f V
+    PSU Temp: %(psu_temp)4.2f deg C
+    PCB Temp: %(pcb_temp)4.2f deg C
+    Outside Temp: %(outside_temp)4.2f deg C
+    Status: %(statuscode)s (%(status)s)
+    Service LED: %(service_led)s
+    Indicator: %(indicator_code)s (%(indicator_state)s)
+    Initialised: %(initialised)s
+    Online: %(online)s
+"""
+
 
 def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
     """
@@ -39,11 +60,11 @@ class SimSMARTbox(smartbox.SMARTbox):
     0x10 Modbus commands to read and write registers.
     """
     def __init__(self, conn=None, modbus_address=None, logger=None):
+        # Inherited from the controller code in pasd/smartbox.py
         smartbox.SMARTbox.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
-        self.online = False   # Will be True if we've heard from the MCCS in the last 300 seconds.
-        self.register_map = smartbox.SMARTBOX_REGISTERS[1]  # Assume register map version 1
         self.mbrv = 1   # Modbus register-map revision number for this physical SMARTbox
         self.pcbrv = 1  # PCB revision number for this physical SMARTbox
+        self.register_map = smartbox.SMARTBOX_REGISTERS[1]  # Assume register map version 1
         self.sensor_temps = {i:33.33 for i in range(1, 13)}  # Dictionary with sensor number (1-12) as key, and temperature as value
         self.cpuid = 1    # CPU identifier (integer)
         self.chipid = bytes([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])   # Unique ID number (16 bytes), different for every physical SMARTbox
@@ -55,15 +76,21 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.psu_temp = 45.0    # Temperature of the internal 5V power supply (deg C)
         self.pcb_temp = 38.0    # Temperature on the internal PCB (deg C)
         self.outside_temp = 34.0    # Outside temperature (deg C)
-        self.initialised = False   # True if the system has been initialised by the LMC
         self.statuscode = smartbox.STATUS_UNINITIALISED    # Status value, one of the smartbox.STATUS_* globals, and used as a key for smartbox.STATUS_CODES (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'       # Status string, obtained from smartbox.STATUS_CODES global (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
         self.indicator_code = smartbox.LED_GREENFAST  # LED status value, one of the smartbox.LED_* globals, and used as a key for smartbox.LED_CODES
         self.indicator_state = 'GREENFAST'   # LED status string, obtained from smartbox.LED_CODES
         self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
-        self.start_time = time.time()   # Unix timestamp when this instance started processing
         self.pdoc_number = None   # Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
+
+        # Only in the smartbox simulator class
+        self.start_time = time.time()   # Unix timestamp when this instance started processing
+        self.initialised = False   # True if the system has been initialised by the LMC
+        self.online = False   # Will be True if we've heard from the MCCS in the last 300 seconds.
+        self.shortpress = False   # Set to True to simulate a short button press (cleared when it's handled)
+        self.mediumpress = False  # Set to True to simulate a medium button press (cleared when it's handled)
+        self.longpress = False    # Set to True to simulate a long button press (never cleared)
         self.wants_exit = False  # Set to True externally to kill self.mainloop if the box is pseudo-powered-off
         # Sensor states, with four thresholds for hysteris (alarm high, warning high, warning low, alarm low)
         # Each has three possible values (OK, WARNING or RECOVERY)
@@ -71,9 +98,8 @@ class SimSMARTbox(smartbox.SMARTbox):
         # Port current states, with only one (high) threshold, and fault handling internally. Can only be OK or ALARM
         self.portcurrent_states = {regname:'OK' for regname in self.register_map['CONF'] if regname.endswith('_CURRENT_TH')}
 
-        self.shortpress = False   # Set to True to simulate a short button press (cleared when it's handled)
-        self.mediumpress = False  # Set to True to simulate a medium button press (cleared when it's handled)
-        self.longpress = False    # Set to True to simulate a long button press (never cleared)
+    def __str__(self):
+        return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)]))
 
     def poll_data(self):
         """
@@ -466,31 +492,34 @@ class SimSMARTbox(smartbox.SMARTbox):
                 continue
 
             # Now update the overall box state, based on all of the sensor states
-            # We can't be in the UNINITIALISED state if we've reached this point, so it must be one of these four:
-            if 'ALARM' in self.sensor_states.values():  # If any sensor is in ALARM, so is thw whole box
-                self.statuscode = smartbox.STATUS_ALARM
-                if self.online:
-                    self.indicator_code = smartbox.LED_REDSLOW
+            if self.initialised:
+                if 'ALARM' in self.sensor_states.values():  # If any sensor is in ALARM, so is thw whole box
+                    self.statuscode = smartbox.STATUS_ALARM
+                    if self.online:
+                        self.indicator_code = smartbox.LED_REDSLOW
+                    else:
+                        self.indicator_code = smartbox.LED_RED
+                elif 'RECOVERY' in self.sensor_states.values():  # Otherwise, if any sensor is RECOVERY, so is the whole box
+                    self.statuscode = smartbox.STATUS_RECOVERY
+                    if self.online:
+                        self.indicator_code = smartbox.LED_YELLOWREDSLOW
+                    else:
+                        self.indicator_code = smartbox.LED_YELLOWRED
+                elif 'WARNING' in self.sensor_states.values():  # Otherwise, if any sensor is WARNING, so is the whole box
+                    self.statuscode = smartbox.STATUS_WARNING
+                    if self.online:
+                        self.indicator_code = smartbox.LED_YELLOWSLOW
+                    else:
+                        self.indicator_code = smartbox.LED_YELLOW
                 else:
-                    self.indicator_code = smartbox.LED_RED
-            elif 'RECOVERY' in self.sensor_states.values():  # Otherwise, if any sensor is RECOVERY, so is the whole box
-                self.statuscode = smartbox.STATUS_RECOVERY
-                if self.online:
-                    self.indicator_code = smartbox.LED_YELLOWREDSLOW
-                else:
-                    self.indicator_code = smartbox.LED_YELLOWRED
-            elif 'WARNING' in self.sensor_states.values():  # Otherwise, if any sensor is WARNING, so is the whole box
-                self.statuscode = smartbox.STATUS_WARNING
-                if self.online:
-                    self.indicator_code = smartbox.LED_YELLOWSLOW
-                else:
-                    self.indicator_code = smartbox.LED_YELLOW
+                    self.statuscode = smartbox.STATUS_OK  # If all sensors are OK, so is the whole box
+                    if self.online:
+                        self.indicator_code = smartbox.LED_GREENSLOW
+                    else:
+                        self.indicator_code = smartbox.LED_GREEN
             else:
-                self.statuscode = smartbox.STATUS_OK  # If all sensors are OK, so is the whole box
-                if self.online:
-                    self.indicator_code = smartbox.LED_GREENSLOW
-                else:
-                    self.indicator_code = smartbox.LED_GREEN
+                self.statuscode = smartbox.STATUS_UNINITIALISED
+                self.indicator_code = smartbox.LED_YELLOWFAST  # Fast flash green - uninitialised
 
             self.status = smartbox.STATUS_CODES[self.statuscode]
             self.indicator_state = smartbox.LED_CODES[self.indicator_code]

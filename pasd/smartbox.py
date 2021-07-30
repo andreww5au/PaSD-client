@@ -293,7 +293,7 @@ class PortStatus(object):
         if self.current_timestamp is None:
             current_string = "Current:Unknown"
         else:
-            current_string = "Current:%4.1f(%1.1f s)" % (self.current, time.time() - self.current_timestamp)
+            current_string = "Current:%4.1f" % self.current
 
         if self.status_timestamp is None:
             status_string = "Unknown"
@@ -304,18 +304,20 @@ class PortStatus(object):
                 lfstring = 'Forced:OFF'
             else:
                 lfstring = 'NotForced'
+            enstring = '(DesireEnabled:%s)' % ','.join([{False:'', True:'Online', None:'?'}[self.desire_enabled_online],
+                                                       {False:'', True:'Offline', None:'?'}[self.desire_enabled_offline]])
+            sysstring = '(System:%s,%s)' % ({False:'Offline', True:'Online', None:'??line?'}[self.system_online],
+                                              {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled])
             status_items = ['Status(%1.1f s):' % (time.time() - self.status_timestamp),
-                            {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled],
-                            {False:'Offline', True:'Online', None:'??line?'}[self.system_online],
-                            'DesEnableOnline=%s' % self.desire_enabled_online,
-                            'DesEnableOffline=%s' % self.desire_enabled_offline,
-                            lfstring,
                             {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[self.power_state],
+                            sysstring,
+                            enstring,
+                            lfstring,
                             {False:'', True:'BreakerTrip!', None:'Breaker:?'}[self.breaker_tripped]
                             ]
             status_string = ' '.join(status_items)
 
-        return "P%02d on SB:%d: %s %s" % (self.port_number, self.modbus_address, current_string, status_string)
+        return "P%02d %s %s" % (self.port_number, status_string, current_string)
 
     def __repr__(self):
         return str(self)
@@ -529,7 +531,9 @@ class SMARTbox(transport.ModbusDevice):
                                           logger=logging.getLogger(self.logger.name + '.P%02d' % pnum))
 
     def __str__(self):
-        return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)]))
+        return (STATUS_STRING % (self.__dict__) +
+                ("\nPorts on SMARTbox %d:\n" % self.modbus_address) +
+                ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)])))
 
     def __repr__(self):
         return str(self)
