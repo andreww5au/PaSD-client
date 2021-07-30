@@ -498,7 +498,7 @@ class FNDH(transport.ModbusDevice):
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         except:
-            self.logger.exception('Exception in transport.writeMultReg():')
+            self.logger.exception('Exception in transport.writeMultReg() in write_thresholds:')
             return False
 
         if res:
@@ -535,7 +535,7 @@ class FNDH(transport.ModbusDevice):
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         except:
-            self.logger.exception('Exception in transport.writeMultReg():')
+            self.logger.exception('Exception in transport.writeMultReg() in write_portconfig:')
             return False
 
         if res:
@@ -590,7 +590,7 @@ class FNDH(transport.ModbusDevice):
         try:
             self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
         except:
-            self.logger.exception('Exception in transport.writeReg():')
+            self.logger.exception('Exception in transport.writeReg() in configure_all_off:')
             return False
 
         return True

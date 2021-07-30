@@ -27,7 +27,7 @@ class Sim_Station(sim_fndh.SimFNDH):
                 smb.wants_exit = True
         for portnum, port in self.ports.items():
             if port.power_state != port.old_power_state:
-                if port.power_state:
+                if port.power_state and portnum < 25:   # Only fire up 24 simulated smartboxes
                     self.smartboxes[portnum] = sim_smartbox.SimSMARTbox(conn=self.conn,
                                                                         modbus_address=portnum,
                                                                         logger=logging.getLogger('SB:%d' % portnum))
@@ -37,9 +37,10 @@ class Sim_Station(sim_fndh.SimFNDH):
                     self.threads[portnum].start()
                     self.logger.info('Started a new comms thread for smartbox %d' % portnum)
                 else:
-                    self.smartboxes[portnum].wants_exit = True   # Signal the comms thread on that SMARTbox to exit
-                    del self.smartboxes[portnum]
-                    self.logger.info('Killed the comms thread for smartbox %d' % portnum)
+                    if portnum in self.smartboxes:
+                        self.smartboxes[portnum].wants_exit = True   # Signal the comms thread on that SMARTbox to exit
+                        del self.smartboxes[portnum]
+                        self.logger.info('Killed the comms thread for smartbox %d' % portnum)
                 port.old_power_state = port.power_state
 
 

@@ -639,17 +639,17 @@ class SMARTbox(transport.ModbusDevice):
         try:
             valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=16)
         except Exception:
-            self.logger.exception('Exception in readReg in poll_data for SMARTbox %d' % self.modbus_address)
+            self.logger.exception('Exception in readReg in read_uptime for SMARTbox %d' % self.modbus_address)
             return None
 
         if valuelist is None:
-            self.logger.error('Error in readReg in poll_data for SMARTbox %d, no data' % self.modbus_address)
+            self.logger.error('Error in readReg in read_uptime for SMARTbox %d, no data' % self.modbus_address)
             return None
 
         if len(valuelist) != 16:
-            self.logger.warning('Only %d registers returned from SMARTbox %d by readReg in poll_data, expected %d' % (len(valuelist),
-                                                                                                                      self.modbus_address,
-                                                                                                                      16))
+            self.logger.warning('Only %d registers returned from SMARTbox %d by readReg in read_uptime, expected %d' % (len(valuelist),
+                                                                                                                        self.modbus_address,
+                                                                                                                        16))
             return None
 
         self.mbrv = valuelist[0][0] * 256 + valuelist[0][1]
@@ -689,7 +689,7 @@ class SMARTbox(transport.ModbusDevice):
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         except:
-            self.logger.exception('Exception in transport.writeMultReg():')
+            self.logger.exception('Exception in transport.writeMultReg() in write_thresholds:')
             return False
 
         if res:
@@ -718,7 +718,7 @@ class SMARTbox(transport.ModbusDevice):
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         except:
-            self.logger.exception('Exception in transport.writeMultReg():')
+            self.logger.exception('Exception in transport.writeMultReg() in write_portconfig:')
             return False
 
         if res:
@@ -766,7 +766,7 @@ class SMARTbox(transport.ModbusDevice):
                 try:
                     return self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
                 except:
-                    self.logger.exception('Exception in transport.writeReg():')
+                    self.logger.exception('Exception in transport.writeReg() in configure:')
                     return False
             else:
                 self.logger.error('Could not load and write port state configuration.')

@@ -184,9 +184,16 @@ class Station(object):
                 smb = self.smartboxes[sadd]
             else:   # If this address isn't in the saved antenna map, create a temporary SMARTbox instance.
                 smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
-            uptime = smb.read_uptime()
+
+            uptime = None
+            try:
+                uptime = smb.read_uptime()
+            except:
+                pass
+
             if uptime is None:
                 continue
+
             else:
                 self.logger.info('Uptime of %d (%d) from SMARTbox at address %d' % (uptime, time.time() - uptime, sadd))
             address_on_times[sadd] = time.time() - uptime
