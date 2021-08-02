@@ -80,8 +80,8 @@ class SimFNDH(fndh.FNDH):
         self.psu48v_current = 13.4  # Total current on the 48VDC bus (Amps)
         self.psu48v_temp = 58.3  # Common temperature for both 48VDC power supplies (deg C)
         self.psu5v_temp = 55.1  # Temperature of the 5VDC power supply (Volts)
-        self.pcb_temp = 38.0    # Temperature on the internal PCB (deg C)
-        self.outside_temp = 34.0    # Outside temperature (deg C)
+        self.pcb_temp = 48.0    # Temperature on the internal PCB (deg C)
+        self.outside_temp = 38.0    # Outside temperature (deg C)
         self.statuscode = fndh.STATUS_UNINITIALISED    # Status value, one of the fndh.STATUS_* globals, and used as a key for fndh.STATUS_CODES (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'       # Status string, obtained from fndh.STATUS_CODES global (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
