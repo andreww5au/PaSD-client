@@ -211,7 +211,7 @@ class Station(object):
             # was turned on).
             diffs = [(anum, (address_on_times[anum] - ontime)) for anum in address_on_times.keys() if address_on_times[anum] > ontime]
             diffs.sort(key=lambda x: x[1])   # sort by time difference
-            if (diffs is not None) and (diffs[0][1] < 10.0):
+            if diffs and (diffs[0][1] < 10.0):
                 sadd = diffs[0][0]   # Modbus address of the SMARTbox on this PDoC port number
                 self.smartboxes[sadd].pdoc_number = portnum
                 self.fndh.ports[portnum].smartbox_address = sadd
