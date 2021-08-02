@@ -203,7 +203,7 @@ THRESHOLD_FILENAME = 'pasd/smartbox_thresholds.json'
 PORTCONFIG_FILENAME = 'pasd/smartbox_ports.json'
 
 STATUS_STRING = """\
-SMARTBox at address: %(modbus_address)s:
+SMARTBox at address: %(modbus_address)s as of %(status_age)d ago:
     ModBUS register revision: %(mbrv)s
     PCB revision: %(pcbrv)s
     CPU ID: %(cpuid)s
@@ -531,7 +531,9 @@ class SMARTbox(transport.ModbusDevice):
                                           logger=logging.getLogger(self.logger.name + '.P%02d' % pnum))
 
     def __str__(self):
-        return (STATUS_STRING % (self.__dict__) +
+        tmpdict = self.__dict__.copy()
+        tmpdict['status_age'] = time.time() - self.readtime
+        return ((STATUS_STRING % tmpdict) +
                 ("\nPorts on SMARTbox %d:\n" % self.modbus_address) +
                 ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)])))
 

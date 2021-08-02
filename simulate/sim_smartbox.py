@@ -14,7 +14,7 @@ logging.basicConfig()
 
 from pasd import smartbox
 
-RETURN_BIAS = 0.05
+RETURN_BIAS = 0.025
 
 STATUS_STRING = """\
 Simulated SMARTBox at address: %(modbus_address)s:
@@ -389,11 +389,11 @@ class SimSMARTbox(smartbox.SMARTbox):
             time.sleep(0.5)
 
             # Change the sensor values to generate a random walk around a mean value for each sensor
-            self.incoming_voltage = random_walk(self.incoming_voltage, 46.1, scale=0.1)
-            self.psu_voltage = random_walk(self.psu_voltage, 5.1, scale=0.025)
-            self.psu_temp = random_walk(self.psu_temp, 28.3, scale=0.05)
-            self.pcb_temp = random_walk(self.pcb_temp, 27.0, scale=0.05)
-            self.outside_temp = random_walk(self.outside_temp, 34.0, scale=0.25)
+            self.incoming_voltage = random_walk(self.incoming_voltage, 46.1, scale=0.025)
+            self.psu_voltage = random_walk(self.psu_voltage, 5.1, scale=0.005)
+            self.psu_temp = random_walk(self.psu_temp, 28.3, scale=0.025)
+            self.pcb_temp = random_walk(self.pcb_temp, 27.0, scale=0.025)
+            self.outside_temp = random_walk(self.outside_temp, 34.0, scale=0.025)
 
             if self.initialised:     # Don't bother thresholding sensor values until the thresholds have been set
                 # For each threshold register, get the current value and threshold/s from the right local instance attribute

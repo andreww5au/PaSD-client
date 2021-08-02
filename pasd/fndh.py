@@ -377,7 +377,10 @@ class FNDH(transport.ModbusDevice):
                                           read_timestamp=None)
 
     def __str__(self):
-        return STATUS_STRING % (self.__dict__) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 29)]))
+        tmpdict = self.__dict__.copy()
+        tmpdict['status_age'] = time.time() - self.readtime
+        return ((STATUS_STRING % tmpdict) +
+                "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 29)])))
 
     def __repr__(self):
         return str(self)

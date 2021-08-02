@@ -15,7 +15,7 @@ logging.basicConfig()
 
 from pasd import fndh
 
-RETURN_BIAS = 0.05
+RETURN_BIAS = 0.025
 
 STATUS_STRING = """\
 FNDH at address: %(modbus_address)s:
@@ -392,14 +392,14 @@ class SimFNDH(fndh.FNDH):
             time.sleep(0.5)
 
             # Change the sensor values to generate a random walk around a mean value for each sensor
-            self.psu48v1_voltage = random_walk(self.psu48v1_voltage, 48.1, scale=0.05)
-            self.psu48v2_voltage = random_walk(self.psu48v2_voltage, 48.1, scale=0.05)
-            self.psu5v_voltage = random_walk(self.psu5v_voltage, 5.1, scale=0.0125)
-            self.psu48v_current = random_walk(self.psu48v_current, 13.4, scale=0.25)
-            self.psu48v_temp = random_walk(self.psu48v_temp, 58.3, scale=0.25)
-            self.psu5v_temp = random_walk(self.psu5v_temp, 55.1, scale=0.25)
-            self.pcb_temp = random_walk(self.pcb_temp, 48.1, scale=0.125)
-            self.outside_temp = random_walk(self.outside_temp, 38.1, scale=0.25)
+            self.psu48v1_voltage = random_walk(self.psu48v1_voltage, 48.1, scale=0.025)
+            self.psu48v2_voltage = random_walk(self.psu48v2_voltage, 48.1, scale=0.025)
+            self.psu5v_voltage = random_walk(self.psu5v_voltage, 5.1, scale=0.005)
+            self.psu48v_current = random_walk(self.psu48v_current, 13.4, scale=0.015)
+            self.psu48v_temp = random_walk(self.psu48v_temp, 58.3, scale=0.025)
+            self.psu5v_temp = random_walk(self.psu5v_temp, 55.1, scale=0.025)
+            self.pcb_temp = random_walk(self.pcb_temp, 48.1, scale=0.025)
+            self.outside_temp = random_walk(self.outside_temp, 38.1, scale=0.025)
 
             if self.initialised:     # Don't bother thresholding sensor values until the thresholds have been set
                 # For each threshold register, get the current value and threshold/s from the right local instance attribute
