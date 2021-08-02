@@ -218,8 +218,8 @@ class Connection(object):
 
                 etime = time.time()
                 if etime - gtime > 0.002:
-                    self.debug.warning('%d: Spent %5.3f sec holding readlock in _read' % (threading.get_ident(),
-                                                                                          etime - gtime))
+                    self.logger.debug('%d: Spent %5.3f sec holding readlock in _read' % (threading.get_ident(),
+                                                                                                 etime - gtime))
                 return data
 
     def _write(self, data):
@@ -346,15 +346,15 @@ class Connection(object):
                 crcgood = True
                 datalist = replist[:-1]
         elif mstring:
-            self.logger.warning('Packet fragment received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
+            self.logger.debug('Packet fragment received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
         else:
-            self.logger.warning('No data received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
+            self.logger.debug('No data received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
 
         self.logger.debug("Recvd: %s/%s" % (mstring, str(replist)))
         if crcgood:
             return datalist
         else:
-            self.logger.error('No valid reply - raw data received: %s' % str(replist))
+            self.logger.debug('No valid reply - raw data received: %s' % str(replist))
             raise IOError
 
     def _send_reply(self, message):
@@ -429,7 +429,7 @@ class Connection(object):
                     crcgood = True
                     msglist = replist[:-1]
             elif mstring:
-                self.logger.warning('Packet fragment received: %s' % mstring)
+                self.logger.debug('Packet fragment received: %s' % mstring)
                 time.sleep(0.2)
                 self._flush()  # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
                 continue  # Discard this packet fragment, keep waiting for a new valid packet
@@ -653,13 +653,13 @@ class Connection(object):
             except ValueError:  # Bad protocol global
                 raise
             except:  # No reply, or error from the communications layer
-                self.logger.error('Communications error in send_as_master, resending.')
+                self.logger.debug('Communications error in send_as_master, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
 
             if not reply:
-                self.logger.error('No reply from send_as_master, resending.')
+                self.logger.debug('No reply from send_as_master, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
@@ -735,13 +735,13 @@ class Connection(object):
             except ValueError:  # Bad protocol global
                 raise
             except:  # No reply, or error from the communications layer
-                self.logger.exception('Communications error in send_as_master, resending.')
+                self.logger.debug('Communications error in send_as_master, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
 
             if not reply:
-                self.logger.error('No reply from send_as_master, resending.')
+                self.logger.debug('No reply from send_as_master, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
