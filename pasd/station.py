@@ -17,6 +17,8 @@ from pasd import smartbox
 SLAVE_MODBUS_ADDRESS = 63   # Address that technician's SID devices use to reach the MCCS as a slave device
 FNDH_ADDRESS = 31   # Modbus address of the FNDH controller
 
+PORT_TURNON_INTERVAL = 5.0   # How many seconds to wait between each PDoC port when powering up an FNDH
+
 # Initial mapping between SMARTbox/port and antenna number
 # Here as a dict to show the concept, in reality this would be in a database.
 ANTENNA_MAP = {
@@ -44,10 +46,6 @@ ANTENNA_MAP = {
  22: {1: 234, 2: 235, 3: 236, 4: 237, 5: 238, 6: 239, 7: 240, 8: 241, 9: 242, 10: 243, 11: 244, 12: 245},
  23: {1: 246, 2: 247, 3: 248, 4: 249, 5: 250, 6: 251, 7: 252, 8: 253, 9: 254, 10: 255, 11: 256, 12: None},
  24: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None},
- 25: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None},
- 26: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None},
- 27: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None},
- 28: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None}
 }
 
 # Register numbers for when the MCCS is acting as a Modbus slave)
@@ -168,7 +166,7 @@ class Station(object):
         # Turn on all the ports, one by one, with a 10 second interval between each port
         port_on_times = {}   # Unix timestamp at which each port number was turned on
         for portnum in range(1, 29):
-            time.sleep(10)
+            time.sleep(PORT_TURNON_INTERVAL)
             self.fndh.ports[portnum].desire_enabled_online = True
             self.logger.info('Turning on PDoC port %d' % portnum)
             ok = self.fndh.write_portconfig(write_state=True, write_to=True)
@@ -211,7 +209,7 @@ class Station(object):
             # was turned on).
             diffs = [(anum, (address_on_times[anum] - ontime)) for anum in address_on_times.keys() if address_on_times[anum] > ontime]
             diffs.sort(key=lambda x: x[1])   # sort by time difference
-            if diffs and (diffs[0][1] < 10.0):
+            if diffs and (diffs[0][1] < PORT_TURNON_INTERVAL):
                 sadd = diffs[0][0]   # Modbus address of the SMARTbox on this PDoC port number
                 self.smartboxes[sadd].pdoc_number = portnum
                 self.fndh.ports[portnum].smartbox_address = sadd

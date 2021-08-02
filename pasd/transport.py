@@ -138,7 +138,7 @@ class Connection(object):
                     if self.multidrop:
                         self.logger.info('No remote device, emulating a multi-drop serial bus between threads.')
                     else:
-                        self.logger.error("No hostname or devicename, can't open socket or TCP connection")
+                        self.logger.critical("No hostname or devicename, can't open socket or TCP connection")
 
                 # Clear all the shared buffers, if they exist
                 for threadid, buffer in self.buffers.items():
@@ -168,8 +168,8 @@ class Connection(object):
         with self.readlock:
             gtime = time.time()
             if gtime - ltime > 0.05:
-                self.logger.warning('%d: %5.3f seconds to get readlock in _read' % (threading.get_ident(),
-                                                                                    gtime - ltime))
+                self.logger.debug('%d: %5.3f seconds to get readlock in _read' % (threading.get_ident(),
+                                                                                  gtime - ltime))
             if self.ser is not None:
                 if self.multidrop:
                     remote_data = self.ser.read(1000)
@@ -218,8 +218,8 @@ class Connection(object):
 
                 etime = time.time()
                 if etime - gtime > 0.002:
-                    self.logger.warning('%d: Spent %5.3f sec holding readlock in _read' % (threading.get_ident(),
-                                                                                           etime - gtime))
+                    self.debug.warning('%d: Spent %5.3f sec holding readlock in _read' % (threading.get_ident(),
+                                                                                          etime - gtime))
                 return data
 
     def _write(self, data):
@@ -239,8 +239,8 @@ class Connection(object):
         with self.writelock:
             gtime = time.time()
             if gtime - ltime > 0.05:
-                self.logger.warning('%d: %5.3f seconds to get lock in _write' % (threading.get_ident(),
-                                                                                 gtime - ltime))
+                self.logger.debug('%d: %5.3f seconds to get lock in _write' % (threading.get_ident(),
+                                                                               gtime - ltime))
             if self.ser is not None:
                 self.ser.write(data)
 
@@ -271,8 +271,8 @@ class Connection(object):
         with self.readlock:
             gtime = time.time()
             if gtime - ltime > 0.05:
-                self.logger.warning('%d: %5.3f seconds to get lock in _flush' % (threading.get_ident(),
-                                                                                 gtime - ltime))
+                self.logger.debug('%d: %5.3f seconds to get lock in _flush' % (threading.get_ident(),
+                                                                               gtime - ltime))
             data = b''
             newdata = b'X'
             try:
@@ -570,13 +570,13 @@ class Connection(object):
             except ValueError:  # Bad protocol global
                 raise
             except:  # No reply, or error from the communications layer
-                self.logger.error('Communications error in send_as_master, resending.')
+                self.logger.debug('Communications error in send_as_master, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
 
             if not reply:
-                self.logger.error('No reply to readReg from initial packet, resending.')
+                self.logger.debug('No reply to readReg from initial packet, resending.')
                 time.sleep(1)
                 self._flush()
                 continue
