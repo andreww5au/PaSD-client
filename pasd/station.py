@@ -179,7 +179,7 @@ class Station(object):
 
         # Read the uptimes for all possible SMARTbox addresses, to work out when they were turned on
         address_on_times = {}   # Unix timestamp at which each SMARTbox booted, according to the uptime
-        for sadd in range(1, 31):   # All possible SMARTbox addresses
+        for sadd in range(1, 26):   # All possible SMARTbox addresses, plus one to make sure the code can handle a dead box
             if sadd in self.smartboxes:
                 smb = self.smartboxes[sadd]
             else:   # If this address isn't in the saved antenna map, create a temporary SMARTbox instance.
@@ -279,7 +279,7 @@ class Station(object):
             self.logger.error('Error calling poll_data() for FNDH')
 
         # Next, grab all the data from all possible SMARTboxes, to keep comms restricted to a short time window
-        for sadd in range(1, 31):
+        for sadd in range(1, 26):  # Poll one SMARTbox known to not exist, so we know if the code can handle a dead box.
             if sadd not in self.smartboxes:   # Check for a new SMARTbox with this address
                 smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
                 test_ok = smb.poll_data()
@@ -288,7 +288,7 @@ class Station(object):
             else:
                 smb_ok = self.smartboxes[sadd].poll_data()
                 if not smb_ok:
-                    self.logger.error('Error calling poll_data for SMARTbox %d' % sadd)
+                    self.logger.error("Can't reach SMARTbox %d with poll_data()" % sadd)
 
         # If any of the SMARTboxes have had a long button-press (indicating that a local technician wants that SMARTbox
         # to be powered down), then it will set it's status code and indicator LED code to the 'WANTS_POWERDOWN' value.
@@ -307,7 +307,7 @@ class Station(object):
             self.fndh.write_portconfig(write_to=True)
 
         # Now configure and activate any UNINITIALISED boxes, and log any error/warning states
-        for sadd in range(1, 31):
+        for sadd in range(1, 26):
             if sadd in self.smartboxes:
                 smb = self.smartboxes[sadd]
                 if smb.statuscode != smartbox.STATUS_OK:

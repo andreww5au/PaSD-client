@@ -555,6 +555,9 @@ class SMARTbox(transport.ModbusDevice):
         # Get a list of tuples, where each tuple is a two-byte register value, eg (0,255)
         try:
             valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=poll_blocksize)
+        except IOError:
+            self.logger.info('No data returned by readReg in poll_data for SMARTbox %d' % self.modbus_address)
+            return None
         except Exception:
             self.logger.exception('Exception in readReg in poll_data for SMARTbox %d' % self.modbus_address)
             return None
