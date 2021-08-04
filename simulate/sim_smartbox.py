@@ -14,7 +14,7 @@ logging.basicConfig()
 
 from pasd import smartbox
 
-RETURN_BIAS = 0.025
+RETURN_BIAS = 0.005
 
 STATUS_STRING = """\
 Simulated SMARTBox at address: %(modbus_address)s:
@@ -47,11 +47,14 @@ def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
 
     :param current_value: Current sensor value, arbitrary units
     :param mean: Desired mean value
-    :param scale: Scale factor for variations - a scale of one means jumps of -1.0 to +1.0 every time step
-    :param return_bias: Dimensionless factor - increase this to reduce long-term variation around the mean
+    :param scale: Scale factor for variations - a scale of one means random jumps of -1% to +1% every time step
+    :param return_bias: Dimensionless factor - must be less than one. Lower values increase long-term variation around the mean
     :return: Next value for the sensor reading
     """
-    return current_value + scale * 2.0 * ((return_bias * (mean - current_value)) + (random.random() - 0.5))
+    # with scale=1.0, value varies by +/- 1% of the mean value every iteration
+    # with return_bias=1.0, value pulled back back by 100% of the offset from the mean at each iteration
+    #                          random walk part, +/- scale percent                      return bias part
+    return current_value + (mean * scale * ((random.random() - 0.5) * 0.02)) + (return_bias * (mean - current_value))
 
 
 class SimSMARTbox(smartbox.SMARTbox):
@@ -71,11 +74,11 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.firmware_version = 1  # Firmware revision mumber for this physical SMARTbox
         self.uptime = 0            # Time in seconds since this SMARTbox was powered up
         self.station_value = modbus_address     # Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
-        self.incoming_voltage = 47.9  # Measured voltage for the (nominal) 48VDC input power (Volts)
+        self.incoming_voltage = 46.9  # Measured voltage for the (nominal) 48VDC input power (Volts)
         self.psu_voltage = 5.1     # Measured output voltage for the internal (nominal) 5V power supply
-        self.psu_temp = 45.0    # Temperature of the internal 5V power supply (deg C)
-        self.pcb_temp = 38.0    # Temperature on the internal PCB (deg C)
-        self.outside_temp = 34.0    # Outside temperature (deg C)
+        self.psu_temp = 28.0    # Temperature of the internal 5V power supply (deg C)
+        self.pcb_temp = 27.0    # Temperature on the internal PCB (deg C)
+        self.outside_temp = 24.0    # Outside temperature (deg C)
         self.statuscode = smartbox.STATUS_UNINITIALISED    # Status value, one of the smartbox.STATUS_* globals, and used as a key for smartbox.STATUS_CODES (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'       # Status string, obtained from smartbox.STATUS_CODES global (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
@@ -360,6 +363,7 @@ class SimSMARTbox(smartbox.SMARTbox):
 
         :return: None
         """
+        random.seed()   # Ensure different random walks for sensors in each smartbox thread
         self.start_time = time.time()
 
         self.logger.info('Started comms thread for SMARTbox')
@@ -389,11 +393,11 @@ class SimSMARTbox(smartbox.SMARTbox):
             time.sleep(0.5)
 
             # Change the sensor values to generate a random walk around a mean value for each sensor
-            self.incoming_voltage = random_walk(self.incoming_voltage, 46.1, scale=0.025)
-            self.psu_voltage = random_walk(self.psu_voltage, 5.1, scale=0.005)
-            self.psu_temp = random_walk(self.psu_temp, 28.3, scale=0.025)
-            self.pcb_temp = random_walk(self.pcb_temp, 27.0, scale=0.025)
-            self.outside_temp = random_walk(self.outside_temp, 34.0, scale=0.025)
+            self.incoming_voltage = random_walk(self.incoming_voltage, mean=46.1, scale=0.5)
+            self.psu_voltage = random_walk(self.psu_voltage, mean=5.1, scale=0.05)
+            self.psu_temp = random_walk(self.psu_temp, mean=28.3, scale=0.5)
+            self.pcb_temp = random_walk(self.pcb_temp, mean=27.0, scale=0.5)
+            self.outside_temp = random_walk(self.outside_temp, mean=24.0, scale=0.5)
 
             if self.initialised:     # Don't bother thresholding sensor values until the thresholds have been set
                 # For each threshold register, get the current value and threshold/s from the right local instance attribute

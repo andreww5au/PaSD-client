@@ -51,11 +51,14 @@ def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
 
     :param current_value: Current sensor value, arbitrary units
     :param mean: Desired mean value
-    :param scale: Scale factor for variations
-    :param return_bias: Defaults to 0.1, increase this to reduce variation around the mean
+    :param scale: Scale factor for variations - a scale of one means random jumps of -1% to +1% every time step
+    :param return_bias: Dimensionless factor - must be less than one. Lower values increase long-term variation around the mean
     :return: Next value for the sensor reading
     """
-    return current_value + scale * 2.0 * ((return_bias * (mean - current_value)) + (random.random() - 0.5))
+    # with scale=1.0, value varies by +/- 1% of the mean value every iteration
+    # with return_bias=1.0, value pulled back back by 100% of the offset from the mean at each iteration
+    #                          random walk part, +/- scale percent                      return bias part
+    return current_value + (mean * scale * ((random.random() - 0.5) * 0.02)) + (return_bias * (mean - current_value))
 
 
 class SimFNDH(fndh.FNDH):
@@ -392,14 +395,14 @@ class SimFNDH(fndh.FNDH):
             time.sleep(0.5)
 
             # Change the sensor values to generate a random walk around a mean value for each sensor
-            self.psu48v1_voltage = random_walk(self.psu48v1_voltage, 48.1, scale=0.025)
-            self.psu48v2_voltage = random_walk(self.psu48v2_voltage, 48.1, scale=0.025)
-            self.psu5v_voltage = random_walk(self.psu5v_voltage, 5.1, scale=0.005)
-            self.psu48v_current = random_walk(self.psu48v_current, 13.4, scale=0.015)
-            self.psu48v_temp = random_walk(self.psu48v_temp, 58.3, scale=0.025)
-            self.psu5v_temp = random_walk(self.psu5v_temp, 55.1, scale=0.025)
-            self.pcb_temp = random_walk(self.pcb_temp, 48.1, scale=0.025)
-            self.outside_temp = random_walk(self.outside_temp, 38.1, scale=0.025)
+            self.psu48v1_voltage = random_walk(self.psu48v1_voltage, mean=48.1, scale=0.25)
+            self.psu48v2_voltage = random_walk(self.psu48v2_voltage, mean=48.1, scale=0.25)
+            self.psu5v_voltage = random_walk(self.psu5v_voltage, mean=5.1, scale=0.25)
+            self.psu48v_current = random_walk(self.psu48v_current, mean=13.4, scale=0.25)
+            self.psu48v_temp = random_walk(self.psu48v_temp, mean=58.3, scale=0.25)
+            self.psu5v_temp = random_walk(self.psu5v_temp, mean=55.1, scale=0.25)
+            self.pcb_temp = random_walk(self.pcb_temp, mean=48.1, scale=0.25)
+            self.outside_temp = random_walk(self.outside_temp, mean=38.1, scale=0.25)
 
             if self.initialised:     # Don't bother thresholding sensor values until the thresholds have been set
                 # For each threshold register, get the current value and threshold/s from the right local instance attribute
