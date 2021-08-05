@@ -113,6 +113,7 @@ CREATE TABLE fndh_state (
 
     -- Values to be written to the device, via Modbus register writes:
     service_led boolean,         -- Set to True to turn on the blue service indicator LED
+
     PRIMARY KEY(station_id)
 );
 
@@ -157,8 +158,8 @@ CREATE TABLE smartbox_port_status (
     port_number integer,                        -- Equal to the fibre number (1-12) for the RFoF signal from that SMARTbox
     system_online boolean,                      -- Is the SMARTbox in the 'online' state now?
     current_draw float,                         -- Current being delivered to the FEM and antenna, in milliAmps
-    locally_forced_on boolean,                  -- Has this port been locally forced ON by a technician overide?
-    locally_forced_off boolean,                 -- Has this port been locally forced OFF by a technician overide?
+    locally_forced_on boolean,                  -- Has this port been locally forced ON by a technician override?
+    locally_forced_off boolean,                 -- Has this port been locally forced OFF by a technician override?
     breaker_tripped boolean,                    -- Has the over-current breaker tripped on this port?
     power_state boolean,                        -- Is this port actually turned on and providing power?
     status_timestamp timestamp with time zone,  -- When the status data (locally_forced_on, etc) was read from the device
@@ -167,7 +168,8 @@ CREATE TABLE smartbox_port_status (
     -- Values to be written to the device, via Modbus register writes:
     desire_enabled_online boolean,              -- Does the MCCS want this port enabled when the device is online
     desire_enabled_offline boolean,             -- Does the MCCS want this port enabled when the device is offline
-    reset_breaker boolean,                       -- Set to True to force a circuit breaker reset on this port
+    reset_breaker boolean,                      -- Set to True to force a circuit breaker reset on this port
+
     PRIMARY KEY(station_id, smartbox_number, port_number)
 );
 
@@ -219,8 +221,8 @@ CREATE TABLE fndh_port_status (
     pdoc_number integer,                        -- Physical power/data-over-coax port number (1-28), unrelated to SMARTbox address
     smartbox_number integer,                    -- NULL if not yet populated by the station startup code in the MCCS
     system_online boolean,                      -- Is the FNDH in the 'online' state now?
-    locally_forced_on boolean,                  -- Has this port been locally forced ON by a technician overide?
-    locally_forced_off boolean,                 -- Has this port been locally forced OFF by a technician overide?
+    locally_forced_on boolean,                  -- Has this port been locally forced ON by a technician override?
+    locally_forced_off boolean,                 -- Has this port been locally forced OFF by a technician override?
     power_state boolean,                        -- Is this port turned on by the microcontroller?
     power_sense boolean,                        -- Is there 48V power present on the port output?
     status_timestamp timestamp with time zone,  -- When the status data (locally_forced_on, etc) was read from the device
@@ -228,6 +230,7 @@ CREATE TABLE fndh_port_status (
     -- Values to be written to the device, via Modbus register writes:
     desire_enabled_online boolean,              -- Does the MCCS want this port enabled when the device is online
     desire_enabled_offline boolean,             -- Does the MCCS want this port enabled when the device is offline
+
     PRIMARY KEY(station_id, pdoc_number)
 );
 
@@ -242,6 +245,7 @@ CREATE TABLE stations (
     -- Status values pushed by the station daemon
     station_id integer,                         -- Station ID
     online boolean,                             -- True if the station is 'ON', with PDoC's powered up
+    status text,                                -- 'OK', 'STARTUP', 'SHUTDOWN' or 'OFF'
     status_timestamp timestamp with time zone,  -- When the status data was read from the station daemon
 
     -- Values to be written, and acted on by the station daemon
