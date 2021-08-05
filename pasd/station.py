@@ -90,7 +90,15 @@ class Station(object):
     In reality, the service log entries would be stored in a site-wide database (SMARTboxes might be moved from station
     to station), so the code handling them here is a simple demo function.
     """
-    def __init__(self, conn, station_id=None, logger=None, smartbox_class=smartbox.SMARTbox, fndh_class=fndh.FNDH):
+    def __init__(self,
+                 conn,
+                 station_id=None,
+                 logger=None,
+                 antenna_map=None,
+                 portconfig_smartboxes=None,
+                 portconfig_fndh=None,
+                 smartbox_class=smartbox.SMARTbox,
+                 fndh_class=fndh.FNDH):
         """
         Instantiate an instance of Station() using the connection object for this given
         station.
@@ -106,7 +114,9 @@ class Station(object):
         """
         self.conn = conn  # An instance of transport.Connection()
         self.station_id = station_id
-        self.online = False    # True if the station is powered up
+        self.active = False    # True if the station is powered up and smartboxes are being polled
+        self.status = 'OFF'    # 'ACTIVE', 'STARTUP', 'SHUTDOWN', 'ERROR', or 'OFF'
+        self.desired_active = False    # Set to True if the MCCS wants this station powered up, False if it wants us to power down
         self.smartbox_class = smartbox_class
         self.fndh_class = fndh_class
         self.antennae = {}  # A dict with physical antenna number (1-256) as key, and smartbox.PortStatus() instances as value
@@ -121,15 +131,25 @@ class Station(object):
             self.logger = logger
 
         # Initialise self.antennae, and self.smartboxes[N].ports instances, with the dummy physical antenna mapping from
-        # the ANTENNA_MAP dictionary. In a real system, this would be replaced with code to instantiate them from
-        # database queries.
-        for sadd in ANTENNA_MAP.keys():
+        # the antenna map dictionary. If not passed in as a parameter (from a database query), use the dummy dictionary
+        # at the top of the file.
+        if antenna_map is None:
+            antenna_map = ANTENNA_MAP
+        for sadd in antenna_map.keys():
             smb = self.smartbox_class(conn=self.conn, modbus_address=sadd, logger=logging.getLogger('SB:%d' % sadd))
             for pnum in range(1, 13):
                 smb.ports[pnum].antenna_number = ANTENNA_MAP[sadd][pnum]
-                if ANTENNA_MAP[sadd][pnum] is not None:
-                    self.antennae[ANTENNA_MAP[sadd][pnum]] = smb.ports[pnum]
+                if antenna_map[sadd][pnum] is not None:
+                    self.antennae[antenna_map[sadd][pnum]] = smb.ports[pnum]
             self.smartboxes[sadd] = smb
+
+        # If we have been initialised with port config data for the smartboxes and/or FNDH, store it here, otherwise
+        # store None (when passed into the smartbox instance, None will mean the config is loaded from the JSON file).
+        if portconfig_smartboxes is None:
+            self.portconfig_smartboxes = {i:None for i in range(1, 25)}
+        else:
+            self.portconfig_smartboxes = portconfig_smartboxes
+        self.portconfig_fndh = portconfig_fndh
 
         self.fndh = self.fndh_class(conn=self.conn, modbus_address=FNDH_ADDRESS, logger=logging.getLogger('FNDH:%d' % FNDH_ADDRESS))
 
@@ -152,15 +172,18 @@ class Station(object):
             7) Finish by setting the real 'desired_state_online' and 'desired_state_offline' values for all of the PDoC
                ports, and writing that to the FNDH.
         """
-        self.online = None   # Failure in the middle of this process means the state is unknown
+        self.active = None   # Failure in the middle of this process means the state is unknown
+        self.status = 'STARTUP'
         ok = self.fndh.poll_data()
         if not ok:
             self.logger.error('No reply from FNDH - aborting station startup.')
+            self.status = 'ERROR'
             return False
 
-        ok = self.fndh.configure_all_off()   # Transition the FNDH to online, but with all PDoC ports turned off
+        ok = self.fndh.configure_all_off(portconfig=self.portconfig_fndh)   # Transition the FNDH to online, but with all PDoC ports turned off
         if not ok:
             self.logger.error('Could not configure FNDH - aborting station startup.')
+            self.status = 'ERROR'
             return False
 
         # Turn on all the ports, one by one, with a 10 second interval between each port
@@ -173,6 +196,7 @@ class Station(object):
             port_on_times[portnum] = int(time.time())
             if not ok:
                 self.logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
+                self.status = 'ERROR'
                 return False
 
         # Read the uptimes for all possible SMARTbox addresses, to work out when they were turned on
@@ -219,9 +243,11 @@ class Station(object):
         ok = self.fndh.configure_final()
         if not ok:
             self.logger.error('Could not do final configuration of FNDH during startup.')
+            self.status = 'ERROR'
             return False
 
-        self.online = True
+        self.active = True
+        self.status = 'ACTIVE'
         return True
 
     def shutdown(self):
@@ -240,9 +266,11 @@ class Station(object):
                 allok = False
                 self.logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
         if allok:
-            self.online = False
+            self.active = False
+            self.status = 'OFF'
         else:
-            self.online = None   # We failed to turn off the PDoC ports, so we don't know the state
+            self.active = None   # We failed to turn off the PDoC ports, so we don't know the state
+            self.status = 'ERROR'
         return allok
 
     def poll_data(self):
@@ -264,17 +292,23 @@ class Station(object):
         """
         # First, check the FNDH, and go through the full startup procedure if it's been power cycled since the last poll
         fndh_ok = self.fndh.poll_data()
-        if fndh_ok:
+
+        if fndh_ok:  # We got the data from the FNDH without any communications errors
             if self.fndh.statuscode != fndh.STATUS_OK:
                 self.logger.warning('FNDH has status %d (%s)' % (self.fndh.statuscode, self.fndh.status))
-            if self.fndh.statuscode == fndh.STATUS_UNINITIALISED:  # UNINITIALISED
-                fndh_ok = self.startup()     # In a real setting, pass in static configuration data from config file or database
-                if fndh_ok:
+            if self.fndh.statuscode == fndh.STATUS_UNINITIALISED and self.active:   # FNDH is UNINITIALISED, but we're meant to be 'active'
+                fndh_ok = self.startup()   # Turn off all the PDoC ports, then turn them back on with delays, to find the smartbox<->PDoC mapping
+                if fndh_ok:     # self.status is set inside self.startup() so we don't need to do it here
                     self.logger.info('FNDH configured, it is now online with all PDoC ports mapped.')
                 else:
                     self.logger.error('Error starting up FNDH')
         else:
             self.logger.error('Error calling poll_data() for FNDH')
+            self.status = 'ERROR'
+            self.active = None
+
+        if not self.active:
+            return    # If we're not online, don't bother polling the smartboxes
 
         # Next, grab all the data from all possible SMARTboxes, to keep comms restricted to a short time window
         for sadd in range(1, 26):  # Poll one SMARTbox known to not exist, so we know if the code can handle a dead box.
@@ -300,7 +334,6 @@ class Station(object):
                 for p in self.fndh.ports.values():
                     p.locally_forced_off = True
                     send_portstate = True
-
         if send_portstate:
             self.fndh.write_portconfig(write_to=True)
 
@@ -312,7 +345,7 @@ class Station(object):
                     self.logger.warning('SMARTbox %d has status %d (%s)' % (sadd, smb.statuscode, smb.status))
 
                 if smb.statuscode == smartbox.STATUS_UNINITIALISED:  # UNINITIALISED
-                    ok = smb.configure()    # In a real setting, pass in static configuration data from config file or database
+                    ok = smb.configure(portconfig=self.portconfig_smartboxes.get(sadd, None))    # In a real setting, pass in static configuration data from config file or database
                     if ok:
                         self.logger.info('SMARTbox %d configured, it is now online' % sadd)
                     else:

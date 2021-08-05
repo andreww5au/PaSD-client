@@ -508,17 +508,9 @@ class SMARTbox(transport.ModbusDevice):
         self.indicator_state = 'UNKNOWN'   # LED status string, obtained from LED_CODES
         self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
         self.pdoc_number = None   # Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
-        try:
-            # JSON structure containing the analog threshold values for each port on this SMARTbox
-            self.thresholds = json.load(open(THRESHOLD_FILENAME, 'r'))
-        except Exception:
-            self.thresholds = None
-        try:
-            # JSON structure containing the port configuration (desired online and offline power state) for each port
-            allports = json.load(open(PORTCONFIG_FILENAME, 'r'))
-            self.portconfig = allports[str(self.modbus_address)]
-        except Exception:
-            self.portconfig = None
+
+        self.thresholds = None   # Set in the .configure() method - a dict with threshold values for each sensor register
+        self.portconfig = None   # Set in the .configure() method - a dict with [desire_enabled_online, desire_enabled_offline] for each port
 
         self.ports = {}  # A dictionary with port number (1-12) as the key, and instances of PortStatus() as values.
         for pnum in range(1, 13):
@@ -755,9 +747,23 @@ class SMARTbox(transport.ModbusDevice):
         """
         if thresholds:
             self.thresholds = thresholds
+        else:
+            if not self.thresholds:
+                try:
+                    # JSON structure containing the analog threshold values for each port on this SMARTbox
+                    self.thresholds = json.load(open(THRESHOLD_FILENAME, 'r'))
+                except Exception:
+                    self.thresholds = None
 
         if portconfig:
             self.portconfig = portconfig
+        else:
+            if not self.portconfig:
+                try:
+                    # JSON structure containing the port configuration (desired online and offline power state) for each port
+                    self.portconfig = json.load(open(PORTCONFIG_FILENAME, 'r'))
+                except Exception:
+                    self.portconfig = None
 
         if not self.register_map:
             self.logger.error('No register map, call poll_data() first')
