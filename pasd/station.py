@@ -124,6 +124,7 @@ class Station(object):
         self.servicelog_desired_antenna = None  # Specifies a single physical antenna (1-256), or 0/None
         self.servicelog_desired_chipid = None  # Specifies a single physical SMARTbox or FNDH unique serial number, or None.
         self.servicelog_desired_lognum = 0  # 0/None for the most recent log message, or larger numbers for older messages.
+        self.wants_exit = False   # Set to True to make the control loop exit
         
         if logger is None:
             self.logger = logging.getLogger('S')
@@ -500,7 +501,7 @@ class Station(object):
         Runs forever, polling the FNDH and SMARTboxes once a minute (as a Modbus master), and spending the rest of the time
         acting as a Modbus slave, waiting for commands from a technician's SID.
         """
-        while True:
+        while not self.wants_exit:
             self.poll_data()
             self.listen(maxtime=60)
 
