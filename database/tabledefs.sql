@@ -244,10 +244,10 @@ CREATE INDEX fndh_port_status_smartbox_number on fndh_port_status (smartbox_numb
 CREATE TABLE stations (
     -- Status values pushed by the station daemon
     station_id integer,                         -- Station ID
-    online boolean,                             -- True if the station is 'ON', with PDoC's powered up
+    active boolean,                             -- True if the station is 'ON', with PDoC's powered up
     status text,                                -- 'OK', 'STARTUP', 'SHUTDOWN' or 'OFF'
     status_timestamp timestamp with time zone,  -- When the status data was read from the station daemon
 
     -- Values to be written, and acted on by the station daemon
-    desired_online boolean                      -- True if the MCCS wants this station powered up
+    desired_active boolean                      -- True if the MCCS wants this station powered up
 )

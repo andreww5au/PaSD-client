@@ -12,6 +12,7 @@ import datetime
 from datetime import timezone
 import logging
 import sys
+import time
 
 import psycopg2
 from psycopg2 import extras
@@ -59,6 +60,12 @@ UPDATE smartbox_port_status
         current_draw_timestamp = %(current_timestamp)s
     WHERE (station_id = %(station_id)s) AND (smartbox_number = %(modbus_address)s) AND (port_number = %(port_number)s)
 """
+
+
+LAST_STARTUP_ATTEMPT_TIME = 0   # Timestamp for the last time we tried to start up the station
+STARTUP_RETRY_INTERVAL = 600    # If the station isn't active, but is meant to be, wait this long before retrying startup
+LAST_SHUTDOWN_ATTEMPT_TIME = 0   # Timestamp for the last time we tried to shut down the station
+SHUTDOWN_RETRY_INTERVAL = 600    # If the station is active, but isnt meant to be, wait this long before retrying shutdown
 
 
 def initialise_db(db, stn):
@@ -166,7 +173,7 @@ def get_antenna_map(db, station_number=DEFAULT_STATION_NUMBER):
     The returned dict has smartbox address (1-24) as key. The values are dicts with port number (1-12) as key,
     and antenna number (1-256) as value (or None). All 288 possible smartbox ports must be in the antenna map.
 
-    :params db: Database connection object
+    :param db: Database connection object
     :param station_number: Station ID (1-9999)
     :return: Antenna map (dict of dicts)
     """
@@ -239,13 +246,37 @@ def get_all_port_configs(db, station_number=DEFAULT_STATION_NUMBER):
     return fndhpc, sbpc
 
 
+def update_station_state(db, stn):
+    """
+    Write the current station state (stn.active, stn.status, etc) to the 'stations' table in the database.
+
+    :param db:  Database connection object
+    :param stn: An instance of station.Station()
+    :return: The current value of the desired_active row in the stations table entry for this station.
+    """
+    query = "UPDATE stations SET active = %s, status = %s, status_timestamp = %s WHERE station_id = %s"
+    with db:
+        with db.cursor() as curs:
+            curs.execute(query, (stn.active. stn.status, datetime.datetime.now(timezone.utc), stn.station_id))
+            curs.execute("SELECT desired_active FROM stations WHERE station_id = %s", (stn.station_id,))
+            rows = curs.fetchall()
+            if len(rows) > 1:
+                stn.logger.critical('Multiple records in stations table for station ID=%d' % (stn.station_id))
+                sys.exit()
+            else:
+                desired_active = rows[0][0]
+
+    return desired_active
+
+
 def main_loop(db, stn):
     """
     Run forever in a loop
       -Query the field hardware to get all the current sensor and port parameters and update the instance data
       -Use the instance data to update the database sensor and port parameters
       -Query the database to look for commanded changes in station or port state
-      -Write the commanded state data to the field hardware
+      -Write the commanded state data to the field hardware if it's different
+      -Query the stations table to see if we're meant to start up, or shut down
 
     :param db: Database connection object
     :param stn: An instance of station.Station()
@@ -256,7 +287,49 @@ def main_loop(db, stn):
         stn.poll_data()  # If station is not active, only FNDH data can be polled
 
         # Use the instance data to update the database sensor and port parameters
-        query = ""
+        update_db(db, stn=stn)
+
+        # Query the database to see if the desired port config is different to the polled port config
+        fndhpc, sbpc = get_all_port_configs(db, station_number=stn.station_id)
+
+        needs_write = False
+        for pid in stn.fndh.ports.keys():
+            p = stn.fndh.ports[pid]
+            desire_enabled_online, desire_enabled_offline = fndhpc[pid]
+            if (p.desire_enabled_online != desire_enabled_online):
+                p.desire_enabled_online = desire_enabled_online
+                needs_write = True
+            if (p.desire_enabled_offline != desire_enabled_offline):
+                p.desire_enabled_offline = desire_enabled_offline
+                needs_write = True
+        if needs_write:
+            stn.fndh.write_portconfig()
+            time.sleep(1.0)   # Allow time for a smartbox to boot, if it's being turned on here.
+
+        for sid in stn.smartboxes.keys():
+            needs_write = False
+            for pid in stn.smartboxes[sid].ports.keys():
+                p = stn.smartboxes[sid].ports[pid]
+                desire_enabled_online, desire_enabled_offline = sbpc[sid][pid]
+                if (p.desire_enabled_online != desire_enabled_online):
+                    p.desire_enabled_online = desire_enabled_online
+                    needs_write = True
+                if (p.desire_enabled_offline != desire_enabled_offline):
+                    p.desire_enabled_offline = desire_enabled_offline
+                    needs_write = True
+            if needs_write:
+                stn.smartboxes[sid].write_portconfig()
+
+        desired_active = update_station_state(db, stn=stn)
+
+        if ( (desired_active and
+             (not stn.active) and
+             ((time.time() - LAST_STARTUP_ATTEMPT_TIME) > STARTUP_RETRY_INTERVAL)) ):
+            stn.startup()
+        elif ( (not desired_active) and
+               stn.active and
+               ((time.time() - LAST_SHUTDOWN_ATTEMPT_TIME) > SHUTDOWN_RETRY_INTERVAL) ):
+            stn.shutdown()
 
 
 if __name__ == '__main__':
@@ -273,6 +346,8 @@ if __name__ == '__main__':
                         help='Serial port device name, eg /dev/ttyS0 or COM6')
     parser.add_argument('--id', '--station_id', dest='station_id', default=DEFAULT_STATION_NUMBER,
                         help='Station number (1-9999)')
+    parser.add_argument('--debug', dest='debug', default=False, action='store_true',
+                        help='If given, drop to the DEBUG log level, otherwise use INFO')
     args = parser.parse_args()
     if (args.host is None) and (args.device is None):
         args.host = '134.7.50.185'
