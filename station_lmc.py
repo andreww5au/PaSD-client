@@ -81,6 +81,11 @@ def initialise_db(db, stn):
     """
     with db:
         with db.cursor() as curs:
+            curs.execute('SELECT COUNT(*) FROM stations WHERE (station_id = %s)', (stn.station_id,))
+            if curs.fetchone()[0] != 1:  # No rows match, or more than one row matches:
+                curs.execute('DELETE FROM stations WHERE (station_id = %s)', (stn.station_id,))
+                curs.execute('INSERT INTO stations (station_id) VALUES (%s)', (stn.station_id,))
+
             curs.execute('SELECT COUNT(*) FROM fndh_state WHERE (station_id = %s)', (stn.station_id,))
             if curs.fetchone()[0] != 1:   # No rows match, or more than one row matches:
                 curs.execute('DELETE FROM fndh_state WHERE (station_id = %s)', (stn.station_id,))
