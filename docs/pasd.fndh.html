@@ -8,7 +8,7 @@
 <td valign=bottom>&nbsp;<br>
 <font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>fndh</strong></big></big></font></td
 ><td align=right valign=bottom
-><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/andrew/PyDevel/PaSD-client/pasd/fndh.py">/home/andrew/PyDevel/PaSD-client/pasd/fndh.py</a></font></td></tr></table>
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/tmphome/PaSD-Client/pasd/fndh.py">/tmphome/PaSD-Client/pasd/fndh.py</a></font></td></tr></table>
     <p><tt>Classes&nbsp;to&nbsp;handle&nbsp;communications&nbsp;with&nbsp;SKA-Low&nbsp;PaSD&nbsp;'SMARTbox'&nbsp;elements,&nbsp;24&nbsp;of&nbsp;which&nbsp;make<br>
 up&nbsp;an&nbsp;SKA-Low&nbsp;station.<br>
 &nbsp;<br>
@@ -54,7 +54,9 @@ This&nbsp;code&nbsp;runs&nbsp;on&nbsp;the&nbsp;MCCS&nbsp;side&nbsp;in&nbsp;the&n
 <font color="#000000" face="helvetica, arial"><a name="FNDH">class <strong>FNDH</strong></a>(<a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt><a href="#FNDH">FNDH</a>&nbsp;class,&nbsp;an&nbsp;instance&nbsp;of&nbsp;which&nbsp;represents&nbsp;the&nbsp;microcontroller&nbsp;inside&nbsp;the&nbsp;<a href="#FNDH">FNDH</a>&nbsp;in&nbsp;an&nbsp;SKA-Low&nbsp;station,&nbsp;sitting<br>
+<td colspan=2><tt><a href="#FNDH">FNDH</a>(conn=None,&nbsp;modbus_address=None,&nbsp;logger=None)<br>
+&nbsp;<br>
+<a href="#FNDH">FNDH</a>&nbsp;class,&nbsp;an&nbsp;instance&nbsp;of&nbsp;which&nbsp;represents&nbsp;the&nbsp;microcontroller&nbsp;inside&nbsp;the&nbsp;<a href="#FNDH">FNDH</a>&nbsp;in&nbsp;an&nbsp;SKA-Low&nbsp;station,&nbsp;sitting<br>
 (virtually)&nbsp;on&nbsp;the&nbsp;same&nbsp;shared&nbsp;low-speed&nbsp;serial&nbsp;bus&nbsp;used&nbsp;to&nbsp;communicate&nbsp;with&nbsp;the&nbsp;SMARTboxes.<br>
 &nbsp;<br>
 Attributes&nbsp;are:<br>
@@ -62,7 +64,6 @@ modbus_address:&nbsp;Modbus&nbsp;address&nbsp;of&nbsp;the&nbsp;<a href="#FNDH">F
 mbrv:&nbsp;Modbus&nbsp;register-map&nbsp;revision&nbsp;number&nbsp;for&nbsp;this&nbsp;physical&nbsp;<a href="#FNDH">FNDH</a><br>
 pcbrv:&nbsp;PCB&nbsp;revision&nbsp;number&nbsp;for&nbsp;this&nbsp;physical&nbsp;<a href="#FNDH">FNDH</a><br>
 register_map:&nbsp;A&nbsp;dictionary&nbsp;mapping&nbsp;register&nbsp;name&nbsp;to&nbsp;(register_number,&nbsp;number_of_registers,&nbsp;description,&nbsp;scaling_function)&nbsp;tuple<br>
-codes:&nbsp;A&nbsp;dictionary&nbsp;mapping&nbsp;status&nbsp;code&nbsp;integer&nbsp;(eg&nbsp;0)&nbsp;to&nbsp;status&nbsp;code&nbsp;string&nbsp;(eg&nbsp;'OK'),&nbsp;and&nbsp;LED&nbsp;codes&nbsp;to&nbsp;LED&nbsp;flash&nbsp;states<br>
 cpuid:&nbsp;CPU&nbsp;identifier&nbsp;(integer)<br>
 chipid:&nbsp;Unique&nbsp;ID&nbsp;number&nbsp;(16&nbsp;bytes),&nbsp;different&nbsp;for&nbsp;every&nbsp;physical&nbsp;<a href="#FNDH">FNDH</a><br>
 firmware_version:&nbsp;Firmware&nbsp;revision&nbsp;mumber&nbsp;for&nbsp;this&nbsp;physical&nbsp;<a href="#FNDH">FNDH</a><br>
@@ -76,11 +77,11 @@ psu48v_temp:&nbsp;Common&nbsp;temperature&nbsp;for&nbsp;both&nbsp;48VDC&nbsp;pow
 psu5v_temp:&nbsp;Temperature&nbsp;of&nbsp;the&nbsp;5VDC&nbsp;power&nbsp;supply&nbsp;(Volts)<br>
 pcb_temp:&nbsp;Temperature&nbsp;on&nbsp;the&nbsp;internal&nbsp;PCB&nbsp;(deg&nbsp;C)<br>
 outside_temp:&nbsp;Outside&nbsp;temperature&nbsp;(deg&nbsp;C)<br>
-statuscode:&nbsp;Status&nbsp;value,&nbsp;used&nbsp;as&nbsp;a&nbsp;key&nbsp;for&nbsp;self.<strong>codes</strong>['status']&nbsp;(eg&nbsp;0&nbsp;meaning&nbsp;'OK')<br>
-status:&nbsp;Status&nbsp;string,&nbsp;obtained&nbsp;from&nbsp;self.<strong>codes</strong>['status']&nbsp;(eg&nbsp;'OK')<br>
+statuscode:&nbsp;Status&nbsp;value,&nbsp;one&nbsp;of&nbsp;the&nbsp;STATUS_*&nbsp;globals,&nbsp;and&nbsp;used&nbsp;as&nbsp;a&nbsp;key&nbsp;for&nbsp;STATUS_CODES&nbsp;(eg&nbsp;0&nbsp;meaning&nbsp;'OK')<br>
+status:&nbsp;Status&nbsp;string,&nbsp;obtained&nbsp;from&nbsp;STATUS_CODES&nbsp;global&nbsp;(eg&nbsp;'OK')<br>
 service_led:&nbsp;True&nbsp;if&nbsp;the&nbsp;blue&nbsp;service&nbsp;indicator&nbsp;LED&nbsp;is&nbsp;switched&nbsp;ON.<br>
-indicator_code:&nbsp;LED&nbsp;status&nbsp;value,&nbsp;used&nbsp;as&nbsp;a&nbsp;key&nbsp;for&nbsp;self.<strong>codes</strong>['led']<br>
-indicator_state:&nbsp;LED&nbsp;status,&nbsp;obtained&nbsp;from&nbsp;self.<strong>codes</strong>['led']<br>
+indicator_code:&nbsp;LED&nbsp;status&nbsp;value,&nbsp;one&nbsp;of&nbsp;the&nbsp;LED_*&nbsp;globals,&nbsp;and&nbsp;used&nbsp;as&nbsp;a&nbsp;key&nbsp;for&nbsp;LED_CODES<br>
+indicator_state:&nbsp;LED&nbsp;status&nbsp;string,&nbsp;obtained&nbsp;from&nbsp;LED_CODES<br>
 readtime:&nbsp;Unix&nbsp;timestamp&nbsp;for&nbsp;the&nbsp;last&nbsp;successful&nbsp;polled&nbsp;data&nbsp;from&nbsp;this&nbsp;<a href="#FNDH">FNDH</a><br>
 thresholds:&nbsp;JSON&nbsp;structure&nbsp;containing&nbsp;the&nbsp;analog&nbsp;threshold&nbsp;values&nbsp;for&nbsp;each&nbsp;analogue&nbsp;sensor&nbsp;on&nbsp;this&nbsp;<a href="#FNDH">FNDH</a><br>
 portconfig:&nbsp;JSON&nbsp;structure&nbsp;containing&nbsp;the&nbsp;port&nbsp;configuration&nbsp;(desired&nbsp;online&nbsp;and&nbsp;offline&nbsp;power&nbsp;state)&nbsp;for&nbsp;each&nbsp;port<br>
@@ -132,8 +133,16 @@ which&nbsp;SMARTbox&nbsp;is&nbsp;connected&nbsp;to&nbsp;which&nbsp;PDoC&nbsp;por
 &nbsp;<br>
 :return:True&nbsp;for&nbsp;success,&nbsp;None&nbsp;if&nbsp;there&nbsp;were&nbsp;any&nbsp;errors.</tt></dd></dl>
 
-<dl><dt><a name="FNDH-write_portconfig"><strong>write_portconfig</strong></a>(self)</dt><dd><tt>Write&nbsp;the&nbsp;current&nbsp;instance&nbsp;data&nbsp;for&nbsp;'desired&nbsp;port&nbsp;state&nbsp;online'&nbsp;and&nbsp;'desired&nbsp;port&nbsp;state&nbsp;offline'&nbsp;in&nbsp;each&nbsp;of<br>
-the&nbsp;port&nbsp;status&nbsp;objects,&nbsp;to&nbsp;the&nbsp;<a href="#FNDH">FNDH</a>.<br>
+<dl><dt><a name="FNDH-write_portconfig"><strong>write_portconfig</strong></a>(self, write_state=True, write_to=False, write_breaker=False)</dt><dd><tt>Write&nbsp;the&nbsp;current&nbsp;instance&nbsp;data&nbsp;for&nbsp;all&nbsp;of&nbsp;the&nbsp;ports&nbsp;to&nbsp;the&nbsp;<a href="#FNDH">FNDH</a>.<br>
+&nbsp;<br>
+If&nbsp;'write_state'&nbsp;is&nbsp;True,&nbsp;then&nbsp;the&nbsp;'desired_state_online'&nbsp;and&nbsp;'desired_state_offline'&nbsp;will&nbsp;have&nbsp;bitfields<br>
+corresponding&nbsp;to&nbsp;the&nbsp;current&nbsp;instance&nbsp;data,&nbsp;otherwise&nbsp;they&nbsp;will&nbsp;contain&nbsp;'00'&nbsp;(meaning&nbsp;'do&nbsp;not&nbsp;overwrite').<br>
+&nbsp;<br>
+If&nbsp;'write_to'&nbsp;is&nbsp;True,&nbsp;then&nbsp;the&nbsp;'technicians&nbsp;override'&nbsp;bits&nbsp;will&nbsp;have&nbsp;bitfields&nbsp;corresponding&nbsp;to&nbsp;the<br>
+current&nbsp;instance&nbsp;data&nbsp;(locally_forced_on&nbsp;and&nbsp;locally_forced_off),&nbsp;otherwise&nbsp;they&nbsp;will&nbsp;contain&nbsp;'00'<br>
+&nbsp;<br>
+If&nbsp;'write_breaker'&nbsp;is&nbsp;True,&nbsp;then&nbsp;the&nbsp;bit&nbsp;corresponding&nbsp;to&nbsp;the&nbsp;'reset&nbsp;breaker'&nbsp;action&nbsp;will&nbsp;be&nbsp;1,&nbsp;otherwise<br>
+it&nbsp;will&nbsp;contain&nbsp;0&nbsp;(do&nbsp;not&nbsp;reset&nbsp;the&nbsp;breaker).<br>
 &nbsp;<br>
 :return:&nbsp;True&nbsp;if&nbsp;successful,&nbsp;False&nbsp;on&nbsp;failure</tt></dd></dl>
 
@@ -156,7 +165,9 @@ Data descriptors inherited from <a href="pasd.transport.html#ModbusDevice">pasd.
 <font color="#000000" face="helvetica, arial"><a name="PdocStatus">class <strong>PdocStatus</strong></a>(<a href="pasd.smartbox.html#PortStatus">pasd.smartbox.PortStatus</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt><a href="#FNDH">FNDH</a>&nbsp;PDoC&nbsp;port&nbsp;status&nbsp;instance,&nbsp;representing&nbsp;one&nbsp;of&nbsp;the&nbsp;28&nbsp;FEM&nbsp;PDoC&nbsp;ports&nbsp;that&nbsp;supply&nbsp;48VDC&nbsp;and<br>
+<td colspan=2><tt><a href="#PdocStatus">PdocStatus</a>(port_number,&nbsp;modbus_address,&nbsp;status_bitmap,&nbsp;read_timestamp,&nbsp;logger=None)<br>
+&nbsp;<br>
+<a href="#FNDH">FNDH</a>&nbsp;PDoC&nbsp;port&nbsp;status&nbsp;instance,&nbsp;representing&nbsp;one&nbsp;of&nbsp;the&nbsp;28&nbsp;FEM&nbsp;PDoC&nbsp;ports&nbsp;that&nbsp;supply&nbsp;48VDC&nbsp;and<br>
 serial&nbsp;comms&nbsp;to&nbsp;SMARTboxes&nbsp;in&nbsp;the&nbsp;field,&nbsp;making&nbsp;up&nbsp;a&nbsp;station.<br>
 &nbsp;<br>
 Some&nbsp;of&nbsp;the&nbsp;attributes&nbsp;inherited&nbsp;from&nbsp;the&nbsp;smartbox.<a href="pasd.smartbox.html#PortStatus">PortStatus</a>&nbsp;class&nbsp;are&nbsp;unused&nbsp;here,&nbsp;for&nbsp;PDoC&nbsp;port&nbsp;status<br>
@@ -251,12 +262,39 @@ Data descriptors inherited from <a href="pasd.smartbox.html#PortStatus">pasd.sma
 <font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
     
 <tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
-<td width="100%"><strong>FNDH_CODES</strong> = {1: {'leds': {'fromid': {0: 'OFF', 1: 'GREEN', 2: 'RED', 3: 'YELLOW'}, 'fromname': {'GREEN': 1, 'OFF': 0, 'RED': 2, 'YELLOW': 3}}, 'status': {'fromid': {0: 'UNINITIALISED', 1: 'OK', 2: 'ALARM', 3: 'WARNING', 4: 'RECOVERY'}, 'fromname': {'ALARM': 2, 'OK': 1, 'RECOVERY': 4, 'UNINITIALISED': 0, 'WARNING': 3}}}}<br>
-<strong>FNDH_CODES_1</strong> = {'leds': {'fromid': {0: 'OFF', 1: 'GREEN', 2: 'RED', 3: 'YELLOW'}, 'fromname': {'GREEN': 1, 'OFF': 0, 'RED': 2, 'YELLOW': 3}}, 'status': {'fromid': {0: 'UNINITIALISED', 1: 'OK', 2: 'ALARM', 3: 'WARNING', 4: 'RECOVERY'}, 'fromname': {'ALARM': 2, 'OK': 1, 'RECOVERY': 4, 'UNINITIALISED': 0, 'WARNING': 3}}}<br>
-<strong>FNDH_CONF_REGS_1</strong> = {'SYS_48V1_V': (1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V2_V': (1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V_I': (1013, 4, '48V PSU output current AH, WH, WL, AL', &lt;function scale_48vcurrent&gt;), 'SYS_48V_TEMP': (1017, 4, '48V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_TEMP': (1021, 4, '5V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_V': (1009, 4, '5V PSU output voltage AH, WH, WL, AL', &lt;function scale_5v&gt;), 'SYS_OUTTEMP_TH': (1029, 4, 'Outside temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_PCBTEMP_TH': (1025, 4, 'PCB temperature AH, WH, WL, AL', &lt;function scale_temp&gt;)}<br>
+<td width="100%"><strong>FNDH_CONF_REGS_1</strong> = {'SYS_48V1_V_TH': (1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V2_V_TH': (1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V_I_TH': (1013, 4, '48V PSU output current AH, WH, WL, AL', &lt;function scale_48vcurrent&gt;), 'SYS_48V_TEMP_TH': (1017, 4, '48V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_TEMP_TH': (1021, 4, '5V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_V_TH': (1009, 4, '5V PSU output voltage AH, WH, WL, AL', &lt;function scale_5v&gt;), 'SYS_OUTTEMP_TH': (1029, 4, 'Outside temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_PCBTEMP_TH': (1025, 4, 'PCB temperature AH, WH, WL, AL', &lt;function scale_temp&gt;)}<br>
 <strong>FNDH_POLL_REGS_1</strong> = {'P01_STATE': (27, 1, 'Port 01 state bitmap (r/w)', None), 'P02_STATE': (28, 1, 'Port 02 state bitmap (r/w)', None), 'P03_STATE': (29, 1, 'Port 03 state bitmap (r/w)', None), 'P04_STATE': (30, 1, 'Port 04 state bitmap (r/w)', None), 'P05_STATE': (31, 1, 'Port 05 state bitmap (r/w)', None), 'P06_STATE': (32, 1, 'Port 06 state bitmap (r/w)', None), 'P07_STATE': (33, 1, 'Port 07 state bitmap (r/w)', None), 'P08_STATE': (34, 1, 'Port 08 state bitmap (r/w)', None), 'P09_STATE': (35, 1, 'Port 09 state bitmap (r/w)', None), 'P10_STATE': (36, 1, 'Port 10 state bitmap (r/w)', None), ...}<br>
-<strong>FNDH_REGISTERS</strong> = {1: {'CONF': {'SYS_48V1_V': (1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V2_V': (1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V_I': (1013, 4, '48V PSU output current AH, WH, WL, AL', &lt;function scale_48vcurrent&gt;), 'SYS_48V_TEMP': (1017, 4, '48V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_TEMP': (1021, 4, '5V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_V': (1009, 4, '5V PSU output voltage AH, WH, WL, AL', &lt;function scale_5v&gt;), 'SYS_OUTTEMP_TH': (1029, 4, 'Outside temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_PCBTEMP_TH': (1025, 4, 'PCB temperature AH, WH, WL, AL', &lt;function scale_temp&gt;)}, 'POLL': {'P01_STATE': (27, 1, 'Port 01 state bitmap (r/w)', None), 'P02_STATE': (28, 1, 'Port 02 state bitmap (r/w)', None), 'P03_STATE': (29, 1, 'Port 03 state bitmap (r/w)', None), 'P04_STATE': (30, 1, 'Port 04 state bitmap (r/w)', None), 'P05_STATE': (31, 1, 'Port 05 state bitmap (r/w)', None), 'P06_STATE': (32, 1, 'Port 06 state bitmap (r/w)', None), 'P07_STATE': (33, 1, 'Port 07 state bitmap (r/w)', None), 'P08_STATE': (34, 1, 'Port 08 state bitmap (r/w)', None), 'P09_STATE': (35, 1, 'Port 09 state bitmap (r/w)', None), 'P10_STATE': (36, 1, 'Port 10 state bitmap (r/w)', None), ...}}}<br>
+<strong>FNDH_REGISTERS</strong> = {1: {'CONF': {'SYS_48V1_V_TH': (1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V2_V_TH': (1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V_I_TH': (1013, 4, '48V PSU output current AH, WH, WL, AL', &lt;function scale_48vcurrent&gt;), 'SYS_48V_TEMP_TH': (1017, 4, '48V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_TEMP_TH': (1021, 4, '5V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_V_TH': (1009, 4, '5V PSU output voltage AH, WH, WL, AL', &lt;function scale_5v&gt;), 'SYS_OUTTEMP_TH': (1029, 4, 'Outside temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_PCBTEMP_TH': (1025, 4, 'PCB temperature AH, WH, WL, AL', &lt;function scale_temp&gt;)}, 'POLL': {'P01_STATE': (27, 1, 'Port 01 state bitmap (r/w)', None), 'P02_STATE': (28, 1, 'Port 02 state bitmap (r/w)', None), 'P03_STATE': (29, 1, 'Port 03 state bitmap (r/w)', None), 'P04_STATE': (30, 1, 'Port 04 state bitmap (r/w)', None), 'P05_STATE': (31, 1, 'Port 05 state bitmap (r/w)', None), 'P06_STATE': (32, 1, 'Port 06 state bitmap (r/w)', None), 'P07_STATE': (33, 1, 'Port 07 state bitmap (r/w)', None), 'P08_STATE': (34, 1, 'Port 08 state bitmap (r/w)', None), 'P09_STATE': (35, 1, 'Port 09 state bitmap (r/w)', None), 'P10_STATE': (36, 1, 'Port 10 state bitmap (r/w)', None), ...}}}<br>
+<strong>LED_CODES</strong> = {-1: 'UKNOWN', 0: 'OFF', 10: 'GREEN', 11: 'GREENSLOW', 12: 'GREENFAST', 13: 'GREENVFAST', 14: 'GREENDOTDASH', 20: 'YELLOW', 21: 'YELLOWSLOW', 22: 'YELLOWFAST', ...}<br>
+<strong>LED_GREEN</strong> = 10<br>
+<strong>LED_GREENDOTDASH</strong> = 14<br>
+<strong>LED_GREENFAST</strong> = 12<br>
+<strong>LED_GREENRED</strong> = 50<br>
+<strong>LED_GREENSLOW</strong> = 11<br>
+<strong>LED_GREENVFAST</strong> = 13<br>
+<strong>LED_OFF</strong> = 0<br>
+<strong>LED_RED</strong> = 30<br>
+<strong>LED_REDDOTDASH</strong> = 34<br>
+<strong>LED_REDFAST</strong> = 32<br>
+<strong>LED_REDSLOW</strong> = 31<br>
+<strong>LED_REDVFAST</strong> = 33<br>
+<strong>LED_UNKNOWN</strong> = -1<br>
+<strong>LED_YELLOW</strong> = 20<br>
+<strong>LED_YELLOWDOTDASH</strong> = 24<br>
+<strong>LED_YELLOWFAST</strong> = 22<br>
+<strong>LED_YELLOWRED</strong> = 40<br>
+<strong>LED_YELLOWREDSLOW</strong> = 41<br>
+<strong>LED_YELLOWSLOW</strong> = 21<br>
+<strong>LED_YELLOWVFAST</strong> = 23<br>
 <strong>PORTCONFIG_FILENAME</strong> = 'pasd/fndh_ports.json'<br>
+<strong>STATUS_ALARM</strong> = 2<br>
+<strong>STATUS_CODES</strong> = {-1: 'STATUS_UNKNOWN', 0: 'STATUS_OK', 1: 'STATUS_WARNING', 2: 'STATUS_ALARM', 3: 'STATUS_RECOVERY', 4: 'STATUS_UNINITIALISED', 5: 'STATUS_POWERUP'}<br>
+<strong>STATUS_OK</strong> = 0<br>
+<strong>STATUS_POWERUP</strong> = 5<br>
+<strong>STATUS_RECOVERY</strong> = 3<br>
 <strong>STATUS_STRING</strong> = 'FNDH at address: %(modbus_address)s:<font color="#c040c0">\n</font>    ModBUS ...icator: %(indicator_code)s (%(indicator_state)s)<font color="#c040c0">\n</font>'<br>
+<strong>STATUS_UNINITIALISED</strong> = 4<br>
+<strong>STATUS_UNKNOWN</strong> = -1<br>
+<strong>STATUS_WARNING</strong> = 1<br>
 <strong>THRESHOLD_FILENAME</strong> = 'pasd/fndh_thresholds.json'</td></tr></table>
 </body></html>

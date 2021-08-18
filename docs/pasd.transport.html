@@ -8,7 +8,7 @@
 <td valign=bottom>&nbsp;<br>
 <font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>transport</strong></big></big></font></td
 ><td align=right valign=bottom
-><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/andrew/PyDevel/PaSD-client/pasd/transport.py">/home/andrew/PyDevel/PaSD-client/pasd/transport.py</a></font></td></tr></table>
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/tmphome/PaSD-Client/pasd/transport.py">/tmphome/PaSD-Client/pasd/transport.py</a></font></td></tr></table>
     <p><tt>Classes&nbsp;to&nbsp;handle&nbsp;communications&nbsp;with&nbsp;remote&nbsp;devices&nbsp;using&nbsp;Modbus-RTU,&nbsp;either&nbsp;directly&nbsp;via&nbsp;serial&nbsp;port,&nbsp;over&nbsp;an<br>
 ethernet-serial&nbsp;bridge&nbsp;(found&nbsp;in&nbsp;every&nbsp;FNDH),&nbsp;or&nbsp;via&nbsp;a&nbsp;simulated&nbsp;multi-drop&nbsp;shared&nbsp;serial&nbsp;bus&nbsp;to&nbsp;other&nbsp;threads&nbsp;using<br>
 the&nbsp;same&nbsp;<a href="#Connection">Connection</a>&nbsp;instance.<br>
@@ -55,7 +55,9 @@ holding&nbsp;register&nbsp;set&nbsp;(40000-49999).</tt></p>
 <font color="#000000" face="helvetica, arial"><a name="Connection">class <strong>Connection</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt>Class&nbsp;to&nbsp;handle&nbsp;Modbus&nbsp;communications&nbsp;between&nbsp;the&nbsp;MCCS&nbsp;and&nbsp;Modbus-RTU&nbsp;devices&nbsp;connected&nbsp;via&nbsp;an&nbsp;ethernet&nbsp;to&nbsp;serial<br>
+<td colspan=2><tt><a href="#Connection">Connection</a>(hostname=None,&nbsp;devicename=None,&nbsp;port=5000,&nbsp;baudrate=9600,&nbsp;multidrop=False,&nbsp;logger=None)<br>
+&nbsp;<br>
+Class&nbsp;to&nbsp;handle&nbsp;Modbus&nbsp;communications&nbsp;between&nbsp;the&nbsp;MCCS&nbsp;and&nbsp;Modbus-RTU&nbsp;devices&nbsp;connected&nbsp;via&nbsp;an&nbsp;ethernet&nbsp;to&nbsp;serial<br>
 bridge,&nbsp;or&nbsp;directly&nbsp;via&nbsp;a&nbsp;serial&nbsp;port.&nbsp;One&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;handles&nbsp;all&nbsp;communications&nbsp;for&nbsp;an&nbsp;entire&nbsp;station.<br>
 &nbsp;<br>
 An&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;is&nbsp;thread-safe&nbsp;-&nbsp;it&nbsp;can&nbsp;be&nbsp;shared&nbsp;between&nbsp;threads,&nbsp;and&nbsp;an&nbsp;internal&nbsp;lock&nbsp;prevents&nbsp;resource<br>
@@ -95,7 +97,7 @@ the&nbsp;first&nbsp;'nbytes'&nbsp;of&nbsp;characters&nbsp;are&nbsp;removed&nbsp;
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;remote&nbsp;device,&nbsp;if&nbsp;specified.<br>
 :param&nbsp;logger:&nbsp;A&nbsp;logging.Logger&nbsp;<a href="builtins.html#object">object</a>&nbsp;to&nbsp;use&nbsp;for&nbsp;all&nbsp;log&nbsp;messages,&nbsp;or&nbsp;None&nbsp;(in&nbsp;which&nbsp;case&nbsp;one&nbsp;will&nbsp;be&nbsp;created)</tt></dd></dl>
 
-<dl><dt><a name="Connection-listen_for_packet"><strong>listen_for_packet</strong></a>(self, listen_address, slave_registers, maxtime=10.0, validation_function=&lt;function dummy_validate at 0x7fdc858f0730&gt;)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;an&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packet&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;a&nbsp;technician<br>
+<dl><dt><a name="Connection-listen_for_packet"><strong>listen_for_packet</strong></a>(self, listen_address, slave_registers, maxtime=10.0, validation_function=&lt;function dummy_validate at 0x7fda700dda60&gt;)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;an&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packet&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;a&nbsp;technician<br>
 in&nbsp;the&nbsp;field).&nbsp;Handle&nbsp;one&nbsp;read/write&nbsp;register&nbsp;call&nbsp;by&nbsp;sending&nbsp;or&nbsp;modifying&nbsp;the&nbsp;contents&nbsp;of&nbsp;the&nbsp;registers&nbsp;passed<br>
 in&nbsp;the&nbsp;'slave_registers'&nbsp;dictionary.&nbsp;Exit&nbsp;after&nbsp;'maxtime'&nbsp;seconds,&nbsp;or&nbsp;after&nbsp;processing&nbsp;one&nbsp;valid&nbsp;packet,&nbsp;whichever<br>
 comes&nbsp;first.&nbsp;Note&nbsp;that&nbsp;if&nbsp;a&nbsp;packet&nbsp;results&nbsp;in&nbsp;an&nbsp;exception&nbsp;reply&nbsp;(invalid&nbsp;register&nbsp;number,&nbsp;invlaid&nbsp;data,&nbsp;etc),<br>
@@ -168,7 +170,9 @@ Data descriptors defined here:<br>
 <font color="#000000" face="helvetica, arial"><a name="ModbusDevice">class <strong>ModbusDevice</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt>Generic&nbsp;parent&nbsp;class&nbsp;for&nbsp;all&nbsp;modbus&nbsp;slaves&nbsp;that&nbsp;the&nbsp;MCCS&nbsp;can&nbsp;communicate&nbsp;with.<br>
+<td colspan=2><tt><a href="#ModbusDevice">ModbusDevice</a>(conn=None,&nbsp;modbus_address=None,&nbsp;logger=None)<br>
+&nbsp;<br>
+Generic&nbsp;parent&nbsp;class&nbsp;for&nbsp;all&nbsp;modbus&nbsp;slaves&nbsp;that&nbsp;the&nbsp;MCCS&nbsp;can&nbsp;communicate&nbsp;with.<br>
 &nbsp;<br>
 Child&nbsp;objects&nbsp;will&nbsp;be&nbsp;SMARTbox&nbsp;units&nbsp;themselves,&nbsp;and&nbsp;the&nbsp;FNDH&nbsp;controller.<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>

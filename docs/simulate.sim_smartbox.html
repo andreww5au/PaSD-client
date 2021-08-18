@@ -8,7 +8,7 @@
 <td valign=bottom>&nbsp;<br>
 <font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>sim_smartbox</strong></big></big></font></td
 ><td align=right valign=bottom
-><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/andrew/PyDevel/PaSD-client/simulate/sim_smartbox.py">/home/andrew/PyDevel/PaSD-client/simulate/sim_smartbox.py</a></font></td></tr></table>
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/tmphome/PaSD-Client/simulate/sim_smartbox.py">/tmphome/PaSD-Client/simulate/sim_smartbox.py</a></font></td></tr></table>
     <p><tt>Simulates&nbsp;a&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a>,&nbsp;acting&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;slave&nbsp;and&nbsp;responding&nbsp;to&nbsp;0x03,&nbsp;0x06&nbsp;and&nbsp;0x10&nbsp;Modbus&nbsp;commands<br>
 to&nbsp;read&nbsp;and&nbsp;write&nbsp;registers.&nbsp;Used&nbsp;for&nbsp;testing&nbsp;PaSD&nbsp;code.</tt></p>
 <p>
@@ -19,10 +19,11 @@ to&nbsp;read&nbsp;and&nbsp;write&nbsp;registers.&nbsp;Used&nbsp;for&nbsp;testing
     
 <tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
 <td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="logging.html">logging</a><br>
+<a href="random.html">random</a><br>
 </td><td width="25%" valign=top><a href="pasd.smartbox.html">pasd.smartbox</a><br>
-</td><td width="25%" valign=top><a href="threading.html">threading</a><br>
+<a href="threading.html">threading</a><br>
 </td><td width="25%" valign=top><a href="time.html">time</a><br>
-</td></tr></table></td></tr></table><p>
+</td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#ee77aa">
 <td colspan=3 valign=bottom>&nbsp;<br>
@@ -44,7 +45,9 @@ to&nbsp;read&nbsp;and&nbsp;write&nbsp;registers.&nbsp;Used&nbsp;for&nbsp;testing
 <font color="#000000" face="helvetica, arial"><a name="SimSMARTbox">class <strong>SimSMARTbox</strong></a>(<a href="pasd.smartbox.html#SMARTbox">pasd.smartbox.SMARTbox</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt>An&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;simulates&nbsp;a&nbsp;single&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a>,&nbsp;acting&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;slave&nbsp;and&nbsp;responding&nbsp;to&nbsp;0x03,&nbsp;0x06&nbsp;and<br>
+<td colspan=2><tt><a href="#SimSMARTbox">SimSMARTbox</a>(conn=None,&nbsp;modbus_address=None,&nbsp;logger=None)<br>
+&nbsp;<br>
+An&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;simulates&nbsp;a&nbsp;single&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a>,&nbsp;acting&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;slave&nbsp;and&nbsp;responding&nbsp;to&nbsp;0x03,&nbsp;0x06&nbsp;and<br>
 0x10&nbsp;Modbus&nbsp;commands&nbsp;to&nbsp;read&nbsp;and&nbsp;write&nbsp;registers.<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%"><dl><dt>Method resolution order:</dt>
@@ -64,7 +67,19 @@ data&nbsp;structures.<br>
 :param&nbsp;conn:&nbsp;An&nbsp;instance&nbsp;of&nbsp;transport.Connection()&nbsp;defining&nbsp;a&nbsp;connection&nbsp;to&nbsp;an&nbsp;FNDH<br>
 :param&nbsp;modbus_address:&nbsp;The&nbsp;modbus&nbsp;station&nbsp;address&nbsp;(1-30)&nbsp;for&nbsp;this&nbsp;physical&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a></tt></dd></dl>
 
+<dl><dt><a name="SimSMARTbox-__str__"><strong>__str__</strong></a>(self)</dt><dd><tt>Return&nbsp;str(self).</tt></dd></dl>
+
 <dl><dt><a name="SimSMARTbox-configure"><strong>configure</strong></a>(self, thresholds=None, portconfig=None)</dt><dd><tt>Stub,&nbsp;not&nbsp;needed&nbsp;for&nbsp;simulated&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a></tt></dd></dl>
+
+<dl><dt><a name="SimSMARTbox-handle_register_writes"><strong>handle_register_writes</strong></a>(self, slave_registers, written_set)</dt><dd><tt>Take&nbsp;the&nbsp;modified&nbsp;temporary&nbsp;slave_registers&nbsp;dictionary,&nbsp;and&nbsp;the&nbsp;set&nbsp;of&nbsp;register&nbsp;numbers&nbsp;that&nbsp;were&nbsp;modified&nbsp;by<br>
+the&nbsp;packet,&nbsp;and&nbsp;update&nbsp;the&nbsp;local&nbsp;instance&nbsp;attributes.<br>
+&nbsp;<br>
+Note&nbsp;that&nbsp;writes&nbsp;to&nbsp;many&nbsp;registers&nbsp;are&nbsp;ignored&nbsp;by&nbsp;the&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a>,&nbsp;as&nbsp;the&nbsp;data&nbsp;is&nbsp;read-only,&nbsp;so&nbsp;this&nbsp;function<br>
+only&nbsp;needs&nbsp;to&nbsp;handle&nbsp;changes&nbsp;to&nbsp;registers&nbsp;that&nbsp;are&nbsp;R/W.<br>
+&nbsp;<br>
+:param&nbsp;slave_registers:&nbsp;Dictionary,&nbsp;with&nbsp;register&nbsp;number&nbsp;as&nbsp;the&nbsp;key&nbsp;and&nbsp;register&nbsp;contents&nbsp;as&nbsp;the&nbsp;value<br>
+:param&nbsp;written_set:&nbsp;A&nbsp;set()&nbsp;of&nbsp;register&nbsp;numbers&nbsp;that&nbsp;were&nbsp;modified&nbsp;by&nbsp;the&nbsp;most&nbsp;revent&nbsp;packet.<br>
+:return:&nbsp;None</tt></dd></dl>
 
 <dl><dt><a name="SimSMARTbox-listen_loop"><strong>listen_loop</strong></a>(self)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;any&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packets&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;the&nbsp;MCCS).<br>
 &nbsp;<br>
@@ -78,20 +93,28 @@ the&nbsp;same&nbsp;register&nbsp;block&nbsp;returning&nbsp;different&nbsp;values
 4)&nbsp;Uses&nbsp;the&nbsp;list&nbsp;of&nbsp;written&nbsp;registers&nbsp;to&nbsp;update&nbsp;the&nbsp;box&nbsp;state,&nbsp;and&nbsp;update&nbsp;the&nbsp;'heard&nbsp;from&nbsp;MCCS'&nbsp;timestamp.<br>
 5)&nbsp;If&nbsp;any&nbsp;registers&nbsp;are&nbsp;in&nbsp;the&nbsp;'read'&nbsp;list,&nbsp;update&nbsp;the&nbsp;'heard&nbsp;from&nbsp;MCCS'&nbsp;timestamp.<br>
 &nbsp;<br>
-Note&nbsp;that&nbsp;we&nbsp;only&nbsp;traverse&nbsp;around&nbsp;the&nbsp;loop&nbsp;whenever&nbsp;we&nbsp;process&nbsp;an&nbsp;incoming&nbsp;packet<br>
+Note&nbsp;that&nbsp;we&nbsp;traverse&nbsp;around&nbsp;the&nbsp;loop&nbsp;whenever&nbsp;we&nbsp;process&nbsp;an&nbsp;incoming&nbsp;packet,&nbsp;or&nbsp;when&nbsp;waiting&nbsp;for&nbsp;a&nbsp;packet<br>
+times&nbsp;out&nbsp;after&nbsp;around&nbsp;a&nbsp;second.<br>
 &nbsp;<br>
 :return:&nbsp;None</tt></dd></dl>
 
 <dl><dt><a name="SimSMARTbox-loophook"><strong>loophook</strong></a>(self)</dt><dd><tt>Stub,&nbsp;overwrite&nbsp;if&nbsp;you&nbsp;subclass&nbsp;this&nbsp;to&nbsp;handle&nbsp;more&nbsp;complex&nbsp;simulation.&nbsp;Called&nbsp;every&nbsp;time&nbsp;a&nbsp;packet&nbsp;has<br>
 finished&nbsp;processing,&nbsp;or&nbsp;every&nbsp;few&nbsp;seconds&nbsp;if&nbsp;there&nbsp;haven't&nbsp;been&nbsp;any&nbsp;packets.<br>
-:return:</tt></dd></dl>
+&nbsp;<br>
+Don't&nbsp;do&nbsp;anything&nbsp;that&nbsp;takes&nbsp;a&nbsp;long&nbsp;time&nbsp;in&nbsp;here&nbsp;-&nbsp;this&nbsp;is&nbsp;called&nbsp;in&nbsp;the&nbsp;packet&nbsp;handler&nbsp;thread.<br>
+&nbsp;<br>
+:return:&nbsp;None</tt></dd></dl>
 
 <dl><dt><a name="SimSMARTbox-poll_data"><strong>poll_data</strong></a>(self)</dt><dd><tt>Stub,&nbsp;not&nbsp;needed&nbsp;for&nbsp;simulated&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a></tt></dd></dl>
 
 <dl><dt><a name="SimSMARTbox-read_uptime"><strong>read_uptime</strong></a>(self)</dt><dd><tt>Stub,&nbsp;not&nbsp;needed&nbsp;for&nbsp;simulated&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a></tt></dd></dl>
 
-<dl><dt><a name="SimSMARTbox-sim_loop"><strong>sim_loop</strong></a>(self)</dt><dd><tt>Runs&nbsp;continuously,&nbsp;simulating&nbsp;hardware&nbsp;processes&nbsp;independent&nbsp;of&nbsp;the&nbsp;communications&nbsp;packet&nbsp;handler<br>
-:return:</tt></dd></dl>
+<dl><dt><a name="SimSMARTbox-sim_loop"><strong>sim_loop</strong></a>(self)</dt><dd><tt>Runs&nbsp;continuously,&nbsp;simulating&nbsp;hardware&nbsp;processes&nbsp;independent&nbsp;of&nbsp;the&nbsp;communications&nbsp;packet&nbsp;handler.<br>
+&nbsp;<br>
+Starts&nbsp;the&nbsp;Modbus&nbsp;communications&nbsp;handler&nbsp;(receiving&nbsp;and&nbsp;processing&nbsp;packets)&nbsp;in&nbsp;a&nbsp;different&nbsp;thread,&nbsp;so&nbsp;simulation<br>
+actions&nbsp;don't&nbsp;hold&nbsp;up&nbsp;packet&nbsp;handling.<br>
+&nbsp;<br>
+:return:&nbsp;None</tt></dd></dl>
 
 <dl><dt><a name="SimSMARTbox-write_portconfig"><strong>write_portconfig</strong></a>(self)</dt><dd><tt>Stub,&nbsp;not&nbsp;needed&nbsp;for&nbsp;simulated&nbsp;<a href="pasd.smartbox.html#SMARTbox">SMARTbox</a></tt></dd></dl>
 
@@ -101,8 +124,6 @@ finished&nbsp;processing,&nbsp;or&nbsp;every&nbsp;few&nbsp;seconds&nbsp;if&nbsp;
 Methods inherited from <a href="pasd.smartbox.html#SMARTbox">pasd.smartbox.SMARTbox</a>:<br>
 <dl><dt><a name="SimSMARTbox-__repr__"><strong>__repr__</strong></a>(self)</dt><dd><tt>Return&nbsp;repr(self).</tt></dd></dl>
 
-<dl><dt><a name="SimSMARTbox-__str__"><strong>__str__</strong></a>(self)</dt><dd><tt>Return&nbsp;str(self).</tt></dd></dl>
-
 <hr>
 Data descriptors inherited from <a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a>:<br>
 <dl><dt><strong>__dict__</strong></dt>
@@ -111,5 +132,30 @@ Data descriptors inherited from <a href="pasd.transport.html#ModbusDevice">pasd.
 <dl><dt><strong>__weakref__</strong></dt>
 <dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
 </dl>
-</td></tr></table></td></tr></table>
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-random_walk"><strong>random_walk</strong></a>(current_value, mean, scale=1.0, return_bias=0.005)</dt><dd><tt>Take&nbsp;the&nbsp;current&nbsp;and&nbsp;desired&nbsp;mean&nbsp;values&nbsp;of&nbsp;a&nbsp;simulated&nbsp;sensor&nbsp;value,&nbsp;and&nbsp;generate&nbsp;the&nbsp;next&nbsp;value,<br>
+to&nbsp;simulate&nbsp;a&nbsp;random&nbsp;walk&nbsp;around&nbsp;the&nbsp;mean&nbsp;value,&nbsp;with&nbsp;a&nbsp;bias&nbsp;towards&nbsp;returning&nbsp;to&nbsp;the&nbsp;mean.<br>
+&nbsp;<br>
+With&nbsp;scale=1.0,&nbsp;typical&nbsp;variation&nbsp;over&nbsp;1000&nbsp;samples&nbsp;is&nbsp;roughly&nbsp;+/-&nbsp;2.0<br>
+&nbsp;<br>
+:param&nbsp;current_value:&nbsp;Current&nbsp;sensor&nbsp;value,&nbsp;arbitrary&nbsp;units<br>
+:param&nbsp;mean:&nbsp;Desired&nbsp;mean&nbsp;value<br>
+:param&nbsp;scale:&nbsp;Scale&nbsp;factor&nbsp;for&nbsp;variations&nbsp;-&nbsp;a&nbsp;scale&nbsp;of&nbsp;one&nbsp;means&nbsp;random&nbsp;jumps&nbsp;of&nbsp;-1%&nbsp;to&nbsp;+1%&nbsp;every&nbsp;time&nbsp;step<br>
+:param&nbsp;return_bias:&nbsp;Dimensionless&nbsp;factor&nbsp;-&nbsp;must&nbsp;be&nbsp;less&nbsp;than&nbsp;one.&nbsp;Lower&nbsp;values&nbsp;increase&nbsp;long-term&nbsp;variation&nbsp;around&nbsp;the&nbsp;mean<br>
+:return:&nbsp;Next&nbsp;value&nbsp;for&nbsp;the&nbsp;sensor&nbsp;reading</tt></dd></dl>
+</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>RETURN_BIAS</strong> = 0.005<br>
+<strong>STATUS_STRING</strong> = 'Simulated SMARTBox at address: %(modbus_address)...tialised: %(initialised)s<font color="#c040c0">\n</font>    Online: %(online)s<font color="#c040c0">\n</font>'</td></tr></table>
 </body></html>
