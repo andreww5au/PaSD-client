@@ -168,7 +168,7 @@ def update_db(db, stn):
     with db:  # Commit transaction when block exits
         with db.cursor() as curs:
             psycopg2.extras.execute_batch(curs, SMARTBOX_STATE_QUERY, sb_data_list)
-            psycopg2.extras.execute_values(curs, SMARTBOX_PORT_QUERY, sb_ports_data_list)
+            psycopg2.extras.execute_batch(curs, SMARTBOX_PORT_QUERY, sb_ports_data_list)
 
 
 def get_antenna_map(db, station_number=DEFAULT_STATION_NUMBER):
