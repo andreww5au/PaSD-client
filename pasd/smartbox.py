@@ -36,8 +36,6 @@ SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed,
                         'SYS_UPTIME':  (14, 2, 'Uptime in seconds', None),
                         'SYS_ADDRESS': (16, 1, 'MODBUS station ID', None),
 
-                        # TODO - add PDoC port serial number block (4 registers) in here, to be read once on boot, not polled.
-
                         # From here on register address and contents can change between firmware revisions
                         'SYS_48V_V':     (17, 1, 'Incoming 48VDC voltage', conversion.scale_48v),
                         'SYS_PSU_V':     (18, 1, 'PSU output voltage', conversion.scale_5v),
