@@ -15,6 +15,8 @@ if __name__ == '__main__':
                         help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
     parser.add_argument('--device', dest='device', default=None,
                         help='Serial port device name, eg /dev/ttyS0 or COM6')
+    parser.add_argument('--portnum', dest='portnum', default=5000,
+                        help='TCP port number to use')
     parser.add_argument('--address', dest='address', default=None,
                         help='Modbus address (ignored when talking to an entire station)')
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
@@ -44,7 +46,7 @@ if __name__ == '__main__':
     from sid import mccs
 
     tlogger = logging.getLogger('T')
-    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=False, logger=tlogger)
+    conn = transport.Connection(hostname=args.host, devicename=args.device, port=args.portnum, baudrate=19200, multidrop=False, logger=tlogger)
 
     if args.task.upper() == 'SMARTBOX':
         if args.address is None:
