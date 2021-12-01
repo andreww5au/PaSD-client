@@ -327,7 +327,7 @@ class Connection(object):
                     self.logger.debug('%d Nulls removed from %s' % (len(reply_raw) - len(reply), repr(reply)))
                 if (not mstring) and reply and not (reply.startswith(':')):   # Unexpected first character, ignore it and keep reading
                     self.logger.debug('%d: %d bytes: ?"%s"' % (threading.get_ident(), len(reply),
-                                                     reply))
+                                                     repr(reply)))
                     time.sleep(0.001)
                     continue
                 mstring += reply
