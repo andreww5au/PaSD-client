@@ -12,7 +12,7 @@ LOGFILE = 'upload.log'
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Upload new firmware to an FNDH or smartbox')
-    parser.add_argument('filename', nargs='1', help='Intel HEX filename to upload')
+    parser.add_argument('filename', help='Intel HEX filename to upload')
     parser.add_argument('--host', dest='host', default=None,
                         help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
     parser.add_argument('--device', dest='device', default=None,
