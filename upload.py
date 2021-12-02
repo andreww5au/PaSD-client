@@ -17,7 +17,7 @@ if __name__ == '__main__':
                         help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
     parser.add_argument('--device', dest='device', default=None,
                         help='Serial port device name, eg /dev/ttyS0 or COM6')
-    parser.add_argument('--address', dest='address', default=None,
+    parser.add_argument('--address', dest='address', default=0,
                         help='Modbus address')
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
@@ -37,7 +37,7 @@ if __name__ == '__main__':
                         level=logging.DEBUG,
                         format='%(levelname)s:%(name)s %(created)14.3f - %(message)s')
 
-    if args.address is None:
+    if args.address == 0:
         print('Must supply a modbus address to send the new firmware to')
         sys.exit(-1)
 
