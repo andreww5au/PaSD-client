@@ -62,7 +62,7 @@ class Connection(object):
     And for acting as a Modbus slave, and listening for commands from a bus master device (the Technician's SID):
         listen_for_packet
     """
-    def __init__(self, hostname=None, devicename=None, port=5000, baudrate=9600, multidrop=False, logger=None):
+    def __init__(self, hostname=None, devicename=None, port=5000, baudrate=19200, multidrop=False, logger=None):
         """
         Create a new instance, using either a socket connection to a serial bridge hostname, or a physical serial port,
         or neither
@@ -321,10 +321,13 @@ class Connection(object):
                   ((time.time() - stime < TIMEOUT) and not mstring) ) and
                 (not mstring.endswith('\r\n')) ):
             try:
-                reply = self._read(until=b'\r\n', nbytes=1000).decode('ascii')
+                reply_raw = self._read(until=b'\r\n', nbytes=1000).decode('ascii')
+                reply = ''.join([x for x in reply_raw if x != chr(0)])
+                if reply != reply_raw:
+                    self.logger.debug('%d Nulls removed from %s' % (len(reply_raw) - len(reply), repr(reply)))
                 if (not mstring) and reply and not (reply.startswith(':')):   # Unexpected first character, ignore it and keep reading
-                    self.logger.debug('%d: ?"%s"' % (threading.get_ident(),
-                                                     reply))
+                    self.logger.debug('%d: %d bytes: ?"%s"' % (threading.get_ident(), len(reply),
+                                                     repr(reply)))
                     time.sleep(0.001)
                     continue
                 mstring += reply
