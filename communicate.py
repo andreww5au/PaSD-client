@@ -46,7 +46,7 @@ if __name__ == '__main__':
     from sid import mccs
 
     tlogger = logging.getLogger('T')
-    conn = transport.Connection(hostname=args.host, devicename=args.device, port=args.portnum, baudrate=19200, multidrop=False, logger=tlogger)
+    conn = transport.Connection(hostname=args.host, devicename=args.device, port=int(args.portnum), baudrate=19200, multidrop=False, logger=tlogger)
 
     if args.task.upper() == 'SMARTBOX':
         if args.address is None:
