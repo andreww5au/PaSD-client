@@ -5,10 +5,10 @@ Also uses the classes in 'pasd'.
 
 The contents are:
 
-        sim_smartbox.py – Simulates a single SMARTbox.
+        sim_smartbox.py - Simulates a single SMARTbox.
 
-        sim_fndh.py – Simulates an FNDH.
+        sim_fndh.py - Simulates an FNDH.
 
-        sim_station – Simulates an entire SKALOW station (one FNDH and 24 SMARTboxes).
+        sim_station - Simulates an entire SKALOW station (one FNDH and 24 SMARTboxes).
 
 """

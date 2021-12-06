@@ -7,5 +7,5 @@ Also uses the classes in 'pasd'.
 
 The contents are:
 
-        mccs.py – allows the user to communicate with the MCCS (pasd/station.py) using the SID API
+        mccs.py - allows the user to communicate with the MCCS (pasd/station.py) using the SID API
 """
