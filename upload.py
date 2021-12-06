@@ -17,6 +17,8 @@ if __name__ == '__main__':
                         help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
     parser.add_argument('--device', dest='device', default=None,
                         help='Serial port device name, eg /dev/ttyS0 or COM6')
+    parser.add_argument('--portnum', dest='portnum', default=5000,
+                        help='TCP port number to use')
     parser.add_argument('--address', dest='address', default=0,
                         help='Modbus address')
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
@@ -42,6 +44,6 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     tlogger = logging.getLogger('T')
-    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=False, logger=tlogger)
+    conn = transport.Connection(hostname=args.host, devicename=args.device, port=int(args.portnum), multidrop=False, logger=tlogger)
 
     firmware_upload.send_hex(conn=conn, filename=args.filename)
