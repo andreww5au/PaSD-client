@@ -90,51 +90,51 @@
         0.0
     ],
     "SYS_PSUTEMP_TH": [
-        55.0,
-        35.0,
-        5.0,
-        1.0
-    ],
-    "SYS_PSU_V_TH": [
         0.0,
         0.0,
         0.0,
         0.0
     ],
+    "SYS_PSU_V_TH": [
+        6.5,
+        5.5,
+        4.0,
+        3.5
+    ],
     "P01_CURRENT_TH": [
-        3000
+        300
     ],
     "P02_CURRENT_TH": [
-        3000
+        300
     ],
     "P03_CURRENT_TH": [
-        3000
+        300
     ],
     "P04_CURRENT_TH": [
-        3000
+        300
     ],
     "P05_CURRENT_TH": [
-        3000
+        300
     ],
     "P06_CURRENT_TH": [
-        3000
+        300
     ],
     "P07_CURRENT_TH": [
-        3000
+        300
     ],
     "P08_CURRENT_TH": [
-        3000
+        300
     ],
     "P09_CURRENT_TH": [
-        3000
+        300
     ],
     "P10_CURRENT_TH": [
-        3000
+        300
     ],
     "P11_CURRENT_TH": [
-        3000
+        300
     ],
     "P12_CURRENT_TH": [
-        3000
+        300
     ]
 }
