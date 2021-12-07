@@ -6,7 +6,7 @@ from intelhex import IntelHex
 logging.basicConfig()
 
 
-def send_hex(conn, filename):
+def send_hex(conn, filename, modbus_address):
     """
     System registers
 
@@ -81,9 +81,9 @@ def send_hex(conn, filename):
         registerBytes[i] = 0
 
     # write CRC separately to command
-    conn.writeMultReg(modbus_address=1, regnum=10001, valuelist=[crc32 & 0xffff, crc32 >> 16])
-    conn.writeReg(modbus_address=1, regnum=10125, value=1)  # , timeout=10.0)
-    print("return code: " + str(conn.readReg(modbus_address=1, regnum=10126)[0][1]))  # least sig byte
+    conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=[crc32 & 0xffff, crc32 >> 16])
+    conn.writeReg(modbus_address=modbus_address, regnum=10125, value=1)  # , timeout=10.0)
+    print("return code: " + str(conn.readReg(modbus_address=modbus_address, regnum=10126)[0][1]))  # least sig byte
 
     # a rom hex file consists of segments which are start/end marker of addresses of bytes
     # to write
@@ -153,19 +153,19 @@ def send_hex(conn, filename):
                 if length < 320:
                     # partial write
                     print("writing partial chunk...")
-                    conn.writeMultReg(modbus_address=1, regnum=10001, valuelist=regValues)
-                    conn.writeReg(modbus_address=1, regnum=10125, value=2)  # write command
+                    conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=regValues)
+                    conn.writeReg(modbus_address=modbus_address, regnum=10125, value=2)  # write command
                 else:
                     # full write, add on command
                     print("writing chunk... " + str(len(regValues)))
                     #                    regValues.append(2)
-                    conn.writeMultReg(modbus_address=1, regnum=10001, valuelist=regValues)
+                    conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=regValues)
                     # ideally, should just append 2 to regValues above but for some reason transport.py hangs with 125 registers
                     # so split into 2 writes - 124 registers and the separate command.
-                    conn.writeReg(modbus_address=1, regnum=10125, value=2)  # write command
+                    conn.writeReg(modbus_address=modbus_address, regnum=10125, value=2)  # write command
 
                 print(
-                    "return code: " + str(conn.readReg(modbus_address=1, regnum=10126)))  # [0][1]))  # least sig byte
+                    "return code: " + str(conn.readReg(modbus_address=modbus_address, regnum=10126)))  # [0][1]))  # least sig byte
 
                 # one more
                 numWrites = numWrites + 1
@@ -207,10 +207,10 @@ def send_hex(conn, filename):
     regValues.append(numWrites & 0xffff)
     regValues.append(numWrites >> 16)
 
-    conn.writeMultReg(modbus_address=1, regnum=10001, valuelist=regValues)
-    conn.writeReg(modbus_address=1, regnum=10125, value=3)  # trust but verify
+    conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=regValues)
+    conn.writeReg(modbus_address=modbus_address, regnum=10125, value=3)  # trust but verify
 
-    verifyResult = conn.readReg(modbus_address=1, regnum=10126)[0][1]
+    verifyResult = conn.readReg(modbus_address=modbus_address, regnum=10126)[0][1]
     if verifyResult == 0:
         print("verify ok.  Updating.")
 
@@ -221,9 +221,9 @@ def send_hex(conn, filename):
         for i in range(0, 246):  # clear for next calc
             registerBytes[i] = 0
         regValues = [crc32 & 0xffff, crc32 >> 16]
-        conn.writeMultReg(modbus_address=1, regnum=10001, valuelist=regValues)
-        conn.writeReg(modbus_address=1, regnum=10125, value=4)  # update
-        updateResult = conn.readReg(modbus_address=1, regnum=10126)[0][1]
+        conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=regValues)
+        conn.writeReg(modbus_address=modbus_address, regnum=10125, value=4)  # update
+        updateResult = conn.readReg(modbus_address=modbus_address, regnum=10126)[0][1]
         if updateResult == 0:
             print("update ok.  Resetting.")
 
@@ -234,8 +234,8 @@ def send_hex(conn, filename):
             for i in range(0, 246):  # clear for next calc
                 registerBytes[i] = 0
             regValues = [crc32 & 0xffff, crc32 >> 16]
-            conn.writeMultReg(modbus_address=1, regnum=10001, valuelist=regValues)
-            conn.writeReg(modbus_address=1, regnum=10125, value=5)  # reset
+            conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=regValues)
+            conn.writeReg(modbus_address=modbus_address, regnum=10125, value=5)  # reset
         else:
             print("update failed: " + str(updateResult))
 

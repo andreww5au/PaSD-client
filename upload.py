@@ -46,4 +46,4 @@ if __name__ == '__main__':
     tlogger = logging.getLogger('T')
     conn = transport.Connection(hostname=args.host, devicename=args.device, port=int(args.portnum), multidrop=False, logger=tlogger)
 
-    firmware_upload.send_hex(conn=conn, filename=args.filename)
+    firmware_upload.send_hex(conn=conn, filename=args.filename, modbus_address=args.address)
