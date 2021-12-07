@@ -88,32 +88,49 @@ if __name__ == '__main__':
         SBOXES[sadd] = s
 
     while True:
-        data = {}    # A list of (path, (timestamp, value)) objects, where path is like 'pasd.fieldtest.sb2.port7.current'
+        data = []    # A list of (path, (timestamp, value)) objects, where path is like 'pasd.fieldtest.sb02.port07.current'
         f.poll_data()
 
         fdict = {}
-        fdict['pasd.fndh.psu48v1_voltage'] = f.psu48v1_voltage
-        fdict['pasd.fndh.psu48v2_voltage'] = f.psu48v2_voltage
-        fdict['pasd.fndh.psu5v_voltage'] = f.psu5v_voltage
-        fdict['pasd.fndh.psu48v_current'] = f.psu48v_current
-        fdict['pasd.fndh.psu48v_temp'] = f.psu48v_temp
-        fdict['pasd.fndh.psu5v_temp'] = f.psu5v_temp
-        fdict['pasd.fndh.pcb_temp'] = f.pcb_temp
-        fdict['pasd.fndh.outside_temp'] = f.outside_temp
-        fdict['pasd.fndh.statuscode'] = f.statuscode
-        fdict['pasd.fndh.indicator_code'] = f.indicator_code
+        fdict['pasd.fieldtest.fndh.psu48v1_voltage'] = f.psu48v1_voltage
+        fdict['pasd.fieldtest.fndh.psu48v2_voltage'] = f.psu48v2_voltage
+        fdict['pasd.fieldtest.fndh.psu5v_voltage'] = f.psu5v_voltage
+        fdict['pasd.fieldtest.fndh.psu48v_current'] = f.psu48v_current
+        fdict['pasd.fieldtest.fndh.psu48v_temp'] = f.psu48v_temp
+        fdict['pasd.fieldtest.fndh.psu5v_temp'] = f.psu5v_temp
+        fdict['pasd.fieldtest.fndh.pcb_temp'] = f.pcb_temp
+        fdict['pasd.fieldtest.fndh.outside_temp'] = f.outside_temp
+        fdict['pasd.fieldtest.fndh.statuscode'] = f.statuscode
+        fdict['pasd.fieldtest.fndh.indicator_code'] = f.indicator_code
+        ftime = f.readtime
         for pnum in range(1, 3):   # Only two pdocs for now
             p = f.ports[pnum]
-            fdict['pasd.fndh.port%02d.power_state' % pnum] = int(p.power_state)
-            fdict['pasd.fndh.port%02d.power_sense' % pnum] = int(p.power_sense)
+            fdict['pasd.fieldtest.fndh.port%02d.power_state' % pnum] = int(p.power_state)
+            fdict['pasd.fieldtest.fndh.port%02d.power_sense' % pnum] = int(p.power_sense)
+        for path, value in fdict:
+            data.append((path, (ftime, value)))
 
-        for sb in SBOXES.values():
+        for sbnum, sb in SBOXES.items():
+            fdict = {}
             sb.poll_data()
+            fdict['pasd.fieldtest.sb%02d.incoming_voltage' % sbnum] = sb.incoming_voltage
+            fdict['pasd.fieldtest.sb%02d.psu_voltage' % sbnum] = sb.psu_voltage
+            fdict['pasd.fieldtest.sb%02d.psu_temp' % sbnum] = sb.psu_temp
+            fdict['pasd.fieldtest.sb%02d.pcb_temp' % sbnum] = sb.pcb_temp
+            fdict['pasd.fieldtest.sb%02d.outside_temp' % sbnum] = sb.outside_temp
+            fdict['pasd.fieldtest.sb%02d.statuscode' % sbnum] = sb.statuscode
+            fdict['pasd.fieldtest.sb%02d.indicator_code' % sbnum] = sb.indicator_code
+            stime = sb.readtime
+            for pnum, p in sb.ports.items():
+                fdict['pasd.fieldtest.sb%02d.port%02d.current' % (sbnum, pnum)] = p.current
+                fdict['pasd.fieldtest.sb%02d.port%02d.current' % (sbnum, pnum)] = int(p.breaker_tripped)
+                fdict['pasd.fieldtest.sb%02d.port%02d.current' % (sbnum, pnum)] = int(p.power_state)
+            for snum, stemp in sb.sensor_temps.items():
+                fdict['pasd.fieldtest.sb%02d.sensor%02d.temp' % (sbnum, snum)] = stemp
+            for path, value in fdict:
+                data.append((path, (stime, value)))
 
-        # TODO - populate this data list with telemetry from the hardware
-        data = {}   # A list of (path, (timestamp, value)) objects, where path is like 'pasd.fieldtest.sb2.port7.current'
-
+        print(data)
         send_carbon(data)
 
-        time.sleep(10)
-
+        time.sleep(20)
