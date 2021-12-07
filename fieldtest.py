@@ -103,7 +103,7 @@ if __name__ == '__main__':
         fdict['pasd.fieldtest.fndh.statuscode'] = f.statuscode
         fdict['pasd.fieldtest.fndh.indicator_code'] = f.indicator_code
         ftime = f.readtime
-        for pnum in range(1, 3):   # Only two pdocs for now
+        for pnum in range(1, 2):   # Only two pdocs for now
             p = f.ports[pnum]
             fdict['pasd.fieldtest.fndh.port%02d.power_state' % pnum] = int(p.power_state)
             fdict['pasd.fieldtest.fndh.port%02d.power_sense' % pnum] = int(p.power_sense)
