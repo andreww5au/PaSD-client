@@ -20,15 +20,15 @@ SMARTBOX_ADDRESSES = [1]
 
 SBOXES = {}
 
-loglevel = logging.INFO   # For console - logfile level is hardwired to DEBUG below
+loglevel = logging.INFO   # For console - logfile level is hardwired below
 
 fh = logging.FileHandler(filename=LOGFILE, mode='w')
-fh.setLevel(logging.DEBUG)   # All log messages go to the log file
+fh.setLevel(logging.INFO)   # All log messages go to the log file
 sh = logging.StreamHandler()
 sh.setLevel(loglevel)        # Some or all log messages go to the console
 
 logging.basicConfig(handlers=[fh, sh],
-                    level=logging.DEBUG,
+                    level=logging.INFO,
                     format='%(levelname)s:%(name)s %(created)14.3f - %(message)s')
 
 
@@ -65,7 +65,7 @@ def send_carbon(data):
 
 if __name__ == '__main__':
     tlogger = logging.getLogger('T')
-    tlogger.setLevel(logging.DEBUG)
+    tlogger.setLevel(logging.INFO)
     conn = transport.Connection(hostname=HOSTNAME, port=5000, logger=tlogger)
 
     flogger = logging.getLogger('FNDH:%d' % FNDH_ADDRESS)
@@ -126,8 +126,8 @@ if __name__ == '__main__':
             stime = sb.readtime
             for pnum, p in sb.ports.items():
                 fdict['pasd.fieldtest.sb%02d.port%02d.current' % (sbnum, pnum)] = p.current
-                fdict['pasd.fieldtest.sb%02d.port%02d.current' % (sbnum, pnum)] = int(p.breaker_tripped)
-                fdict['pasd.fieldtest.sb%02d.port%02d.current' % (sbnum, pnum)] = int(p.power_state)
+                fdict['pasd.fieldtest.sb%02d.port%02d.breaker_tripped' % (sbnum, pnum)] = int(p.breaker_tripped)
+                fdict['pasd.fieldtest.sb%02d.port%02d.power_state' % (sbnum, pnum)] = int(p.power_state)
             for snum, stemp in sb.sensor_temps.items():
                 fdict['pasd.fieldtest.sb%02d.sensor%02d.temp' % (sbnum, snum)] = stemp
             for path, value in fdict.items():
