@@ -107,7 +107,7 @@ if __name__ == '__main__':
             p = f.ports[pnum]
             fdict['pasd.fieldtest.fndh.port%02d.power_state' % pnum] = int(p.power_state)
             fdict['pasd.fieldtest.fndh.port%02d.power_sense' % pnum] = int(p.power_sense)
-        for path, value in fdict:
+        for path, value in fdict.items():
             data.append((path, (ftime, value)))
 
         for sbnum, sb in SBOXES.items():
@@ -127,7 +127,7 @@ if __name__ == '__main__':
                 fdict['pasd.fieldtest.sb%02d.port%02d.current' % (sbnum, pnum)] = int(p.power_state)
             for snum, stemp in sb.sensor_temps.items():
                 fdict['pasd.fieldtest.sb%02d.sensor%02d.temp' % (sbnum, snum)] = stemp
-            for path, value in fdict:
+            for path, value in fdict.items():
                 data.append((path, (stime, value)))
 
         print(data)
