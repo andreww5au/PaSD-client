@@ -47,4 +47,4 @@ if __name__ == '__main__':
     tlogger.setLevel(loglevel)
     conn = transport.Connection(hostname=args.host, devicename=args.device, port=int(args.portnum), multidrop=False, logger=tlogger)
 
-    firmware_upload.send_hex(conn=conn, filename=args.filename, modbus_address=args.address)
+    firmware_upload.send_hex(conn=conn, filename=args.filename, modbus_address=int(args.address))
