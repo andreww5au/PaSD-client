@@ -30,6 +30,16 @@ if __name__ == '__main__':
     else:
         loglevel = logging.INFO
 
+    if (args.host is None) and (args.device is None):
+        args.host = 'pasd-fndh.mwa128t.org'
+
+    if ('FN' in args.filename) and (int(args.address) != 31):
+        print('Trying to push FNDH image to a smartbox? %s' % args.filename)
+        sys.exit(-1)
+    elif args.filename.upper().startswith('S') and (int(args.address == 31)):
+        print('Trying to push smartbox image to an FNDH? %s' % args.filename)
+        sys.exit(-1)
+
     fh = logging.FileHandler(filename=LOGFILE, mode='w')
     fh.setLevel(logging.DEBUG)   # All log messages go to the log file
     sh = logging.StreamHandler()
