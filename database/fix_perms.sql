@@ -13,11 +13,3 @@ grant select on pasd_fndh_state to mwaschedule, mwa_ro, mwa, tapuser, mwacode, P
 grant select on pasd_smartbox_port_status to mwaschedule, mwa_ro, mwa, tapuser, mwacode, PUBLIC;
 grant select on pasd_fndh_port_status to mwaschedule, mwa_ro, mwa, tapuser, mwacode, PUBLIC;
 grant select on pasd_stations to mwaschedule, mwa_ro, mwa, tapuser, mwacode, PUBLIC;
-
-grant usage on sequence pasd_antenna_portmap to pasd;
-grant usage on sequence pasd_fibre_portmap to pasd;
-grant usage on sequence pasd_smartbox_state to pasd;
-grant usage on sequence pasd_fndh_state to pasd;
-grant usage on sequence pasd_smartbox_port_status to pasd;
-grant usage on sequence pasd_fndh_port_status to pasd;
-grant usage on sequence pasd_stations to pasd;
