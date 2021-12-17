@@ -250,4 +250,4 @@ CREATE TABLE pasd_stations (
 
     -- Values to be written, and acted on by the station daemon
     desired_active boolean                      -- True if the MCCS wants this station powered up
-)
+);
