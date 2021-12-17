@@ -95,9 +95,9 @@ def initialise_db(db, stn):
                 curs.execute('SELECT COUNT(*) FROM pasd_fndh_port_status WHERE (station_id = %s) AND (pdoc_number = %s)',
                              (stn.station_id, pnum))
                 if curs.fetchone()[0] != 1:   # No rows match, or more than one row matches:
-                    curs.execute('DELETE FROM fndh_pasd_port_status WHERE (station_id = %s) AND (pdoc_number = %s)',
+                    curs.execute('DELETE FROM pasd_fndh_port_status WHERE (station_id = %s) AND (pdoc_number = %s)',
                                  (stn.station_id, pnum))
-                    curs.execute('INSERT INTO fndh_pasd_port_status (station_id, pdoc_number) VALUES (%s, %s)',
+                    curs.execute('INSERT INTO pasd_fndh_port_status (station_id, pdoc_number) VALUES (%s, %s)',
                                  (stn.station_id, pnum))
 
             for sb_num in range(1, 25):
@@ -355,7 +355,7 @@ if __name__ == '__main__':
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
     args = parser.parse_args()
     if (args.host is None) and (args.device is None):
-        args.host = '134.7.50.185'
+        args.host = 'pasd-fndh'
 
     if args.debug:
         loglevel = logging.DEBUG
