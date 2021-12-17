@@ -23,7 +23,7 @@ if __name__ == '__main__':
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
     args = parser.parse_args()
     if (args.host is None) and (args.device is None):
-        args.host = '134.7.50.185'
+        args.host = 'pasd-fndh.mwa128t.org'
 
     if args.debug:
         loglevel = logging.DEBUG

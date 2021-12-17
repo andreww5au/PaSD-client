@@ -697,7 +697,7 @@ class SMARTbox(transport.ModbusDevice):
             self.logger.info('Could not write thresholds.')
             return False
 
-    def write_portconfig(self):
+    def write_portconfig(self, write_breaker=False):
         """
         Write the current instance data for 'desired port state online' and 'desired port state offline' in each of
         the port status objects, to the SMARTbox.
@@ -711,7 +711,7 @@ class SMARTbox(transport.ModbusDevice):
         vlist = [0] * 12
         startreg = self.register_map['POLL']['P01_STATE'][0]
         for portnum in range(1, 13):
-            vlist[(portnum - 1)] = self.ports[portnum].status_to_integer(write_state=True)
+            vlist[(portnum - 1)] = self.ports[portnum].status_to_integer(write_state=True, write_breaker=write_breaker)
 
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
