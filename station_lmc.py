@@ -24,7 +24,7 @@ CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
 DEFAULT_STATION_NUMBER = 1
 
 FNDH_STATE_QUERY = """
-UPDATE fndh_state
+UPDATE pasd_fndh_state
     SET mbrv = %(mbrv)s, pcbrv = %(pcbrv)s, cpuid = %(cpuid)s, chipid = %(chipid)s, 
         firmware_version = %(firmware_version)s, uptime = %(uptime)s, psu48v1_voltage = %(psu48v1_voltage)s, 
         psu48v2_voltage = %(psu48v2_voltage)s, psu5v_voltage = %(psu5v_voltage)s, psu48v_current = %(psu48v_current)s, 
@@ -35,7 +35,7 @@ UPDATE fndh_state
 """
 
 FNDH_PORT_QUERY = """
-UPDATE fndh_port_status
+UPDATE pasd_fndh_port_status
     SET smartbox_number = %(smartbox_address)s, system_online = %(system_online)s, 
         locally_forced_on = %(locally_forced_on)s, locally_forced_off = %(locally_forced_off)s, 
         power_state = %(power_state)s, power_sense = %(power_sense)s, status_timestamp = %(status_timestamp)s
@@ -43,7 +43,7 @@ UPDATE fndh_port_status
 """
 
 SMARTBOX_STATE_QUERY = """
-UPDATE smartbox_state
+UPDATE pasd_smartbox_state
     SET mbrv = %(mbrv)s, pcbrv = %(pcbrv)s, cpuid = %(cpuid)s, chipid = %(chipid)s, 
         firmware_version = %(firmware_version)s, uptime = %(uptime)s, incoming_voltage = %(incoming_voltage)s, 
         psu_voltage = %(psu_voltage)s, psu_temp = %(psu_temp)s, pcb_temp = %(pcb_temp)s, 
@@ -53,7 +53,7 @@ UPDATE smartbox_state
 """
 
 SMARTBOX_PORT_QUERY = """
-UPDATE smartbox_port_status
+UPDATE pasd_smartbox_port_status
     SET system_online = %(system_online)s, current_draw = %(current)s, locally_forced_on = %(locally_forced_on)s, 
         locally_forced_off = %(locally_forced_off)s, breaker_tripped = %(breaker_tripped)s, 
         power_state = %(power_state)s, status_timestamp = %(status_timestamp)s, 
@@ -81,41 +81,41 @@ def initialise_db(db, stn):
     """
     with db:
         with db.cursor() as curs:
-            curs.execute('SELECT COUNT(*) FROM stations WHERE (station_id = %s)', (stn.station_id,))
+            curs.execute('SELECT COUNT(*) FROM pasd_stations WHERE (station_id = %s)', (stn.station_id,))
             if curs.fetchone()[0] != 1:  # No rows match, or more than one row matches:
-                curs.execute('DELETE FROM stations WHERE (station_id = %s)', (stn.station_id,))
-                curs.execute('INSERT INTO stations (station_id) VALUES (%s)', (stn.station_id,))
+                curs.execute('DELETE FROM pasd_stations WHERE (station_id = %s)', (stn.station_id,))
+                curs.execute('INSERT INTO pasd_stations (station_id) VALUES (%s)', (stn.station_id,))
 
-            curs.execute('SELECT COUNT(*) FROM fndh_state WHERE (station_id = %s)', (stn.station_id,))
+            curs.execute('SELECT COUNT(*) FROM pasd_fndh_state WHERE (station_id = %s)', (stn.station_id,))
             if curs.fetchone()[0] != 1:   # No rows match, or more than one row matches:
-                curs.execute('DELETE FROM fndh_state WHERE (station_id = %s)', (stn.station_id,))
-                curs.execute('INSERT INTO fndh_state (station_id) VALUES (%s)', (stn.station_id,))
+                curs.execute('DELETE FROM pasd_fndh_state WHERE (station_id = %s)', (stn.station_id,))
+                curs.execute('INSERT INTO pasd_fndh_state (station_id) VALUES (%s)', (stn.station_id,))
 
             for pnum in range(1, 29):
-                curs.execute('SELECT COUNT(*) FROM fndh_port_status WHERE (station_id = %s) AND (pdoc_number = %s)',
+                curs.execute('SELECT COUNT(*) FROM pasd_fndh_port_status WHERE (station_id = %s) AND (pdoc_number = %s)',
                              (stn.station_id, pnum))
                 if curs.fetchone()[0] != 1:   # No rows match, or more than one row matches:
-                    curs.execute('DELETE FROM fndh_port_status WHERE (station_id = %s) AND (pdoc_number = %s)',
+                    curs.execute('DELETE FROM fndh_pasd_port_status WHERE (station_id = %s) AND (pdoc_number = %s)',
                                  (stn.station_id, pnum))
-                    curs.execute('INSERT INTO fndh_port_status (station_id, pdoc_number) VALUES (%s, %s)',
+                    curs.execute('INSERT INTO fndh_pasd_port_status (station_id, pdoc_number) VALUES (%s, %s)',
                                  (stn.station_id, pnum))
 
             for sb_num in range(1, 25):
-                curs.execute('SELECT COUNT(*) FROM smartbox_state WHERE (station_id = %s) AND (smartbox_number = %s)',
+                curs.execute('SELECT COUNT(*) FROM pasd_smartbox_state WHERE (station_id = %s) AND (smartbox_number = %s)',
                              (stn.station_id, sb_num))
                 if curs.fetchone()[0] != 1:   # No rows match, or more than one row matches:
-                    curs.execute('DELETE FROM smartbox_state WHERE (station_id = %s) AND (smartbox_number = %s)',
+                    curs.execute('DELETE FROM pasd_smartbox_state WHERE (station_id = %s) AND (smartbox_number = %s)',
                                  (stn.station_id, sb_num))
-                    curs.execute('INSERT INTO smartbox_state (station_id, smartbox_number) VALUES (%s, %s)',
+                    curs.execute('INSERT INTO pasd_smartbox_state (station_id, smartbox_number) VALUES (%s, %s)',
                                  (stn.station_id, sb_num))
 
                 for pnum in range(1, 13):
-                    curs.execute('SELECT COUNT(*) FROM smartbox_port_status WHERE (station_id = %s) AND (smartbox_number = %s) AND (port_number = %s)',
+                    curs.execute('SELECT COUNT(*) FROM pasd_smartbox_port_status WHERE (station_id = %s) AND (smartbox_number = %s) AND (port_number = %s)',
                                  (stn.station_id, sb_num, pnum))
                     if curs.fetchone()[0] != 1:   # No rows match, or more than one row matches:
-                        curs.execute('DELETE FROM smartbox_port_status WHERE (station_id = %s) AND (smartbox_number = %s) AND (port_number = %s)',
+                        curs.execute('DELETE FROM pasd_smartbox_port_status WHERE (station_id = %s) AND (smartbox_number = %s) AND (port_number = %s)',
                                      (stn.station_id, sb_num, pnum))
-                        curs.execute('INSERT INTO smartbox_port_status (station_id, smartbox_number, port_number) VALUES (%s, %s, %s)',
+                        curs.execute('INSERT INTO pasd_smartbox_port_status (station_id, smartbox_number, port_number) VALUES (%s, %s, %s)',
                                      (stn.station_id, sb_num, pnum))
 
 
@@ -190,7 +190,7 @@ def get_antenna_map(db, station_number=DEFAULT_STATION_NUMBER):
     with db:   # Commit transaction when block exits
         with db.cursor() as curs:
             query = """SELECT antenna_number, smartbox_number, port_number
-                       FROM antenna_portmap
+                       FROM pasd_antenna_portmap
                        WHERE (station_id=%s) and begintime < now() and endtime > now()
             """
             curs.execute(query, (station_number,))
@@ -226,7 +226,7 @@ def get_all_port_configs(db, station_number=DEFAULT_STATION_NUMBER):
         with db.cursor() as curs:
             # Read FNDH port config for this station:
             query = """SELECT pdoc_number, desire_enabled_online, desire_enabled_offline
-                       FROM fndh_port_status
+                       FROM pasd_fndh_port_status
                        WHERE station_id=%s"""
             curs.execute(query, (station_number,))
 
@@ -237,7 +237,7 @@ def get_all_port_configs(db, station_number=DEFAULT_STATION_NUMBER):
 
             # Read all smartbox port configs for this station:
             query = """SELECT smartbox_number, port_number, desire_enabled_online, desire_enabled_offline
-                       FROM smartbox_port_status
+                       FROM pasd_smartbox_port_status
                        WHERE station_id=%s"""
             curs.execute(query, (station_number,))
 
@@ -259,11 +259,11 @@ def update_station_state(db, stn):
     :param stn: An instance of station.Station()
     :return: The current value of the desired_active row in the stations table entry for this station.
     """
-    query = "UPDATE stations SET active = %s, status = %s, status_timestamp = %s WHERE station_id = %s"
+    query = "UPDATE pasd_stations SET active = %s, status = %s, status_timestamp = %s WHERE station_id = %s"
     with db:
         with db.cursor() as curs:
             curs.execute(query, (stn.active. stn.status, datetime.datetime.now(timezone.utc), stn.station_id))
-            curs.execute("SELECT desired_active FROM stations WHERE station_id = %s", (stn.station_id,))
+            curs.execute("SELECT desired_active FROM pasd_stations WHERE station_id = %s", (stn.station_id,))
             rows = curs.fetchall()
             if len(rows) > 1:
                 stn.logger.critical('Multiple records in stations table for station ID=%d' % (stn.station_id))

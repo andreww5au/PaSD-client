@@ -24,7 +24,7 @@
  */
 
 -- Physical antenna to Smartbox/port mapping, in the field
-CREATE TABLE antenna_portmap (
+CREATE TABLE pasd_antenna_portmap (
     station_id integer,                  -- Station ID
     antenna_number integer PRIMARY KEY,  -- Antenna number within station - 1-256
     smartbox_number integer,             -- Modbus address (1-24) of the SMARTbox in that station
@@ -34,13 +34,13 @@ CREATE TABLE antenna_portmap (
     comment text                         -- Technician's notes at connection time
 );
 
-CREATE INDEX antenna_portmap_port on antenna_portmap (station_id, smartbox_number, port_number);
-CREATE INDEX antenna_portmap_begintime on antenna_portmap (begintime);
-CREATE INDEX antenna_portmap_endtime on antenna_portmap (endtime);
+CREATE INDEX pasd_antenna_portmap_port on pasd_antenna_portmap (station_id, smartbox_number, port_number);
+CREATE INDEX pasd_antenna_portmap_begintime on pasd_antenna_portmap (begintime);
+CREATE INDEX pasd_antenna_portmap_endtime on pasd_antenna_portmap (endtime);
 
 
 -- Ribbon and fibre number to TPM input number mapping, in the control building
-CREATE TABLE fibre_portmap (
+CREATE TABLE pasd_fibre_portmap (
     station_id integer,                   -- Station ID
     tpm_input_number integer PRIMARY KEY, -- TPM input number within station - 1-256
     smartbox_number integer,              -- Equal to the fibre ribbon number (1-24) for the SMARTbox in that station
@@ -50,16 +50,16 @@ CREATE TABLE fibre_portmap (
     comment text                          -- Technician's notes at connection time
 );
 
-CREATE INDEX fibre_portmap_port on fibre_portmap (station_id, smartbox_number, port_number);
-CREATE INDEX fibre_portmap_begintime on fibre_portmap (begintime);
-CREATE INDEX fibre_portmap_endtime on fibre_portmap (endtime);
+CREATE INDEX pasd_fibre_portmap_port on pasd_fibre_portmap (station_id, smartbox_number, port_number);
+CREATE INDEX pasd_fibre_portmap_begintime on pasd_fibre_portmap (begintime);
+CREATE INDEX pasd_fibre_portmap_endtime on pasd_fibre_portmap (endtime);
 
 
 
 /* Table to store the current state of all of the SMARTboxes, in every station
 
 */
-CREATE TABLE smartbox_state (
+CREATE TABLE pasd_smartbox_state (
     -- Values read from the device, via Modbus register reads:
     station_id integer,          -- Station ID
     smartbox_number integer,     -- Equal to the fibre ribbon number (1-24) for the SMARTbox in that station
@@ -90,7 +90,7 @@ CREATE TABLE smartbox_state (
 
 */
 
-CREATE TABLE fndh_state (
+CREATE TABLE pasd_fndh_state (
     -- Values read from the device, via Modbus register reads:
     station_id integer,          -- Station ID
     mbrv integer,                -- Modbus register-map revision number for this physical SMARTbox
@@ -151,7 +151,7 @@ CREATE TABLE fndh_state (
    a physical breaker, and with a threshold that doesn't change with ambient temperature.
 */
 
-CREATE TABLE smartbox_port_status (
+CREATE TABLE pasd_smartbox_port_status (
     -- Values read from the device, via Modbus register reads:
     station_id integer,                         -- Station ID
     smartbox_number integer,                    -- Equal to the fibre ribbon number (1-24) for the SMARTbox in that station
@@ -215,7 +215,7 @@ CREATE TABLE smartbox_port_status (
 
 */
 
-CREATE TABLE fndh_port_status (
+CREATE TABLE pasd_fndh_port_status (
     -- Values read from the device, via Modbus register reads:
     station_id integer,                         -- Station ID
     pdoc_number integer,                        -- Physical power/data-over-coax port number (1-28), unrelated to SMARTbox address
@@ -234,14 +234,14 @@ CREATE TABLE fndh_port_status (
     PRIMARY KEY(station_id, pdoc_number)
 );
 
-CREATE INDEX fndh_port_status_smartbox_number on fndh_port_status (smartbox_number);
+CREATE INDEX pasd_fndh_port_status_smartbox_number on pasd_fndh_port_status (smartbox_number);
 
 
 /* Station management - reflects the state of the daemons managing each station, rather than the hardware that
    they control.
 */
 
-CREATE TABLE stations (
+CREATE TABLE pasd_stations (
     -- Status values pushed by the station daemon
     station_id integer,                         -- Station ID
     active boolean,                             -- True if the station is 'ON', with PDoC's powered up

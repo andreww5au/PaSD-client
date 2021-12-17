@@ -14,6 +14,9 @@ logging.basicConfig()
 from pasd import fndh
 from pasd import smartbox
 
+# START_MODE = 'FULL'   # Do full smartbox/pdoc mapping on startup
+START_MODE = 'FIELD'    # Skip smartbox/pdoc mapping on startup
+
 SLAVE_MODBUS_ADDRESS = 63   # Address that technician's SID devices use to reach the MCCS as a slave device
 FNDH_ADDRESS = 31   # Modbus address of the FNDH controller
 
@@ -21,31 +24,37 @@ PORT_TURNON_INTERVAL = 5.0   # How many seconds to wait between each PDoC port w
 
 # Initial mapping between SMARTbox/port and antenna number
 # Here as a dict to show the concept, in reality this would be in a database.
+# ANTENNA_MAP = {
+#  1: {1: None, 2: 1, 3: 2, 4: 3, 5: None, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8, 11: 9, 12: 10},
+#  2: {1: 11, 2: 12, 3: 13, 4: 14, 5: 15, 6: None, 7: 16, 8: 17, 9: 18, 10: 19, 11: 20, 12: 21},
+#  3: {1: 22, 2: 23, 3: 24, 4: 25, 5: 26, 6: 27, 7: 28, 8: 29, 9: 30, 10: 31, 11: 32, 12: 33},
+#  4: {1: 34, 2: 35, 3: 36, 4: 37, 5: 38, 6: 39, 7: 40, 8: 41, 9: 42, 10: 43, 11: 44, 12: None},
+#  5: {1: 45, 2: 46, 3: 47, 4: 48, 5: None, 6: None, 7: 49, 8: 50, 9: None, 10: 51, 11: 52, 12: 53},
+#  6: {1: 54, 2: 55, 3: 56, 4: 57, 5: 58, 6: 59, 7: 60, 8: 61, 9: 62, 10: 63, 11: 64, 12: 65},
+#  7: {1: 66, 2: 67, 3: 68, 4: None, 5: 69, 6: 70, 7: None, 8: 71, 9: 72, 10: 73, 11: 74, 12: 75},
+#  8: {1: 76, 2: 77, 3: 78, 4: 79, 5: 80, 6: 81, 7: 82, 8: 83, 9: 84, 10: 85, 11: 86, 12: 87},
+#  9: {1: 88, 2: 89, 3: 90, 4: 91, 5: 92, 6: 93, 7: 94, 8: 95, 9: 96, 10: 97, 11: 98, 12: 99},
+#  10: {1: 100, 2: 101, 3: 102, 4: 103, 5: 104, 6: 105, 7: 106, 8: 107, 9: 108, 10: 109, 11: 110, 12: 111},
+#  11: {1: 112, 2: 113, 3: 114, 4: 115, 5: 116, 6: 117, 7: 118, 8: 119, 9: 120, 10: 121, 11: None, 12: 122},
+#  12: {1: 123, 2: 124, 3: 125, 4: 126, 5: 127, 6: 128, 7: 129, 8: None, 9: 130, 10: 131, 11: 132, 12: 133},
+#  13: {1: 134, 2: 135, 3: 136, 4: 137, 5: 138, 6: 139, 7: 140, 8: 141, 9: None, 10: 142, 11: 143, 12: 144},
+#  14: {1: 145, 2: 146, 3: None, 4: 147, 5: 148, 6: 149, 7: 150, 8: 151, 9: 152, 10: 153, 11: 154, 12: 155},
+#  15: {1: 156, 2: 157, 3: 158, 4: 159, 5: 160, 6: 161, 7: 162, 8: 163, 9: 164, 10: 165, 11: 166, 12: 167},
+#  16: {1: 168, 2: None, 3: 169, 4: 170, 5: 171, 6: 172, 7: 173, 8: 174, 9: 175, 10: 176, 11: 177, 12: 178},
+#  17: {1: 179, 2: 180, 3: 181, 4: 182, 5: 183, 6: 184, 7: 185, 8: 186, 9: 187, 10: 188, 11: 189, 12: 190},
+#  18: {1: 191, 2: None, 3: 192, 4: 193, 5: 194, 6: 195, 7: 196, 8: 197, 9: 198, 10: 199, 11: 200, 12: 201},
+#  19: {1: 202, 2: 203, 3: 204, 4: 205, 5: None, 6: 206, 7: 207, 8: 208, 9: 209, 10: 210, 11: None, 12: 211},
+#  20: {1: 212, 2: None, 3: 213, 4: 214, 5: 215, 6: 216, 7: 217, 8: 218, 9: 219, 10: 220, 11: 221, 12: 222},
+#  21: {1: 223, 2: None, 3: 224, 4: 225, 5: 226, 6: 227, 7: 228, 8: 229, 9: 230, 10: 231, 11: 232, 12: 233},
+#  22: {1: 234, 2: 235, 3: 236, 4: 237, 5: 238, 6: 239, 7: 240, 8: 241, 9: 242, 10: 243, 11: 244, 12: 245},
+#  23: {1: 246, 2: 247, 3: 248, 4: 249, 5: 250, 6: 251, 7: 252, 8: 253, 9: 254, 10: 255, 11: 256, 12: None},
+#  24: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None},
+# }
+
+# Fieldtest antenna map - only two smartboxes
 ANTENNA_MAP = {
- 1: {1: None, 2: 1, 3: 2, 4: 3, 5: None, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8, 11: 9, 12: 10},
- 2: {1: 11, 2: 12, 3: 13, 4: 14, 5: 15, 6: None, 7: 16, 8: 17, 9: 18, 10: 19, 11: 20, 12: 21},
- 3: {1: 22, 2: 23, 3: 24, 4: 25, 5: 26, 6: 27, 7: 28, 8: 29, 9: 30, 10: 31, 11: 32, 12: 33},
- 4: {1: 34, 2: 35, 3: 36, 4: 37, 5: 38, 6: 39, 7: 40, 8: 41, 9: 42, 10: 43, 11: 44, 12: None},
- 5: {1: 45, 2: 46, 3: 47, 4: 48, 5: None, 6: None, 7: 49, 8: 50, 9: None, 10: 51, 11: 52, 12: 53},
- 6: {1: 54, 2: 55, 3: 56, 4: 57, 5: 58, 6: 59, 7: 60, 8: 61, 9: 62, 10: 63, 11: 64, 12: 65},
- 7: {1: 66, 2: 67, 3: 68, 4: None, 5: 69, 6: 70, 7: None, 8: 71, 9: 72, 10: 73, 11: 74, 12: 75},
- 8: {1: 76, 2: 77, 3: 78, 4: 79, 5: 80, 6: 81, 7: 82, 8: 83, 9: 84, 10: 85, 11: 86, 12: 87},
- 9: {1: 88, 2: 89, 3: 90, 4: 91, 5: 92, 6: 93, 7: 94, 8: 95, 9: 96, 10: 97, 11: 98, 12: 99},
- 10: {1: 100, 2: 101, 3: 102, 4: 103, 5: 104, 6: 105, 7: 106, 8: 107, 9: 108, 10: 109, 11: 110, 12: 111},
- 11: {1: 112, 2: 113, 3: 114, 4: 115, 5: 116, 6: 117, 7: 118, 8: 119, 9: 120, 10: 121, 11: None, 12: 122},
- 12: {1: 123, 2: 124, 3: 125, 4: 126, 5: 127, 6: 128, 7: 129, 8: None, 9: 130, 10: 131, 11: 132, 12: 133},
- 13: {1: 134, 2: 135, 3: 136, 4: 137, 5: 138, 6: 139, 7: 140, 8: 141, 9: None, 10: 142, 11: 143, 12: 144},
- 14: {1: 145, 2: 146, 3: None, 4: 147, 5: 148, 6: 149, 7: 150, 8: 151, 9: 152, 10: 153, 11: 154, 12: 155},
- 15: {1: 156, 2: 157, 3: 158, 4: 159, 5: 160, 6: 161, 7: 162, 8: 163, 9: 164, 10: 165, 11: 166, 12: 167},
- 16: {1: 168, 2: None, 3: 169, 4: 170, 5: 171, 6: 172, 7: 173, 8: 174, 9: 175, 10: 176, 11: 177, 12: 178},
- 17: {1: 179, 2: 180, 3: 181, 4: 182, 5: 183, 6: 184, 7: 185, 8: 186, 9: 187, 10: 188, 11: 189, 12: 190},
- 18: {1: 191, 2: None, 3: 192, 4: 193, 5: 194, 6: 195, 7: 196, 8: 197, 9: 198, 10: 199, 11: 200, 12: 201},
- 19: {1: 202, 2: 203, 3: 204, 4: 205, 5: None, 6: 206, 7: 207, 8: 208, 9: 209, 10: 210, 11: None, 12: 211},
- 20: {1: 212, 2: None, 3: 213, 4: 214, 5: 215, 6: 216, 7: 217, 8: 218, 9: 219, 10: 220, 11: 221, 12: 222},
- 21: {1: 223, 2: None, 3: 224, 4: 225, 5: 226, 6: 227, 7: 228, 8: 229, 9: 230, 10: 231, 11: 232, 12: 233},
- 22: {1: 234, 2: 235, 3: 236, 4: 237, 5: 238, 6: 239, 7: 240, 8: 241, 9: 242, 10: 243, 11: 244, 12: 245},
- 23: {1: 246, 2: 247, 3: 248, 4: 249, 5: 250, 6: 251, 7: 252, 8: 253, 9: 254, 10: 255, 11: 256, 12: None},
- 24: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None},
+    1: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None},
+    2: {1:None, 2:None, 3:None, 4:None, 5:None, 6:None, 7:None, 8:None, 9:None, 10:None, 11:None, 12:None}
 }
 
 # Register numbers for when the MCCS is acting as a Modbus slave)
@@ -154,7 +163,37 @@ class Station(object):
 
         self.fndh = self.fndh_class(conn=self.conn, modbus_address=FNDH_ADDRESS, logger=logging.getLogger('FNDH:%d' % FNDH_ADDRESS))
 
-    def startup(self):
+    def fieldtest_startup(self):
+        """
+        Start the fieldtest node, skipping the smartbnox/pdoc port mapping discovery process.
+        :return:
+        """
+        self.active = None   # Failure in the middle of this process means the state is unknown
+        self.status = 'STARTUP'
+        ok = self.fndh.poll_data()
+        if not ok:
+            self.logger.error('No reply from FNDH - aborting station startup.')
+            self.status = 'ERROR'
+            return False
+
+        ok = self.fndh.configure_all_off(portconfig=self.portconfig_fndh)   # Transition the FNDH to online, but with all PDoC ports turned off
+        if not ok:
+            self.logger.error('Could not configure FNDH - aborting station startup.')
+            self.status = 'ERROR'
+            return False
+
+        # Finish FNDH configuration, setting the default desired_state_online/offline flags (typically turning on all ports)
+        ok = self.fndh.configure_final()
+        if not ok:
+            self.logger.error('Could not do final configuration of FNDH during startup.')
+            self.status = 'ERROR'
+            return False
+
+        self.active = True
+        self.status = 'ACTIVE'
+        return True
+
+    def full_startup(self):
         """
         Configure and start up the FNDH. THe startup sequence is:
 
@@ -298,7 +337,10 @@ class Station(object):
             if self.fndh.statuscode != fndh.STATUS_OK:
                 self.logger.warning('FNDH has status %d (%s)' % (self.fndh.statuscode, self.fndh.status))
             if self.fndh.statuscode == fndh.STATUS_UNINITIALISED and self.active:   # FNDH is UNINITIALISED, but we're meant to be 'active'
-                fndh_ok = self.startup()   # Turn off all the PDoC ports, then turn them back on with delays, to find the smartbox<->PDoC mapping
+                if START_MODE == 'FULL':
+                    fndh_ok = self.full_startup()   # Turn off all the PDoC ports, then turn them back on with delays, to find the smartbox<->PDoC mapping
+                else:
+                    fndh_ok = self.fieldtest_startup()
                 if fndh_ok:     # self.status is set inside self.startup() so we don't need to do it here
                     self.logger.info('FNDH configured, it is now online with all PDoC ports mapped.')
                 else:
@@ -311,8 +353,12 @@ class Station(object):
         if not self.active:
             return    # If we're not online, don't bother polling the smartboxes
 
+        if START_MODE == 'FULL':
+            max_sb = 25   # all the data from all possible SMARTbox addresses, to detect new boxes added
+        else:
+            max_sb = max(list(ANTENNA_MAP.keys()))   # only the boxes we know are in the field test
         # Next, grab all the data from all possible SMARTboxes, to keep comms restricted to a short time window
-        for sadd in range(1, 26):  # Poll one SMARTbox known to not exist, so we know if the code can handle a dead box.
+        for sadd in range(1, max_sb + 1):
             if sadd not in self.smartboxes:   # Check for a new SMARTbox with this address
                 smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
                 test_ok = smb.poll_data()
@@ -356,7 +402,10 @@ class Station(object):
         # to be powered down and restarted with a full smartbox address detection sequence), then it will set it's
         # status code and indicator LED code to the 'POWERUP' value.
         if self.fndh.statuscode == fndh.STATUS_POWERUP:
-            self.startup()
+            if START_MODE == 'FULL':
+                self.full_startup()  # Turn off all the PDoC ports, then turn them back on with delays, to find the smartbox<->PDoC mapping
+            else:
+                self.fieldtest_startup()
 
     def listen(self, maxtime=60.0):
         """
