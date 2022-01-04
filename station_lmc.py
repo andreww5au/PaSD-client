@@ -214,7 +214,7 @@ def get_antenna_map(db, station_number=DEFAULT_STATION_NUMBER):
     """
     # Create antenna map structure with all 288 ports set to None, to make sure none are missing
     ant_map = {}
-    for sid in range(1, 25):
+    for sid in range(1, station.MAX_SMARTBOX + 1):
         ant_map[sid] = {pid:None for pid in range(1, 13)}
 
     with db:   # Commit transaction when block exits
@@ -474,4 +474,5 @@ if __name__ == '__main__':
                         portconfig_fndh=fndhpc,
                         portconfig_smartboxes=sbpc,
                         logger=slogger)
+    s.fieldtest_startup()
     print('Starting up entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')

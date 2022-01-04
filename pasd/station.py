@@ -169,7 +169,7 @@ class Station(object):
 
     def fieldtest_startup(self):
         """
-        Start the fieldtest node, skipping the smartbnox/pdoc port mapping discovery process.
+        Start the fieldtest node, skipping the smartbox/pdoc port mapping discovery process.
         :return:
         """
         self.active = None   # Failure in the middle of this process means the state is unknown
@@ -355,6 +355,7 @@ class Station(object):
             self.active = None
 
         if not self.active:
+            self.logger.info('Station not active, not polling smartboxes')
             return    # If we're not online, don't bother polling the smartboxes
 
         # Next, grab all the data from all possible SMARTboxes, to keep comms restricted to a short time window
