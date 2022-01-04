@@ -345,7 +345,7 @@ def main_loop(db, stn):
 
         for sbnum, sb in stn.smartboxes.items():
             fdict = {}
-            sb.poll_data()
+            # sb.poll_data()   # Done in the station poll_data() call
             logging.info(sb)
             fdict['pasd.fieldtest.sb%02d.incoming_voltage' % sbnum] = sb.incoming_voltage
             fdict['pasd.fieldtest.sb%02d.psu_voltage' % sbnum] = sb.psu_voltage
