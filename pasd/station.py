@@ -152,7 +152,7 @@ class Station(object):
         for sadd in antenna_map.keys():
             smb = self.smartbox_class(conn=self.conn, modbus_address=sadd, logger=logging.getLogger('SB:%d' % sadd))
             for pnum in range(1, 13):
-                smb.ports[pnum].antenna_number = ANTENNA_MAP[sadd][pnum]
+                smb.ports[pnum].antenna_number = antenna_map[sadd][pnum]
                 if antenna_map[sadd][pnum] is not None:
                     self.antennae[antenna_map[sadd][pnum]] = smb.ports[pnum]
             self.smartboxes[sadd] = smb
