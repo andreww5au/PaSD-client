@@ -11,8 +11,12 @@ from configparser import ConfigParser as conparser
 import datetime
 from datetime import timezone
 import logging
+import pickle
+import socket
+import struct
 import sys
 import time
+import traceback
 
 import psycopg2
 from psycopg2 import extras
@@ -66,6 +70,32 @@ LAST_STARTUP_ATTEMPT_TIME = 0   # Timestamp for the last time we tried to start 
 STARTUP_RETRY_INTERVAL = 600    # If the station isn't active, but is meant to be, wait this long before retrying startup
 LAST_SHUTDOWN_ATTEMPT_TIME = 0   # Timestamp for the last time we tried to shut down the station
 SHUTDOWN_RETRY_INTERVAL = 600    # If the station is active, but isnt meant to be, wait this long before retrying shutdown
+
+
+def send_carbon(data):
+    """
+    Send a list of tuples to carbon_cache on the icinga VM
+    :param data:  A list of (path, (timestamp, value)) objects, where path is like 'pasd.fieldtest.sb2.port7.current'
+    :return: None
+    """
+    payload = pickle.dumps(data, protocol=2)  # dumps() returns a bytes object
+    header = struct.pack("!L", len(payload))  # pack() returns a bytes object
+    try:
+        sock = socket.create_connection(('icinga.mwa128t.org', 2004))
+        message = header + payload
+        msize = len(message)
+        sentbytes = 0
+        tries = 0
+        while (sentbytes < msize) and (tries < 10):
+            sentbytes += sock.send(message[sentbytes:])
+            time.sleep(0.05)
+            tries += 1
+        sock.close()
+        if sentbytes < msize:
+            print("Tried %d times, but sent only %d bytes out of %d to Carbon" % (tries, sentbytes, msize))
+    except:
+        print("Exception in socket transfer to Carbon on port 2004")
+        traceback.print_exc()
 
 
 def initialise_db(db, stn):
@@ -236,7 +266,7 @@ def get_all_port_configs(db, station_number=DEFAULT_STATION_NUMBER):
                 fndhpc[pdoc_number] = bool(desire_enabled_online), bool(desire_enabled_offline)
 
             # Read all smartbox port configs for this station:
-            query = """SELECT smartbox_number, port_number, desire_enabled_online, desire_enabled_offline
+            query = """SELECT smartbox_number, port_number, desire_enabled_online, desire_enabled_offline, reset_breaker
                        FROM pasd_smartbox_port_status
                        WHERE station_id=%s"""
             curs.execute(query, (station_number,))
@@ -245,8 +275,10 @@ def get_all_port_configs(db, station_number=DEFAULT_STATION_NUMBER):
             for sid in range(1, 25):
                 sbpc[sid] = {i:[False, False] for i in range(1, 13)}
             for row in curs:
-                smartbox_number, port_number, desire_enabled_online, desire_enabled_offline = row
-                sbpc[smartbox_number][port_number] = bool(desire_enabled_online), bool(desire_enabled_offline)
+                smartbox_number, port_number, desire_enabled_online, desire_enabled_offline, reset_breaker = row
+                sbpc[smartbox_number][port_number] = (bool(desire_enabled_online),
+                                                      bool(desire_enabled_offline),
+                                                      bool(reset_breaker))
 
     return fndhpc, sbpc
 
@@ -291,6 +323,50 @@ def main_loop(db, stn):
         # Query the field hardware to get all the current sensor and port parameters and update the instance data
         stn.poll_data()  # If station is not active, only FNDH data can be polled
 
+        data = []    # A list of (path, (timestamp, value)) objects, where path is like 'pasd.fieldtest.sb02.port07.current'
+        fdict = {}
+        fdict['pasd.fieldtest.fndh.psu48v1_voltage'] = stn.fndh.psu48v1_voltage
+        fdict['pasd.fieldtest.fndh.psu48v2_voltage'] = stn.fndh.psu48v2_voltage
+        fdict['pasd.fieldtest.fndh.psu5v_voltage'] = stn.fndh.psu5v_voltage
+        fdict['pasd.fieldtest.fndh.psu48v_current'] = stn.fndh.psu48v_current
+        fdict['pasd.fieldtest.fndh.psu48v_temp'] = stn.fndh.psu48v_temp
+        fdict['pasd.fieldtest.fndh.psu5v_temp'] = stn.fndh.psu5v_temp
+        fdict['pasd.fieldtest.fndh.pcb_temp'] = stn.fndh.pcb_temp
+        fdict['pasd.fieldtest.fndh.outside_temp'] = stn.fndh.outside_temp
+        fdict['pasd.fieldtest.fndh.statuscode'] = stn.fndh.statuscode
+        fdict['pasd.fieldtest.fndh.indicator_code'] = stn.fndh.indicator_code
+        ftime = stn.fndh.readtime
+        for pnum in range(1, 29):
+            p = stn.fndh.ports[pnum]
+            fdict['pasd.fieldtest.fndh.port%02d.power_state' % pnum] = int(p.power_state)
+            fdict['pasd.fieldtest.fndh.port%02d.power_sense' % pnum] = int(p.power_sense)
+        for path, value in fdict.items():
+            data.append((path, (ftime, value)))
+
+        for sbnum, sb in stn.smartboxes.items():
+            fdict = {}
+            sb.poll_data()
+            logging.info(sb)
+            fdict['pasd.fieldtest.sb%02d.incoming_voltage' % sbnum] = sb.incoming_voltage
+            fdict['pasd.fieldtest.sb%02d.psu_voltage' % sbnum] = sb.psu_voltage
+            fdict['pasd.fieldtest.sb%02d.psu_temp' % sbnum] = sb.psu_temp
+            fdict['pasd.fieldtest.sb%02d.pcb_temp' % sbnum] = sb.pcb_temp
+            fdict['pasd.fieldtest.sb%02d.outside_temp' % sbnum] = sb.outside_temp
+            fdict['pasd.fieldtest.sb%02d.statuscode' % sbnum] = sb.statuscode
+            fdict['pasd.fieldtest.sb%02d.indicator_code' % sbnum] = sb.indicator_code
+            stime = sb.readtime
+            for pnum, p in sb.ports.items():
+                fdict['pasd.fieldtest.sb%02d.port%02d.current' % (sbnum, pnum)] = p.current
+                fdict['pasd.fieldtest.sb%02d.port%02d.breaker_tripped' % (sbnum, pnum)] = int(p.breaker_tripped)
+                fdict['pasd.fieldtest.sb%02d.port%02d.power_state' % (sbnum, pnum)] = int(p.power_state)
+            for snum, stemp in sb.sensor_temps.items():
+                fdict['pasd.fieldtest.sb%02d.sensor%02d.temp' % (sbnum, snum)] = stemp
+            for path, value in fdict.items():
+                data.append((path, (stime, value)))
+
+        logging.debug(data)
+        send_carbon(data)
+
         # Use the instance data to update the database sensor and port parameters
         update_db(db, stn=stn)
 
@@ -315,7 +391,7 @@ def main_loop(db, stn):
             needs_write = False
             for pid in stn.smartboxes[sid].ports.keys():
                 p = stn.smartboxes[sid].ports[pid]
-                desire_enabled_online, desire_enabled_offline = sbpc[sid][pid]
+                desire_enabled_online, desire_enabled_offline, reset_breaker = sbpc[sid][pid]
                 if (p.desire_enabled_online != desire_enabled_online):
                     p.desire_enabled_online = desire_enabled_online
                     needs_write = True

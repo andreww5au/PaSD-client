@@ -20,6 +20,10 @@ START_MODE = 'FIELD'    # Skip smartbox/pdoc mapping on startup
 SLAVE_MODBUS_ADDRESS = 63   # Address that technician's SID devices use to reach the MCCS as a slave device
 FNDH_ADDRESS = 31   # Modbus address of the FNDH controller
 
+# All possible SMARTbox addresses, plus one to make sure the code can handle a dead box
+# MAX_SMARTBOX = 26    # Don't try to talk to smartboxes above this address value
+MAX_SMARTBOX = 2    # Don't try to talk to smartboxes above this address value
+
 PORT_TURNON_INTERVAL = 5.0   # How many seconds to wait between each PDoC port when powering up an FNDH
 
 # Initial mapping between SMARTbox/port and antenna number
@@ -241,7 +245,7 @@ class Station(object):
 
         # Read the uptimes for all possible SMARTbox addresses, to work out when they were turned on
         address_on_times = {}   # Unix timestamp at which each SMARTbox booted, according to the uptime
-        for sadd in range(1, 26):   # All possible SMARTbox addresses, plus one to make sure the code can handle a dead box
+        for sadd in range(1, MAX_SMARTBOX):   # All possible SMARTbox addresses
             if sadd in self.smartboxes:
                 smb = self.smartboxes[sadd]
             else:   # If this address isn't in the saved antenna map, create a temporary SMARTbox instance.
@@ -353,12 +357,8 @@ class Station(object):
         if not self.active:
             return    # If we're not online, don't bother polling the smartboxes
 
-        if START_MODE == 'FULL':
-            max_sb = 25   # all the data from all possible SMARTbox addresses, to detect new boxes added
-        else:
-            max_sb = max(list(ANTENNA_MAP.keys()))   # only the boxes we know are in the field test
         # Next, grab all the data from all possible SMARTboxes, to keep comms restricted to a short time window
-        for sadd in range(1, max_sb + 1):
+        for sadd in range(1, MAX_SMARTBOX + 1):
             if sadd not in self.smartboxes:   # Check for a new SMARTbox with this address
                 smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
                 test_ok = smb.poll_data()
@@ -385,7 +385,7 @@ class Station(object):
             self.fndh.write_portconfig(write_to=True)
 
         # Now configure and activate any UNINITIALISED boxes, and log any error/warning states
-        for sadd in range(1, 26):
+        for sadd in range(1, MAX_SMARTBOX + 1):
             if sadd in self.smartboxes:
                 smb = self.smartboxes[sadd]
                 if smb.statuscode != smartbox.STATUS_OK:
