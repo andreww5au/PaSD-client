@@ -759,7 +759,7 @@ class SMARTbox(transport.ModbusDevice):
             if not self.portconfig:
                 try:
                     # JSON structure containing the port configuration (desired online and offline power state) for each port
-                    self.portconfig = {int(x):y for x,y in json.load(open(PORTCONFIG_FILENAME, 'r'))}  # Convert keys to ints
+                    self.portconfig = {int(x):y for x,y in json.load(open(PORTCONFIG_FILENAME, 'r')).items()}  # Convert keys to ints
                 except Exception:
                     self.portconfig = None
 
