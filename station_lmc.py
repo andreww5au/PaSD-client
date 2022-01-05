@@ -168,7 +168,10 @@ def update_db(db, stn):
     for pnum, port in stn.fndh.ports.items():
         tmpdict = port.__dict__.copy()
         tmpdict['station_id'] = stn.station_id
-        tmpdict['status_datetime'] = datetime.datetime.fromtimestamp(port.status_timestamp, timezone.utc)
+        if port.status_timestamp:
+            tmpdict['status_datetime'] = datetime.datetime.fromtimestamp(port.status_timestamp, timezone.utc)
+        else:
+            tmpdict['status_datetime'] = None
         fpdata_list.append(tmpdict)
 
     # FNDH port table:
@@ -186,7 +189,10 @@ def update_db(db, stn):
             for pnum, port in sb.ports.items():
                 port.station_id = stn.station_id
                 tmpdict = port.__dict__.copy()
-                tmpdict['status_datetime'] = datetime.datetime.fromtimestamp(port.status_timestamp, timezone.utc)
+                if port.status_timestamp:
+                    tmpdict['status_datetime'] = datetime.datetime.fromtimestamp(port.status_timestamp, timezone.utc)
+                else:
+                    tmpdict['status_datetime'] = None
                 sb_ports_data_list.append(tmpdict)
     else:    # If the station is not active (smartboxes are all off), fill in empty smartbox data
         for sb_num in range(1, 25):
