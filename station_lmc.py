@@ -183,7 +183,7 @@ def update_db(db, stn):
         for sb_num, sb in stn.smartboxes.items():
             sb.station_id = stn.station_id
             sb_data_list.append(sb.__dict__)
-            for pnum, port in sb.ports:
+            for pnum, port in sb.ports.items():
                 port.station_id = stn.station_id
                 tmpdict = port.__dict__.copy()
                 tmpdict['status_datetime'] = datetime.datetime.fromtimestamp(port.status_timestamp, timezone.utc)
