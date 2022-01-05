@@ -621,8 +621,8 @@ class FNDH(transport.ModbusDevice):
 
         # Startup finished, now set all the port states as per the saved port configuration:
         for portnum in range(1, 29):
-            self.ports[portnum].desire_enabled_online = bool(self.portconfig[str(portnum)][0])
-            self.ports[portnum].desire_enabled_offline = bool(self.portconfig[str(portnum)][1])
+            self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
+            self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
         ok = self.write_portconfig()
         return ok
 

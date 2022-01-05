@@ -771,8 +771,8 @@ class SMARTbox(transport.ModbusDevice):
 
         if ok:
             for portnum in range(1, 13):
-                self.ports[portnum].desire_enabled_online = bool(self.portconfig[str(portnum)][0])
-                self.ports[portnum].desire_enabled_offline = bool(self.portconfig[str(portnum)][1])
+                self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
+                self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
             ok = self.write_portconfig()
             if ok:
                 try:
