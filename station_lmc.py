@@ -61,7 +61,7 @@ UPDATE pasd_smartbox_port_status
     SET system_online = %(system_online)s, current_draw = %(current)s, locally_forced_on = %(locally_forced_on)s, 
         locally_forced_off = %(locally_forced_off)s, breaker_tripped = %(breaker_tripped)s, 
         power_state = %(power_state)s, status_timestamp = %(status_datetime)s, 
-        current_draw_timestamp = %(current_timestamp)s
+        current_draw_timestamp = %(current_datetime)s
     WHERE (station_id = %(station_id)s) AND (smartbox_number = %(modbus_address)s) AND (port_number = %(port_number)s)
 """
 
@@ -193,6 +193,10 @@ def update_db(db, stn):
                     tmpdict['status_datetime'] = datetime.datetime.fromtimestamp(port.status_timestamp, timezone.utc)
                 else:
                     tmpdict['status_datetime'] = None
+                if port.current_timestamp:
+                    tmpdict['current_datetime'] = datetime.datetime.fromtimestamp(port.current_timestamp, timezone.utc)
+                else:
+                    tmpdict['current_datetime'] = None
                 sb_ports_data_list.append(tmpdict)
     else:    # If the station is not active (smartboxes are all off), fill in empty smartbox data
         for sb_num in range(1, 25):
