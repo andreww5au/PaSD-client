@@ -42,7 +42,7 @@ FNDH_PORT_QUERY = """
 UPDATE pasd_fndh_port_status
     SET smartbox_number = %(smartbox_address)s, system_online = %(system_online)s, 
         locally_forced_on = %(locally_forced_on)s, locally_forced_off = %(locally_forced_off)s, 
-        power_state = %(power_state)s, power_sense = %(power_sense)s, status_timestamp = %(status_timestamp)s
+        power_state = %(power_state)s, power_sense = %(power_sense)s, status_timestamp = %(status_datetime)s
     WHERE (station_id = %(station_id)s) AND (pdoc_number = %(port_number)s)
 """
 
@@ -60,7 +60,7 @@ SMARTBOX_PORT_QUERY = """
 UPDATE pasd_smartbox_port_status
     SET system_online = %(system_online)s, current_draw = %(current)s, locally_forced_on = %(locally_forced_on)s, 
         locally_forced_off = %(locally_forced_off)s, breaker_tripped = %(breaker_tripped)s, 
-        power_state = %(power_state)s, status_timestamp = %(status_timestamp)s, 
+        power_state = %(power_state)s, status_timestamp = %(status_datetime)s, 
         current_draw_timestamp = %(current_timestamp)s
     WHERE (station_id = %(station_id)s) AND (smartbox_number = %(modbus_address)s) AND (port_number = %(port_number)s)
 """
@@ -168,6 +168,7 @@ def update_db(db, stn):
     for pnum, port in stn.fndh.ports.items():
         tmpdict = port.__dict__.copy()
         tmpdict['station_id'] = stn.station_id
+        tmpdict['status_datetime'] = datetime.datetime.fromtimestamp(port.status_timestamp, timezone.utc)
         fpdata_list.append(tmpdict)
 
     # FNDH port table:
@@ -184,7 +185,9 @@ def update_db(db, stn):
             sb_data_list.append(sb.__dict__)
             for pnum, port in sb.ports:
                 port.station_id = stn.station_id
-                sb_ports_data_list.append(port.__dict__)
+                tmpdict = port.__dict__.copy()
+                tmpdict['status_datetime'] = datetime.datetime.fromtimestamp(port.status_timestamp, timezone.utc)
+                sb_ports_data_list.append(tmpdict)
     else:    # If the station is not active (smartboxes are all off), fill in empty smartbox data
         for sb_num in range(1, 25):
             for portnum in range(1, 13):
