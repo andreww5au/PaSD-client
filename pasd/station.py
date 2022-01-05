@@ -193,6 +193,18 @@ class Station(object):
             self.status = 'ERROR'
             return False
 
+        for sadd in range(1, MAX_SMARTBOX + 1):   # All possible SMARTbox addresses
+            if sadd in self.smartboxes:
+                smb = self.smartboxes[sadd]
+            else:   # If this address isn't in the saved antenna map, create a temporary SMARTbox instance.
+                smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
+                self.smartboxes[sadd] = smb
+            print('Configuring SMARTbox on address %d.' % int(sadd))
+            smb.poll_data()
+            smb.configure()
+            smb.poll_data()
+            print(smb)
+
         self.active = True
         self.status = 'ACTIVE'
         return True
@@ -245,7 +257,7 @@ class Station(object):
 
         # Read the uptimes for all possible SMARTbox addresses, to work out when they were turned on
         address_on_times = {}   # Unix timestamp at which each SMARTbox booted, according to the uptime
-        for sadd in range(1, MAX_SMARTBOX):   # All possible SMARTbox addresses
+        for sadd in range(1, MAX_SMARTBOX + 1):   # All possible SMARTbox addresses
             if sadd in self.smartboxes:
                 smb = self.smartboxes[sadd]
             else:   # If this address isn't in the saved antenna map, create a temporary SMARTbox instance.
