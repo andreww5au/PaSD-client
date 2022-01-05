@@ -167,7 +167,7 @@ def update_db(db, stn):
     fpdata_list = []
     for pnum, port in stn.fndh.ports.items():
         tmpdict = port.__dict__.copy()
-        tmpdict['smartbox_number'] = stn.station_id
+        tmpdict['station_id'] = stn.station_id
         fpdata_list.append(tmpdict)
 
     # FNDH port table:
