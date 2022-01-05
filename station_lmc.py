@@ -307,7 +307,7 @@ def update_station_state(db, stn):
     query = "UPDATE pasd_stations SET active = %s, status = %s, status_timestamp = %s WHERE station_id = %s"
     with db:
         with db.cursor() as curs:
-            curs.execute(query, (stn.active. stn.status, datetime.datetime.now(timezone.utc), stn.station_id))
+            curs.execute(query, (stn.active, stn.status, datetime.datetime.now(timezone.utc), stn.station_id))
             curs.execute("SELECT desired_active FROM pasd_stations WHERE station_id = %s", (stn.station_id,))
             rows = curs.fetchall()
             if len(rows) > 1:
