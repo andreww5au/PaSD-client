@@ -488,6 +488,8 @@ if __name__ == '__main__':
                         portconfig_fndh=fndhpc,
                         portconfig_smartboxes=sbpc,
                         logger=slogger)
-    s.fieldtest_startup()
     print('Starting up entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
+    s.fieldtest_startup()
+    s.poll_data()
+
     main_loop(db, s)
