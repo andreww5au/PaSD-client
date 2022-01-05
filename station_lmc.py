@@ -489,3 +489,4 @@ if __name__ == '__main__':
                         logger=slogger)
     s.fieldtest_startup()
     print('Starting up entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
+    main_loop(db, s)
