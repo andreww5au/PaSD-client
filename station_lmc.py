@@ -286,7 +286,7 @@ def get_all_port_configs(db, station_number=DEFAULT_STATION_NUMBER):
 
             sbpc = {}
             for sid in range(1, 25):
-                sbpc[sid] = {i:[False, False] for i in range(1, 13)}
+                sbpc[sid] = {i:[False, False, False] for i in range(1, 13)}
             for row in curs:
                 smartbox_number, port_number, desire_enabled_online, desire_enabled_offline, reset_breaker = row
                 sbpc[smartbox_number][port_number] = (bool(desire_enabled_online),
