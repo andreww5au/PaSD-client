@@ -10,6 +10,7 @@ import logging
 import pickle
 import socket
 import struct
+import sys
 import time
 import traceback
 
@@ -20,15 +21,14 @@ SMARTBOX_ADDRESSES = [1, 2]
 
 SBOXES = {}
 
-loglevel = logging.INFO   # For console - logfile level is hardwired below
+loglevel = logging.DEBUG   # For console - logfile level is hardwired below
 
-fh = logging.FileHandler(filename=LOGFILE, mode='w')
-fh.setLevel(logging.INFO)   # All log messages go to the log file
+fh = logging.FileHandler(filename=LOGFILE, mode='a')
+fh.setLevel(logging.DEBUG)   # All log messages go to the log file
 sh = logging.StreamHandler()
 sh.setLevel(loglevel)        # Some or all log messages go to the console
 
 logging.basicConfig(handlers=[fh, sh],
-                    level=logging.INFO,
                     format='%(levelname)s:%(name)s %(created)14.3f - %(message)s')
 
 
@@ -91,7 +91,8 @@ if __name__ == '__main__':
     while True:
         data = []    # A list of (path, (timestamp, value)) objects, where path is like 'pasd.fieldtest.sb02.port07.current'
         f.poll_data()
-        logging.info(f)
+        print(f)
+        sys.stdout.flush()
 
         fdict = {}
         fdict['pasd.fieldtest.fndh.psu48v1_voltage'] = f.psu48v1_voltage
@@ -115,7 +116,8 @@ if __name__ == '__main__':
         for sbnum, sb in SBOXES.items():
             fdict = {}
             sb.poll_data()
-            logging.info(sb)
+            print(sb)
+            sys.stdout.flush()
             fdict['pasd.fieldtest.sb%02d.incoming_voltage' % sbnum] = sb.incoming_voltage
             fdict['pasd.fieldtest.sb%02d.psu_voltage' % sbnum] = sb.psu_voltage
             fdict['pasd.fieldtest.sb%02d.psu_temp' % sbnum] = sb.psu_temp
