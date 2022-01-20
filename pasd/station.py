@@ -391,7 +391,7 @@ class Station(object):
         send_portstate = False
         for smb in self.smartboxes.values():
             if smb.statuscode == smartbox.STATUS_POWERDOWN:
-                for p in self.fndh.ports.values():
+                for p in self.fndh.ports.values():   # TODO - switch off the right port, not all of them
                     p.locally_forced_off = True
                     send_portstate = True
         if send_portstate:
