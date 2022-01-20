@@ -5,6 +5,7 @@ Temporary daemon to monitor the equipment being tested in the field. Test equipm
 missing firmware features, and doesn't have the final hardware setup as far as sensor wiring
 and positioning are concerned.
 """
+import json
 
 import logging
 import pickle
@@ -84,7 +85,11 @@ if __name__ == '__main__':
         print('Polling SMARTbox as "s" on address %d.' % sadd)
         s.poll_data()
         print('Configuring SMARTbox as "s" on address %d.' % sadd)
-        s.configure()
+        portconfig = {int(x):y for x, y in json.load(open(smartbox.PORTCONFIG_FILENAME, 'r')).items()}  # Convert keys to ints
+        if sadd == 2:   # temp hack for SB02 singing antenna
+            portconfig[6] = [0, 0, 1]
+            portconfig[7] = [0, 0, 1]
+        s.configure(portconfig=portconfig)
         s.poll_data()
         SBOXES[sadd] = s
 
