@@ -115,8 +115,8 @@ def pdoc(portnums, action):
 
 
 @cli.command(context_settings={"ignore_unknown_options": True})
-@click.argument('sbnum', nargs=1)
 @click.argument('action', nargs=1)
+@click.argument('sbnum', nargs=1)
 @click.argument('portnums', nargs=-1)
 def fem(portnums, sbnum, action):
     """
@@ -133,7 +133,7 @@ def fem(portnums, sbnum, action):
         return -1
 
     if (not sbnum.isdigit()) and (sbnum.upper() != 'ALL'):
-        print("Second argument must be a smartbox number (1-24), or 'all', not '%s'" % sbnum)
+        print("Third argument must be a smartbox number (1-24), or 'all', not '%s'" % sbnum)
         return -1
 
     if sbnum.upper() == 'ALL':
