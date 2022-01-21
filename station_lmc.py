@@ -426,6 +426,8 @@ def main_loop(db, stn):
                ((time.time() - LAST_SHUTDOWN_ATTEMPT_TIME) > SHUTDOWN_RETRY_INTERVAL) ):
             stn.shutdown()
 
+    time.sleep(20)
+
 
 if __name__ == '__main__':
     CP = conparser(defaults={})
@@ -488,6 +490,8 @@ if __name__ == '__main__':
                         portconfig_fndh=fndhpc,
                         portconfig_smartboxes=sbpc,
                         logger=slogger)
+    initialise_db(db=db, stn=s)
+
     print('Starting up entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
     s.fieldtest_startup()
     s.poll_data()
