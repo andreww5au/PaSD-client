@@ -207,7 +207,7 @@ def update_db(db, stn):
         for sb_num in range(1, 25):
             for portnum in range(1, 13):
                 spdata = {'station_id':stn.station_id, 'modbus_address':sb_num, 'port_number':portnum,
-                          'system_online':None, 'current_draw':None, 'locally_forced_on':None,
+                          'system_online':None, 'current':None, 'locally_forced_on':None,
                           'locally_forced_off':None, 'breaker_tripped':None,
                           'power_state':None, 'status_timestamp':datetime.datetime.now(timezone.utc),
                           'current_timestamp':None}
@@ -338,6 +338,8 @@ def main_loop(db, stn):
     :return:
     """
     while not stn.wants_exit:
+        last_loop_start_time = time.time()
+
         # Query the field hardware to get all the current sensor and port parameters and update the instance data
         stn.poll_data()  # If station is not active, only FNDH data can be polled
 
@@ -431,7 +433,7 @@ def main_loop(db, stn):
                ((time.time() - LAST_SHUTDOWN_ATTEMPT_TIME) > SHUTDOWN_RETRY_INTERVAL) ):
             stn.shutdown()
 
-    time.sleep(20)
+        time.sleep(15 - (time.time() - last_loop_start_time))
 
 
 if __name__ == '__main__':
