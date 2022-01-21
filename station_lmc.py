@@ -113,11 +113,13 @@ def initialise_db(db, stn):
         with db.cursor() as curs:
             curs.execute('SELECT COUNT(*) FROM pasd_stations WHERE (station_id = %s)', (stn.station_id,))
             if curs.fetchone()[0] != 1:  # No rows match, or more than one row matches:
+                logging.info('Creating station %d in pasd_stations' % stn.station_id)
                 curs.execute('DELETE FROM pasd_stations WHERE (station_id = %s)', (stn.station_id,))
                 curs.execute('INSERT INTO pasd_stations (station_id) VALUES (%s)', (stn.station_id,))
 
             curs.execute('SELECT COUNT(*) FROM pasd_fndh_state WHERE (station_id = %s)', (stn.station_id,))
             if curs.fetchone()[0] != 1:   # No rows match, or more than one row matches:
+                logging.info('Creating FNDH state for station %d' % stn.station_id)
                 curs.execute('DELETE FROM pasd_fndh_state WHERE (station_id = %s)', (stn.station_id,))
                 curs.execute('INSERT INTO pasd_fndh_state (station_id) VALUES (%s)', (stn.station_id,))
 
@@ -125,6 +127,7 @@ def initialise_db(db, stn):
                 curs.execute('SELECT COUNT(*) FROM pasd_fndh_port_status WHERE (station_id = %s) AND (pdoc_number = %s)',
                              (stn.station_id, pnum))
                 if curs.fetchone()[0] != 1:   # No rows match, or more than one row matches:
+                    logging.info('Creating FNDH port state for station %d, port %d' % (stn.station_id, pnum))
                     curs.execute('DELETE FROM pasd_fndh_port_status WHERE (station_id = %s) AND (pdoc_number = %s)',
                                  (stn.station_id, pnum))
                     curs.execute('INSERT INTO pasd_fndh_port_status (station_id, pdoc_number) VALUES (%s, %s)',
@@ -134,6 +137,7 @@ def initialise_db(db, stn):
                 curs.execute('SELECT COUNT(*) FROM pasd_smartbox_state WHERE (station_id = %s) AND (smartbox_number = %s)',
                              (stn.station_id, sb_num))
                 if curs.fetchone()[0] != 1:   # No rows match, or more than one row matches:
+                    logging.info('Creating Smartbox state for station %d, SB %d' % (stn.station_id, sb_num))
                     curs.execute('DELETE FROM pasd_smartbox_state WHERE (station_id = %s) AND (smartbox_number = %s)',
                                  (stn.station_id, sb_num))
                     curs.execute('INSERT INTO pasd_smartbox_state (station_id, smartbox_number) VALUES (%s, %s)',
@@ -143,6 +147,7 @@ def initialise_db(db, stn):
                     curs.execute('SELECT COUNT(*) FROM pasd_smartbox_port_status WHERE (station_id = %s) AND (smartbox_number = %s) AND (port_number = %s)',
                                  (stn.station_id, sb_num, pnum))
                     if curs.fetchone()[0] != 1:   # No rows match, or more than one row matches:
+                        logging.info('Creating Smartbox port state for station %d, SB %d, port %d' % (stn.station_id, sb_num, pnum))
                         curs.execute('DELETE FROM pasd_smartbox_port_status WHERE (station_id = %s) AND (smartbox_number = %s) AND (port_number = %s)',
                                      (stn.station_id, sb_num, pnum))
                         curs.execute('INSERT INTO pasd_smartbox_port_status (station_id, smartbox_number, port_number) VALUES (%s, %s, %s)',
