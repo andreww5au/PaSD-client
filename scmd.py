@@ -111,7 +111,7 @@ def pdoc(portnums, action):
                        SET desire_enabled_online = %s,
                            desire_enabled_offline = %s
                        WHERE station_id = %s AND pdoc_number = ANY(%s)"""
-            print(query % (newstate, newstate, STATION_ID, portlist))
+            curs.execute(query, (newstate, newstate, STATION_ID, portlist))
 
 
 @cli.command(context_settings={"ignore_unknown_options": True})
@@ -157,7 +157,7 @@ def fem(portnums, sbnum, action):
                        WHERE station_id = %s AND 
                              smartbox_number = ANY(%s) AND
                              port_number = ANY(%s)"""
-            print(query % (newstate, newstate, STATION_ID, sboxes, portlist))
+            curs.execute(query, (newstate, newstate, STATION_ID, sboxes, portlist))
 
 
 if __name__ == '__main__':
