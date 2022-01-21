@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 PaSD command tool - given an action on the command line
@@ -132,7 +132,7 @@ def fem(portnums, sbnum, action):
         print('No matching ports, exiting.')
         return -1
 
-    if (not sbnum.isdigits()) and (sbnum.upper() != 'ALL'):
+    if (not sbnum.isdigit()) and (sbnum.upper() != 'ALL'):
         print("Second argument must be a smartbox number (1-24), or 'all', not '%s'" % sbnum)
         return -1
 
