@@ -433,7 +433,7 @@ def main_loop(db, stn):
                ((time.time() - LAST_SHUTDOWN_ATTEMPT_TIME) > SHUTDOWN_RETRY_INTERVAL) ):
             stn.shutdown()
 
-        time.sleep(15 - (time.time() - last_loop_start_time))
+        time.sleep(min(0, 15 - (time.time() - last_loop_start_time)))
 
 
 if __name__ == '__main__':
