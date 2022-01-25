@@ -254,7 +254,7 @@ def sb(portnums, action, sbnum):
                                FROM pasd_smartbox_state
                                WHERE (station_id = %(station_id)s) AND (smartbox_number = ANY(%(modbus_address)s))
                                ORDER BY smartbox_number"""
-                    curs.execute(query, (STATION_ID,))
+                    curs.execute(query, {'station_id':STATION_ID, 'modbus_address':sboxes})
                     rows = curs.fetchall()
                     for row in rows:
                         (smartbox_number, uptime, incoming_voltage, psu_voltage, psu_temp, pcb_temp,
