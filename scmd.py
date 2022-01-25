@@ -301,6 +301,7 @@ def sb(portnums, action, sbnum):
                                         sysstring,
                                         enstring,
                                         lfstring,
+                                        'Current:%5.1f' % current_draw
                                         ]
                         status_string = ' '.join(status_items)
                         print("SB%02d, P%02d: %s" % (smartbox_number, port_number, status_string))
