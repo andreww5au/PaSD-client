@@ -36,7 +36,17 @@ FNDH at %(station_id)s, last contacted %(age)1.1f seconds ago:
     Indicator: %(indicator_state)s
 """
 
-PDOC_STRING = ""
+SMARTBOX_STRING = """\
+SMARTBox at address: %(smartbox_number)s, last contacted %(age)1.1f seconds ago:
+    Uptime: %(uptime)s seconds
+    48V In: %(incoming_voltage)4.2f V
+    5V out: %(psu_voltage)4.2f V
+    PSU Temp: %(psu_temp)4.2f deg C
+    PCB Temp: %(pcb_temp)4.2f deg C
+    Outside Temp: %(outside_temp)4.2f deg C
+    Status: %(status)s
+    Indicator: %(indicator_state)s
+"""
 
 DB = None   # Will be replaced by a psycopg2 database connection object on startup
 
@@ -174,7 +184,7 @@ def fndh(portnums, action):
                         enstring = '(DesireEnabled:%s)' % ','.join([{False:'', True:'Online', None:'?'}[desire_enabled_online],
                                                                     {False:'', True:'Offline', None:'?'}[desire_enabled_offline]])
                         sysstring = '(System:%s)' % ({False:'Offline', True:'Online', None:'??line?'}[system_online])
-                        status_items = ['Status(%1.1f s):' % (time.time() - status_timestamp),
+                        status_items = ['Status(age %1.1f s):' % (time.time() - status_timestamp),
                                         {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[power_state],
                                         sysstring,
                                         enstring,
@@ -225,9 +235,6 @@ def sb(portnums, action, sbnum):
     $ scmd sb 2 status 1 2 3     # displays the status of ports 1, 2 and 3 on smartbox 1
     """
     portlist = parse_values(valuelist=portnums, all_list=list(range(1, 13)))
-    if not portlist:
-        print('No matching ports, exiting.')
-        return -1
 
     if (not sbnum.isdigit()) and (sbnum.upper() != 'ALL'):
         print("Second argument must be a single smartbox number (1-24), or 'all', not '%s'" % sbnum)
@@ -239,22 +246,81 @@ def sb(portnums, action, sbnum):
         sboxes = [int(sbnum)]
 
     with DB:
-        if action.upper() == 'ON':
-            newstate = True
-        elif action.upper() == 'OFF':
-            newstate = False
-        else:
-            print('Action must be "on" or "off", not "%s"' % action)
-            return -1
-
         with DB.cursor() as curs:
-            query = """UPDATE pasd_smartbox_port_status 
-                       SET desire_enabled_online = %s,
-                           desire_enabled_offline = %s
-                       WHERE station_id = %s AND 
-                             smartbox_number = ANY(%s) AND
-                             port_number = ANY(%s)"""
-            curs.execute(query, (newstate, newstate, STATION_ID, sboxes, portlist))
+            if action.upper() == 'STATUS':
+                if not portlist:
+                    query = """SELECT smartbox_number, uptime, incoming_voltage, psu_voltage, psu_temp, pcb_temp, 
+                                      outside_temp, status, indicator_state, readtime
+                               FROM pasd_smartbox_state
+                               WHERE (station_id = %(station_id)s) AND (smartbox_number = ANY(%(modbus_address)s))
+                               ORDER BY smartbox_number"""
+                    curs.execute(query, (STATION_ID,))
+                    rows = curs.fetchall()
+                    for row in rows:
+                        (smartbox_number, uptime, incoming_voltage, psu_voltage, psu_temp, pcb_temp,
+                         outside_temp, status, indicator_state, readtime) = row
+                        paramdict = {'station_id':STATION_ID,
+                                     'smartbox_number':smartbox_number,
+                                     'uptime':uptime,
+                                     'age':time.time() - readtime,
+                                     'incoming_voltage':incoming_voltage,
+                                     'psu_voltage':psu_voltage,
+                                     'psu_temp':psu_temp,
+                                     'pcb_temp':pcb_temp,
+                                     'outside_temp':outside_temp,
+                                     'status':status,
+                                     'indicator_state':indicator_state}
+                        print(SMARTBOX_STRING % paramdict)
+                else:  # portlist suppled
+                    query = """SELECT smartbox_number, port_number, extract(epoch from status_timestamp), system_online, 
+                                      current_draw, locally_forced_on, locally_forced_off, breaker_tripped, power_state,
+                                      desire_enabled_online, desire_enabled_offline
+                               FROM pasd_smartbox_port_status
+                               WHERE (station_id = %(station_id)s) AND 
+                                     (smartbox_number = ANY(%(modbus_address)s)) AND 
+                                     (port_number = ANY(%(port_number)s))
+                               ORDER BY smartbox_number, port_number"""
+                    curs.execute(query, {'station_id':STATION_ID, 'modbus_address':sboxes, 'port_number':portlist})
+                    rows = curs.fetchall()
+                    for row in rows:
+                        (smartbox_number, port_number, status_timestamp, system_online,
+                         current_draw, locally_forced_on, locally_forced_off, breaker_tripped, power_state,
+                         desire_enabled_online, desire_enabled_offline) = row
+                        if locally_forced_on:
+                            lfstring = 'Forced:ON'
+                        elif locally_forced_off:
+                            lfstring = 'Forced:OFF'
+                        else:
+                            lfstring = 'NotForced'
+                        enstring = '(DesireEnabled:%s)' % ','.join(
+                                [{False:'', True:'Online', None:'?'}[desire_enabled_online],
+                                 {False:'', True:'Offline', None:'?'}[desire_enabled_offline]])
+                        sysstring = '(System:%s)' % ({False:'Offline', True:'Online', None:'??line?'}[system_online])
+                        status_items = ['Status(age %1.1f s):' % (time.time() - status_timestamp),
+                                        {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[power_state],
+                                        sysstring,
+                                        enstring,
+                                        lfstring,
+                                        ]
+                        status_string = ' '.join(status_items)
+                        print("SB%02d, P%02d: %s" % (smartbox_number, port_number, status_string))
+            elif action.upper() in ['ON', 'OFF']:
+                if not portlist:
+                    print('No matching ports, exiting.')
+                    return -1
+
+                newstate = action.upper() == 'ON'
+                query = """UPDATE pasd_smartbox_port_status 
+                           SET desire_enabled_online = %s,
+                               desire_enabled_offline = %s
+                           WHERE station_id = %s AND 
+                                 smartbox_number = ANY(%s) AND
+                                 port_number = ANY(%s)"""
+                curs.execute(query, (newstate, newstate, STATION_ID, sboxes, portlist))
+
+            else:
+                print('Action must be "on" or "off", not "%s"' % action)
+                return -1
 
 
 if __name__ == '__main__':
