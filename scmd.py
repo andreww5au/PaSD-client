@@ -87,7 +87,9 @@ def cli():
     pass
 
 
-@cli.command(context_settings={"ignore_unknown_options": True})
+@cli.command('fndh',
+             short_help="Command or query the FNDH or a PDoC port",
+             context_settings={"ignore_unknown_options": True})
 @click.argument('action', nargs=1)
 @click.argument('portnums', nargs=-1)
 def fndh(portnums, action):
@@ -104,11 +106,6 @@ def fndh(portnums, action):
     $ scmd fndh on all -3 -5      # turns on all ports EXCEPT 3 and 5
     $ scmd fndh status            # displays the FNDH status
     $ scmd fndh status 1 2 3      # displays the status of ports 1, 2 and 3
-
-    \f
-    :param portnums: Tuple of strings, optionally preceded by a '-', each either representing a single port number, or the word 'all'
-    :param action: Either 'on', 'off' or 'status', case insensitive
-    :return: None for success, -1 for failure
     """
     portlist = parse_values(valuelist=portnums, all_list=list(range(1, 29)))
     if not portlist:
@@ -132,7 +129,9 @@ def fndh(portnums, action):
             curs.execute(query, (newstate, newstate, STATION_ID, portlist))
 
 
-@cli.command(context_settings={"ignore_unknown_options": True})
+@cli.command('sb',
+             short_help="Command or query a smartbox or an FEM port",
+             context_settings={"ignore_unknown_options": True})
 @click.argument('sbnum', nargs=1)
 @click.argument('action', nargs=1)
 @click.argument('portnums', nargs=-1)
@@ -152,12 +151,6 @@ def sb(portnums, action, sbnum):
     $ scmd sb 2 on all -3 -5     # turns on all ports EXCEPT 3 and 5
     $ scmd sb 1 status           # displays the status smartbox 1
     $ scmd sb 2 status 1 2 3     # displays the status of ports 1, 2 and 3 on smartbox 1
-
-    \f
-    :param portnums: Tuple of strings, each either representing a single port number, or the word 'all'
-    :param action: Either 'on', 'off' or 'status', case insensitive
-    :param sbnum: Smartbox address (eg '1'), or 'all' to command all smartboxes. You can only give a single address, or 'all'
-    :return: None for success, -1 for failure
     """
     portlist = parse_values(valuelist=portnums, all_list=list(range(1, 13)))
     if not portlist:
