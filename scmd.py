@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
 """
-PaSD command tool - given an action on the command line
+PaSD command tool to turn ports on/off on an FNDH or smartbox, by updating the relevant tables in the
+database. The station_lmc.py code that runs continuously, communicating with the FNDH and smartboxes, then
+issues the actual commands to the hardware.
 
+The PaSD command tool can also be used to read current FNDH/smartbox/port status data from the database.
 """
 
 from configparser import ConfigParser as conparser
-import getpass
-import logging
-import sys
-import time
 
 import click
 
@@ -25,6 +24,11 @@ DB = None   # Will be replaced by a psycopg2 database connection object on start
 
 
 def init():
+    """
+    Create the PostgreSQL database connection, and store it in the 'DB' global.
+
+    :return: None
+    """
     global DB
     CP = conparser(defaults={})
     CPfile = CP.read(CPPATH)
@@ -45,7 +49,9 @@ def parse_values(valuelist, all_list=None):
     and expand that into a list of values. If the value (or 'all') is preceded by a minus sign, it or
     they are excluded from the final list.
 
-    :param valuelist: Tuple of numbers
+    The word 'all' is expanded into the list of values provided in the all_list parameter.
+
+    :param valuelist: Tuple of strings, optionally preceded by a '-', each either representing a single port number, or the word 'all'
     :param all_list: List of values that should be taken to mean 'all' - eg [1,2,3,4,5,6,7,8,9,10,11,12]
     :return: List of values to act on, eg [1,3,5]
     """
@@ -82,15 +88,22 @@ def cli():
 
 
 @cli.command(context_settings={"ignore_unknown_options": True})
-@click.argument('action', nargs=1)
-@click.argument('portnums', nargs=-1)
-def pdoc(portnums, action):
+@click.argument('action', nargs=1, help="Action to take - one of 'on', 'off' or 'status")
+@click.argument('portnums',
+                nargs=-1,
+                help="One or more items, each a port number or the word 'all'. Items are optionally preceded by a '-' to exclude them")
+def fndh(portnums, action):
     """
-    Turn PDoC ports on or off - eg "scmd pdoc off 3 4 5"
+    Turn PDoC ports on or off on the FNDH - eg
 
-    :param portnums:
-    :param action:
-    :return:
+    "scmd fndh off 3 4 5" turns off ports 3,4 and 5
+    "scmd fndh on all -3 -5" turns on all ports EXCEPT 3 and 5
+    "scmd fndh status" displays the FNDH status
+    "scmd fndh status 1 2 3" displays the status of ports 1, 2 and 3
+
+    :param portnums: Tuple of strings, optionally preceded by a '-', each either representing a single port number, or the word 'all'
+    :param action: Either 'on', 'off' or 'status', case insensitive
+    :return: None for success, -1 for failure
     """
     portlist = parse_values(valuelist=portnums, all_list=list(range(1, 29)))
     if not portlist:
@@ -115,17 +128,24 @@ def pdoc(portnums, action):
 
 
 @cli.command(context_settings={"ignore_unknown_options": True})
-@click.argument('action', nargs=1)
-@click.argument('sbnum', nargs=1)
-@click.argument('portnums', nargs=-1)
-def fem(portnums, sbnum, action):
+@click.argument('sbnum', nargs=1, help="A single smartbox address (eg '1'), or 'all' to command all smartboxes")
+@click.argument('action', nargs=1, help="Action to take - one of 'on', 'off' or 'status'")
+@click.argument('portnums',
+                nargs=-1,
+                help="One or more items, each a port number or the word 'all'. Items are optionally preceded by a '-' to exclude them")
+def sb(portnums, action, sbnum):
     """
-    Turn PDoC ports on or off - eg "scmd pdoc off 3 4 5"
+    Turn FEM ports on or off on the given smartbox - eg
 
-    :param portnums:
-    :param sbnum:
-    :param action:
-    :return:
+    "scmd sb 1 off 3 4 5" turns off ports 3,4 and 5
+    "scmd sb 2 on all -3 -5" turns on all ports EXCEPT 3 and 5
+    "scmd sb 1 status" displays the status smartbox 1
+    "scmd sb 2 status 1 2 3" displays the status of ports 1, 2 and 3 on smartbox 1
+
+    :param portnums: Tuple of strings, each either representing a single port number, or the word 'all'
+    :param action: Either 'on', 'off' or 'status', case insensitive
+    :param sbnum: Smartbox address (eg '1'), or 'all' to command all smartboxes. You can only give a single address, or 'all'
+    :return: None for success, -1 for failure
     """
     portlist = parse_values(valuelist=portnums, all_list=list(range(1, 13)))
     if not portlist:
@@ -133,7 +153,7 @@ def fem(portnums, sbnum, action):
         return -1
 
     if (not sbnum.isdigit()) and (sbnum.upper() != 'ALL'):
-        print("Third argument must be a smartbox number (1-24), or 'all', not '%s'" % sbnum)
+        print("Second argument must be a single smartbox number (1-24), or 'all', not '%s'" % sbnum)
         return -1
 
     if sbnum.upper() == 'ALL':
