@@ -95,6 +95,7 @@ def fndh(portnums, action):
     Turn PDoC ports on or off on the FNDH
 
     ACTION is what to do - one of 'on', 'off', or 'status'
+
     PORTNUMS is One or more items, each a port number or the word 'all'. Items are optionally preceded by a '-' to exclude them
 
     \b
@@ -103,8 +104,8 @@ def fndh(portnums, action):
     $ scmd fndh on all -3 -5      # turns on all ports EXCEPT 3 and 5
     $ scmd fndh status            # displays the FNDH status
     $ scmd fndh status 1 2 3      # displays the status of ports 1, 2 and 3
-    \f
 
+    \f
     :param portnums: Tuple of strings, optionally preceded by a '-', each either representing a single port number, or the word 'all'
     :param action: Either 'on', 'off' or 'status', case insensitive
     :return: None for success, -1 for failure
@@ -140,8 +141,10 @@ def sb(portnums, action, sbnum):
     Turn FEM ports on or off on the given smartbox
 
     SBNUM is a single smartbox address (eg '1'), or 'all' to command all smartboxes
+
     ACTION is what to do - one of 'on', 'off', or 'status'
-    PORTNUMS is One or more items, each a port number or the word 'all'. Items are optionally preceded by a '-' to exclude them
+
+    PORTNUMS is one or more items, each a port number or the word 'all'. Items are optionally preceded by a '-' to exclude them
 
     \b
     E.g.
@@ -149,8 +152,8 @@ def sb(portnums, action, sbnum):
     $ scmd sb 2 on all -3 -5     # turns on all ports EXCEPT 3 and 5
     $ scmd sb 1 status           # displays the status smartbox 1
     $ scmd sb 2 status 1 2 3     # displays the status of ports 1, 2 and 3 on smartbox 1
-    \f
 
+    \f
     :param portnums: Tuple of strings, each either representing a single port number, or the word 'all'
     :param action: Either 'on', 'off' or 'status', case insensitive
     :param sbnum: Smartbox address (eg '1'), or 'all' to command all smartboxes. You can only give a single address, or 'all'
