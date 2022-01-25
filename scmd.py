@@ -9,6 +9,7 @@ The PaSD command tool can also be used to read current FNDH/smartbox/port status
 """
 
 from configparser import ConfigParser as conparser
+import time
 
 import click
 
@@ -19,6 +20,23 @@ MAX_SMARTBOX = 2
 
 CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
+
+FNDH_STRING = """\
+FNDH at %(station_id)s, last contacted %1.1f seconds ago:
+    Uptime: %(uptime)s seconds
+    48V Out 1: %(psu48v1_voltage)s V
+    48V Out 2: %(psu48v2_voltage)s V
+    5V out: %(psu5v_voltage)s V
+    48V Current: %(psu48v_current)s A 
+    48V Temp: %(psu48v_temp)s deg C
+    5V Temp: %(psu5v_temp)s deg C
+    PCB Temp: %(pcb_temp)s deg C
+    Outside Temp: %(outside_temp)s deg C
+    Status: %(status)s
+    Indicator: %(indicator_state)s
+"""
+
+PDOC_STRING = ""
 
 DB = None   # Will be replaced by a psycopg2 database connection object on startup
 
@@ -113,20 +131,73 @@ def fndh(portnums, action):
         return -1
 
     with DB:
-        if action.upper() == 'ON':
-            newstate = True
-        elif action.upper() == 'OFF':
-            newstate = False
-        else:
-            print('Action must be "on" or "off", not "%s"' % action)
-            return -1
-
         with DB.cursor() as curs:
-            query = """UPDATE pasd_fndh_port_status 
-                       SET desire_enabled_online = %s,
-                           desire_enabled_offline = %s
-                       WHERE station_id = %s AND pdoc_number = ANY(%s)"""
-            curs.execute(query, (newstate, newstate, STATION_ID, portlist))
+            if action.upper() == 'STATUS':
+                if not portlist:
+                    query = """SELECT uptime, readtime, psu48v1_voltage, psu48v2_voltage, psu5v_voltage, psu48v_current, 
+                                      psu48v_temp, psu5v_temp, pcb_temp, outside_temp, status, indicator_state
+                               FROM pasd_fndh_state
+                               WHERE station_id = %s"""
+                    curs.execute(query, STATION_ID)
+                    rows = curs.fetchall()
+                    if rows:
+                        (uptime, readtime, psu48v1_voltage, psu48v2_voltage, psu5v_voltage, psu48v_current, psu48v_temp,
+                         psu5v_temp, pcb_temp, outside_temp, status, indicator_state) = rows[0]
+                        paramdict = {'station_id':STATION_ID,
+                                     'uptime':uptime,
+                                     'age':time.time() - readtime,
+                                     'psu48v1_voltage':psu48v1_voltage,
+                                     'psu48v2_voltage':psu48v2_voltage,
+                                     'psu5v_voltage':psu5v_voltage,
+                                     'psu48v_current':psu48v_current,
+                                     'psu48v_temp':psu48v_temp,
+                                     'psu5v_temp':psu5v_temp,
+                                     'pcb_temp':pcb_temp,
+                                     'outside_temp':outside_temp,
+                                     'status':status,
+                                     'indicator_state':indicator_state}
+                        print(FNDH_STRING % paramdict)
+                else:  # portlist suppled
+                    query = """SELECT pdoc_number, status_timestamp, system_online, locally_forced_on, locally_forced_off, 
+                                      power_state, power_sense, desire_enabled_online, desire_enabled_offline
+                               FROM pasd_fndh_port_status
+                               WHERE (station_id = %(station_id)s) AND (pdoc_number = ANY(%(port_number)s))
+                               ORDER BY pdoc_number"""
+                    curs.execute(query, {'station_id':STATION_ID, 'port_number':portlist})
+                    rows = curs.fetchall()
+                    for row in rows:
+                        (pdoc_number, status_timestamp, system_online, locally_forced_on, locally_forced_off, power_state,
+                         power_sense, desire_enabled_online, desire_enabled_offline) = row
+                        if locally_forced_on:
+                            lfstring = 'Forced:ON'
+                        elif locally_forced_off:
+                            lfstring = 'Forced:OFF'
+                        else:
+                            lfstring = 'NotForced'
+                        enstring = '(DesireEnabled:%s)' % ','.join([{False:'', True:'Online', None:'?'}[desire_enabled_online],
+                                                                    {False:'', True:'Offline', None:'?'}[desire_enabled_offline]])
+                        sysstring = '(System:%s)' % ({False:'Offline', True:'Online', None:'??line?'}[system_online])
+                        status_items = ['Status(%1.1f s):' % (time.time() - status_timestamp),
+                                        {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[power_state],
+                                        sysstring,
+                                        enstring,
+                                        lfstring,
+                                        {False:'PowerSense:OFF', True:'PowerSense:ON', None:'PowerSense:?'}[power_sense]
+                                        ]
+                        status_string = ' '.join(status_items)
+                        print("P%02d: %s" % (pdoc_number, status_string))
+
+            elif action.upper() in ['ON', 'OFF']:
+                newstate = action.upper() == 'ON'
+                query = """UPDATE pasd_fndh_port_status 
+                           SET desire_enabled_online = %s,
+                               desire_enabled_offline = %s
+                           WHERE station_id = %s AND pdoc_number = ANY(%s)"""
+                curs.execute(query, (newstate, newstate, STATION_ID, portlist))
+
+            else:
+                print('Action must be "on" or "off", not "%s"' % action)
+                return -1
 
 
 @cli.command('sb',
