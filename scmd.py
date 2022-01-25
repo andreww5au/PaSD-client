@@ -22,7 +22,7 @@ CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
 
 FNDH_STRING = """\
-FNDH at %(station_id)s, last contacted %1.1f seconds ago:
+FNDH at %(station_id)s, last contacted %(age)1.1f seconds ago:
     Uptime: %(uptime)s seconds
     48V Out 1: %(psu48v1_voltage)s V
     48V Out 2: %(psu48v2_voltage)s V
