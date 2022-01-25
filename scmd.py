@@ -135,7 +135,7 @@ def fndh(portnums, action):
                                       psu48v_temp, psu5v_temp, pcb_temp, outside_temp, status, indicator_state
                                FROM pasd_fndh_state
                                WHERE station_id = %s"""
-                    curs.execute(query, STATION_ID)
+                    curs.execute(query, (STATION_ID,))
                     rows = curs.fetchall()
                     if rows:
                         (uptime, readtime, psu48v1_voltage, psu48v2_voltage, psu5v_voltage, psu48v_current, psu48v_temp,
