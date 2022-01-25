@@ -155,8 +155,8 @@ def fndh(portnums, action):
                                      'indicator_state':indicator_state}
                         print(FNDH_STRING % paramdict)
                 else:  # portlist suppled
-                    query = """SELECT pdoc_number, status_timestamp, system_online, locally_forced_on, locally_forced_off, 
-                                      power_state, power_sense, desire_enabled_online, desire_enabled_offline
+                    query = """SELECT pdoc_number, extract(epoch from status_timestamp), system_online, locally_forced_on, 
+                                      locally_forced_off, power_state, power_sense, desire_enabled_online, desire_enabled_offline
                                FROM pasd_fndh_port_status
                                WHERE (station_id = %(station_id)s) AND (pdoc_number = ANY(%(port_number)s))
                                ORDER BY pdoc_number"""
