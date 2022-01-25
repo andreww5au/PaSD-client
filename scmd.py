@@ -88,18 +88,22 @@ def cli():
 
 
 @cli.command(context_settings={"ignore_unknown_options": True})
-@click.argument('action', nargs=1, help="Action to take - one of 'on', 'off' or 'status")
-@click.argument('portnums',
-                nargs=-1,
-                help="One or more items, each a port number or the word 'all'. Items are optionally preceded by a '-' to exclude them")
+@click.argument('action', nargs=1)
+@click.argument('portnums', nargs=-1)
 def fndh(portnums, action):
     """
-    Turn PDoC ports on or off on the FNDH - eg
+    Turn PDoC ports on or off on the FNDH
 
-    "scmd fndh off 3 4 5" turns off ports 3,4 and 5
-    "scmd fndh on all -3 -5" turns on all ports EXCEPT 3 and 5
-    "scmd fndh status" displays the FNDH status
-    "scmd fndh status 1 2 3" displays the status of ports 1, 2 and 3
+    ACTION is what to do - one of 'on', 'off', or 'status'
+    PORTNUMS is One or more items, each a port number or the word 'all'. Items are optionally preceded by a '-' to exclude them
+
+    \b
+    E.g.
+    $ scmd fndh off 3 4 5         # turns off ports 3,4 and 5
+    $ scmd fndh on all -3 -5      # turns on all ports EXCEPT 3 and 5
+    $ scmd fndh status            # displays the FNDH status
+    $ scmd fndh status 1 2 3      # displays the status of ports 1, 2 and 3
+    \f
 
     :param portnums: Tuple of strings, optionally preceded by a '-', each either representing a single port number, or the word 'all'
     :param action: Either 'on', 'off' or 'status', case insensitive
@@ -128,19 +132,24 @@ def fndh(portnums, action):
 
 
 @cli.command(context_settings={"ignore_unknown_options": True})
-@click.argument('sbnum', nargs=1, help="A single smartbox address (eg '1'), or 'all' to command all smartboxes")
-@click.argument('action', nargs=1, help="Action to take - one of 'on', 'off' or 'status'")
-@click.argument('portnums',
-                nargs=-1,
-                help="One or more items, each a port number or the word 'all'. Items are optionally preceded by a '-' to exclude them")
+@click.argument('sbnum', nargs=1)
+@click.argument('action', nargs=1)
+@click.argument('portnums', nargs=-1)
 def sb(portnums, action, sbnum):
     """
-    Turn FEM ports on or off on the given smartbox - eg
+    Turn FEM ports on or off on the given smartbox
 
-    "scmd sb 1 off 3 4 5" turns off ports 3,4 and 5
-    "scmd sb 2 on all -3 -5" turns on all ports EXCEPT 3 and 5
-    "scmd sb 1 status" displays the status smartbox 1
-    "scmd sb 2 status 1 2 3" displays the status of ports 1, 2 and 3 on smartbox 1
+    SBNUM is a single smartbox address (eg '1'), or 'all' to command all smartboxes
+    ACTION is what to do - one of 'on', 'off', or 'status'
+    PORTNUMS is One or more items, each a port number or the word 'all'. Items are optionally preceded by a '-' to exclude them
+
+    \b
+    E.g.
+    $ scmd sb 1 off 3 4 5        # turns off ports 3,4 and 5
+    $ scmd sb 2 on all -3 -5     # turns on all ports EXCEPT 3 and 5
+    $ scmd sb 1 status           # displays the status smartbox 1
+    $ scmd sb 2 status 1 2 3     # displays the status of ports 1, 2 and 3 on smartbox 1
+    \f
 
     :param portnums: Tuple of strings, each either representing a single port number, or the word 'all'
     :param action: Either 'on', 'off' or 'status', case insensitive
