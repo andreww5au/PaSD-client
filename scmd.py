@@ -126,9 +126,6 @@ def fndh(portnums, action):
     $ scmd fndh status 1 2 3      # displays the status of ports 1, 2 and 3
     """
     portlist = parse_values(valuelist=portnums, all_list=list(range(1, 29)))
-    if not portlist:
-        print('No matching ports, exiting.')
-        return -1
 
     with DB:
         with DB.cursor() as curs:
@@ -188,6 +185,10 @@ def fndh(portnums, action):
                         print("P%02d: %s" % (pdoc_number, status_string))
 
             elif action.upper() in ['ON', 'OFF']:
+                if not portlist:
+                    print('No matching ports, exiting.')
+                    return -1
+
                 newstate = action.upper() == 'ON'
                 query = """UPDATE pasd_fndh_port_status 
                            SET desire_enabled_online = %s,
