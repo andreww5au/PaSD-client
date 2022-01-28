@@ -343,6 +343,11 @@ def main_loop(db, stn):
         # Query the field hardware to get all the current sensor and port parameters and update the instance data
         stn.poll_data()  # If station is not active, only FNDH data can be polled
 
+        if not stn.active:
+            logging.error('Station unreachable, waiting for 10 seconds')
+            time.sleep(10)
+            continue
+
         logging.info(stn.fndh)
         data = []    # A list of (path, (timestamp, value)) objects, where path is like 'pasd.fieldtest.sb02.port07.current'
         fdict = {}
