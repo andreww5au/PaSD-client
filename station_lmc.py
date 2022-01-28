@@ -335,7 +335,7 @@ def main_loop(db, stn):
 
     :param db: Database connection object
     :param stn: An instance of station.Station()
-    :return:
+    :return: False if there was a communications error, None if an exit was requested by setting stn.wants_exit True
     """
     while not stn.wants_exit:
         last_loop_start_time = time.time()
@@ -344,9 +344,7 @@ def main_loop(db, stn):
         stn.poll_data()  # If station is not active, only FNDH data can be polled
 
         if not stn.active:
-            logging.error('Station unreachable, waiting for 10 seconds')
-            time.sleep(10)
-            continue
+            return False
 
         logging.info(stn.fndh)
         data = []    # A list of (path, (timestamp, value)) objects, where path is like 'pasd.fieldtest.sb02.port07.current'
@@ -491,21 +489,29 @@ if __name__ == '__main__':
         print('Setting transport log level to info, DEBUG is very spammy. All other logging is at DEBUG level.')
         tlogger.setLevel(logging.INFO)
 
-    conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=False, logger=tlogger)
+    while True:
+        conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=False, logger=tlogger)
 
-    fndhpc, sbpc = get_all_port_configs(db, station_number=args.station_id)
+        fndhpc, sbpc = get_all_port_configs(db, station_number=args.station_id)
 
-    slogger = logging.getLogger('ST')
-    s = station.Station(conn=conn,
-                        station_id=args.station_id,
-                        antenna_map=get_antenna_map(db, args.station_id),
-                        portconfig_fndh=fndhpc,
-                        portconfig_smartboxes=sbpc,
-                        logger=slogger)
-    initialise_db(db=db, stn=s)
+        slogger = logging.getLogger('ST')
+        s = station.Station(conn=conn,
+                            station_id=args.station_id,
+                            antenna_map=get_antenna_map(db, args.station_id),
+                            portconfig_fndh=fndhpc,
+                            portconfig_smartboxes=sbpc,
+                            logger=slogger)
+        initialise_db(db=db, stn=s)
 
-    print('Starting up entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
-    s.fieldtest_startup()
-    s.poll_data()
+        print('Starting up entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
+        s.fieldtest_startup()
+        s.poll_data()
 
-    main_loop(db, s)
+        result = main_loop(db, s)
+        if result is False:
+            logging.error('Station unreachable, trying again in 10 seconds')
+            time.sleep(10)
+            continue
+        else:
+            break
+
