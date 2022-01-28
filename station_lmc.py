@@ -210,7 +210,7 @@ def update_db(db, stn):
                           'system_online':None, 'current':None, 'locally_forced_on':None,
                           'locally_forced_off':None, 'breaker_tripped':None,
                           'power_state':None, 'status_timestamp':datetime.datetime.now(timezone.utc),
-                          'current_timestamp':None}
+                          'current_timestamp':None, 'status_datetime':None, 'current_datetime':None}
                 sb_ports_data_list.append(spdata)
 
     with db:  # Commit transaction when block exits
