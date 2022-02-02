@@ -258,6 +258,7 @@ class PdocStatus(smartbox.PortStatus):
 
         # In an FNDH, there is no breaker - instead there's a 'Power Sense' bit. It's RO, so use desired_enabled_* to
         # force the port to turn off then on again to reset it.
+        self.raw_bitmap = status_bitmap
         self.power_sense = self.breaker_tripped
         self.breaker_tripped = None
 
@@ -275,7 +276,7 @@ class PdocStatus(smartbox.PortStatus):
                                                        {False:'', True:'Offline', None:'?'}[self.desire_enabled_offline]])
             sysstring = '(System:%s,%s)' % ({False:'Offline', True:'Online', None:'??line?'}[self.system_online],
                                             {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled])
-            status_items = ['Status(%1.1f s):' % (time.time() - self.status_timestamp),
+            status_items = ['%s: Status(age %1.1f s):' % (self.raw_bitmap, time.time() - self.status_timestamp),
                             {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[self.power_state],
                             sysstring,
                             enstring,

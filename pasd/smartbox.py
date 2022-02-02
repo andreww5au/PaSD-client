@@ -277,6 +277,7 @@ class PortStatus(object):
         self.locally_forced_off = False    # Has this port been locally forced OFF by a technician overide
         self.breaker_tripped = False    # Has the over-current breaker tripped on this port
         self.power_state = False    # Is this port switched ON
+        self.raw_bitmap = ''        # Raw status bitmap from the port state register
         self.antenna_number = None   # Physical station antenna number (1-256). Only set externally, at the station level.
 
         if logger is None:
@@ -306,7 +307,7 @@ class PortStatus(object):
                                                        {False:'', True:'Offline', None:'?'}[self.desire_enabled_offline]])
             sysstring = '(System:%s,%s)' % ({False:'Offline', True:'Online', None:'??line?'}[self.system_online],
                                             {False:'Disabled', True:'Enabled', None:'??abled?'}[self.system_level_enabled])
-            status_items = ['Status(%1.1f s):' % (time.time() - self.status_timestamp),
+            status_items = ['%s: Status(age %1.1f s):' % (self.raw_bitmap, time.time() - self.status_timestamp),
                             {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[self.power_state],
                             sysstring,
                             enstring,
@@ -342,6 +343,7 @@ class PortStatus(object):
         :return: None
         """
         self.status_timestamp = read_timestamp
+        self.raw_bitmap = status_bitmap
         bitstring = "{:016b}".format(status_bitmap)
         self.system_level_enabled = (bitstring[0] == '1')   # read only
         self.system_online = (bitstring[1] == '1')   # read only
