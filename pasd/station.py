@@ -243,6 +243,8 @@ class Station(object):
             self.logger.error('Could not configure FNDH - aborting station startup.')
             self.status = 'ERROR'
             return False
+        else:
+            self.logger.info('All FNDH ports turned off')
 
         # Turn on all the ports, one by one, with a 10 second interval between each port
         port_on_times = {}   # Unix timestamp at which each port number was turned on
