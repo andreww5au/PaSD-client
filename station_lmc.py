@@ -504,7 +504,7 @@ if __name__ == '__main__':
         initialise_db(db=db, stn=s)
 
         print('Starting up entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
-        s.fieldtest_startup()
+        s.full_startup()
         s.poll_data()
 
         result = main_loop(db, s)
