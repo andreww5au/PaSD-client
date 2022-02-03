@@ -172,6 +172,7 @@ class Station(object):
         Start the fieldtest node, skipping the smartbox/pdoc port mapping discovery process.
         :return:
         """
+        self.logger.info('Fieldtest mode station startup:')
         self.active = None   # Failure in the middle of this process means the state is unknown
         self.status = 'STARTUP'
         ok = self.fndh.poll_data()
@@ -228,6 +229,7 @@ class Station(object):
             7) Finish by setting the real 'desired_state_online' and 'desired_state_offline' values for all of the PDoC
                ports, and writing that to the FNDH.
         """
+        self.logger.info('Full station startup:')
         self.active = None   # Failure in the middle of this process means the state is unknown
         self.status = 'STARTUP'
         ok = self.fndh.poll_data()
