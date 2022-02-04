@@ -382,11 +382,13 @@ class Station(object):
                 smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
                 test_ok = smb.poll_data()
                 if test_ok:
+                    self.logger.info('Adding smartbox on address %d to the station')
                     self.smartboxes[sadd] = smb   # If we heard a reply, add it to self.smartboxes, if not, ignore it
             else:
                 smb_ok = self.smartboxes[sadd].poll_data()
                 if not smb_ok:
-                    self.logger.error("Can't reach SMARTbox %d with poll_data()" % sadd)
+                    self.logger.error("Can't reach SMARTbox %d with poll_data(), removing it from station" % sadd)
+                    del self.smartboxes[sadd]
 
         # If any of the SMARTboxes have had a long button-press (indicating that a local technician wants that SMARTbox
         # to be powered down), then it will set it's status code and indicator LED code to the 'WANTS_POWERDOWN' value.
@@ -397,25 +399,23 @@ class Station(object):
         send_portstate = False
         for smb in self.smartboxes.values():
             if smb.statuscode == smartbox.STATUS_POWERDOWN:
-                for p in self.fndh.ports.values():   # TODO - switch off the right port, not all of them
-                    p.locally_forced_off = True
-                    send_portstate = True
+                if START_MODE != 'FULL':     # No port mapping, switch off all ports
+                    for p in self.fndh.ports.values():
+                        p.locally_forced_off = True
+                        send_portstate = True
+                else:   # We know the mapping, switch off just the right port for this smartbox
+                    self.fndh.ports[smb.pdoc_number].locally_forced_off = True
+            elif smb.statuscode == smartbox.STATUS_UNINITIALISED:  # UNINITIALISED
+                ok = smb.configure(portconfig=self.portconfig_smartboxes.get(smb.modbus_address, None))  # In a real setting, pass in static configuration data from config file or database
+                if ok:
+                    self.logger.info('SMARTbox %d configured, it is now online' % smb.modbus_address)
+                else:
+                    self.logger.error('Error configuring SMARTbox %d' % smb.modbus_address)
+            elif smb.statuscode != smartbox.STATUS_OK:
+                self.logger.warning('SMARTbox %d has status %d (%s)' % (smb.modbus_address, smb.statuscode, smb.status))
+
         if send_portstate:
             self.fndh.write_portconfig(write_to=True)
-
-        # Now configure and activate any UNINITIALISED boxes, and log any error/warning states
-        for sadd in range(1, MAX_SMARTBOX + 1):
-            if sadd in self.smartboxes:
-                smb = self.smartboxes[sadd]
-                if smb.statuscode != smartbox.STATUS_OK:
-                    self.logger.warning('SMARTbox %d has status %d (%s)' % (sadd, smb.statuscode, smb.status))
-
-                if smb.statuscode == smartbox.STATUS_UNINITIALISED:  # UNINITIALISED
-                    ok = smb.configure(portconfig=self.portconfig_smartboxes.get(sadd, None))    # In a real setting, pass in static configuration data from config file or database
-                    if ok:
-                        self.logger.info('SMARTbox %d configured, it is now online' % sadd)
-                    else:
-                        self.logger.error('Error configuring SMARTbox %d' % sadd)
 
         # If the FNDH has had a long button-press (indicating that a local technician wants that station
         # to be powered down and restarted with a full smartbox address detection sequence), then it will set it's
