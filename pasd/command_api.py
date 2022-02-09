@@ -302,15 +302,15 @@ def get_sample_data(conn, address, reglist, logger=logging):
 
                 for j in range(0, extraReads):  # copy to results array
                     resultArray[startAddress + j] = data[4 + j][0] * 256 + data[4 + j][1]
-
-                # Turn the array with interleaved registers into a dictionary, with register number as key, and
-                # lists of the readings just for each register as values.
-                resultDict = {}
-                for i in range(len(reglist)):
-                    resultDict[reglist[i]] = resultArray[i::len(reglist)]
-                return resultDict
             else:
                 logger.error("sample read failed: " + str(result))
                 return
+
+        # Turn the array with interleaved registers into a dictionary, with register number as key, and
+        # lists of the readings just for each register as values.
+        resultDict = {}
+        for i in range(len(reglist)):
+            resultDict[reglist[i]] = resultArray[i::len(reglist)]
+        return resultDict
     else:
         logger.error("sample count command failed: " + str(result))
