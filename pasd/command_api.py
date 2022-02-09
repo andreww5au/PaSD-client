@@ -19,11 +19,12 @@ READ_SAMPLE = 11
 COUNT_SAMPLE = 12
 
 
-def reset_microcontroller(conn, logger=logging):
+def reset_microcontroller(conn, address, logger=logging):
     """
     Resets the current sampling job, immediately.
 
     :param conn: A pasd.transport.Connection() object
+    :param address: Modbus address
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
     :return: True for success, False on failure
     """
@@ -34,16 +35,17 @@ def reset_microcontroller(conn, logger=logging):
 
     crc32 = zlib.crc32(registerBytes)
     regValues = [crc32 & 0xffff, crc32 >> 16]
-    conn.writeMultReg(modbus_address=1, regnum=10001, valuelist=regValues)
-    conn.writeReg(modbus_address=1, regnum=10125, value=RESET_SAMPLE)  # reset
+    conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
+    conn.writeReg(modbus_address=address, regnum=10125, value=RESET_SAMPLE)  # reset
 
 
-def start_sample(conn, interval, reglist, logger=logging):
+def start_sample(conn, address, interval, reglist, logger=logging):
     """
     Start sampling the given list of registers, every 'interval' milliseconds, and recording those samples
     into an interval buffer, to be read later with the read_samples() function.
 
     :param conn: A pasd.transport.Connection() object
+    :param address: Modbus address
     :param interval: Interval between samples, in milliseconds, up to 32 bits
     :param reglist: List of integer register numbers to sample
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
@@ -84,11 +86,11 @@ def start_sample(conn, interval, reglist, logger=logging):
         regValues.append(registerBytes[i * 2] + (registerBytes[i * 2 + 1] << 8))
 
     logger.debug("writing command chunk")
-    conn.writeMultReg(modbus_address=1, regnum=10001, valuelist=regValues)
-    conn.writeReg(modbus_address=1, regnum=10125, value=START_SAMPLE)  # start sample command
+    conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
+    conn.writeReg(modbus_address=address, regnum=10125, value=START_SAMPLE)  # start sample command
 
     # read result
-    result = conn.readReg(modbus_address=1, regnum=10126)[0][1]  # results register
+    result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
     if result == 0:
         logger.info("Sampling started.")
         return True
@@ -97,19 +99,20 @@ def start_sample(conn, interval, reglist, logger=logging):
         return False
 
 
-def stop_sample(conn, logger=logging):
+def stop_sample(conn, address, logger=logging):
     """
     Stops sampling, immediately.
 
     :param conn: A pasd.transport.Connection() object
+    :param address: Modbus address
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
     :return: True for success, False on failure
     """
     logger.debug("Issuing sample stop command")
 
-    conn.writeReg(modbus_address=1, regnum=10125, value=STOP_SAMPLE)  # sample stop command
+    conn.writeReg(modbus_address=address, regnum=10125, value=STOP_SAMPLE)  # sample stop command
 
-    result = conn.readReg(modbus_address=1, regnum=10126)[0][1]  # results register
+    result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
     if result == 0:
         logger.info("Sampling stopped")
         return True
@@ -118,21 +121,22 @@ def stop_sample(conn, logger=logging):
         return False
 
 
-def get_sample_count(conn, logger=logging):
+def get_sample_count(conn, address, logger=logging):
     """
     Returns the current sample count of an active sample process.
 
     :param conn: A pasd.transport.Connection() object
+    :param address: Modbus address
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
     :return: Number of samples connected, or None on failure
     """
     logger.debug("Issuing sample count command")
 
-    conn.writeReg(modbus_address=1, regnum=10125, value=COUNT_SAMPLE)  # sample count command
+    conn.writeReg(modbus_address=address, regnum=10125, value=COUNT_SAMPLE)  # sample count command
 
-    result = conn.readReg(modbus_address=1, regnum=10126)[0][1]  # results register
+    result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
     if result == 0:
-        sampleCount_pair = conn.readReg(modbus_address=1, regnum=10127)[0]
+        sampleCount_pair = conn.readReg(modbus_address=address, regnum=10127)[0]
         logger.info("sample count: " + str(sampleCount_pair[0] * 256 + sampleCount_pair[1]))
         return sampleCount_pair[0] * 256 + sampleCount_pair[1]
     else:
@@ -140,21 +144,22 @@ def get_sample_count(conn, logger=logging):
         return None
 
 
-def get_sample_size(conn, logger=logging):
+def get_sample_size(conn, address, logger=logging):
     """
     Returns the total number of words available to store sample data
 
     :param conn: A pasd.transport.Connection() object
+    :param address: Modbus address
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
     :return: Number of words in the sample buffer space, or None on failure
     """
     logger.debug("Issuing sample size command")
 
-    conn.writeReg(modbus_address=1, regnum=10125, value=SIZE_SAMPLE)  # sample size command
+    conn.writeReg(modbus_address=address, regnum=10125, value=SIZE_SAMPLE)  # sample size command
 
-    result = conn.readReg(modbus_address=1, regnum=10126)[0][1]  # results register
+    result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
     if result == 0:
-        sampleSize_pair = conn.readReg(modbus_address=1, regnum=10127)[0]
+        sampleSize_pair = conn.readReg(modbus_address=address, regnum=10127)[0]
         logger.info("sample size: " + str(sampleSize_pair[0] * 256 + sampleSize_pair[1]))
         return sampleSize_pair[0] * 256 + sampleSize_pair[1]
     else:
@@ -162,21 +167,22 @@ def get_sample_size(conn, logger=logging):
         return None
 
 
-def get_sample_state(conn, logger=logging):
+def get_sample_state(conn, address, logger=logging):
     """
     Returns the current sampling state - 0 = STOPPED, 1 = SAMPLING
 
     :param conn: A pasd.transport.Connection() object
+    :param address: Modbus address
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
     :return: 0 = STOPPED, 1 = SAMPLING, or None on failure
     """
     logger.debug("Issuing sample state command")
 
-    conn.writeReg(modbus_address=1, regnum=10125, value=STATE_SAMPLE)  # sample state command
+    conn.writeReg(modbus_address=address, regnum=10125, value=STATE_SAMPLE)  # sample state command
 
-    result = conn.readReg(modbus_address=1, regnum=10126)[0][1]  # results register
+    result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
     if result == 0:
-        sampleState = conn.readReg(modbus_address=1, regnum=10127)[0][1]
+        sampleState = conn.readReg(modbus_address=address, regnum=10127)[0][1]
         logger.info("sample state: %d" % sampleState)
         return sampleState
     else:
@@ -184,22 +190,23 @@ def get_sample_state(conn, logger=logging):
         return None
 
 
-def get_sample_data(conn, reglist, logger=logging):
+def get_sample_data(conn, address, reglist, logger=logging):
     """
     Returns the sampled sensor data
 
     :param conn: A pasd.transport.Connection() object
+    :param address: Modbus address
     :param reglist: List of integer register numbers to sample
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
     :return: 0 = STOPPED, 1 = SAMPLING, or None on failure
     """
-    conn.writeReg(modbus_address=1, regnum=10125, value=COUNT_SAMPLE)  # sample count command
+    conn.writeReg(modbus_address=address, regnum=10125, value=COUNT_SAMPLE)  # sample count command
 
-    result = conn.readReg(modbus_address=1, regnum=10126)[0][1]  # results register
+    result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
     if result == 0:
         logger.debug("Count result ok.")
 
-        sampleRead = conn.readReg(modbus_address=1, regnum=10127)[0]
+        sampleRead = conn.readReg(modbus_address=address, regnum=10127)[0]
         sampleCount = sampleRead[0] * 256 + sampleRead[1]  # number of sets of samples
         print("sample count: " + str(sampleCount))
 
@@ -220,11 +227,11 @@ def get_sample_data(conn, reglist, logger=logging):
             regValues = [startAddress, 100, READ_SAMPLE]
 
             # 10123 = COMMAND_REGISTER - 2.  The 2 bytes before it denote starting address and num words to read
-            conn.writeMultReg(modbus_address=1, regnum=10123, valuelist=regValues)
+            conn.writeMultReg(modbus_address=address, regnum=10123, valuelist=regValues)
 
-            result = conn.readReg(modbus_address=1, regnum=10126)[0][1]  # results register
+            result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
             if result == 0:
-                data = conn.readReg(modbus_address=1, regnum=10001, numreg=104)  # 104 because 2 CRC words, 2 address words + 100 words data
+                data = conn.readReg(modbus_address=address, regnum=10001, numreg=104)  # 104 because 2 CRC words, 2 address words + 100 words data
 
                 # get the CRC
                 crcLow = data[0][0] * 256 + data[0][1]
@@ -264,11 +271,11 @@ def get_sample_data(conn, reglist, logger=logging):
             regValues = [startAddress, extraReads, READ_SAMPLE]
 
             # 10123 = COMMAND_REGISTER - 2.  The 2 bytes before it denote starting address and num words to read
-            conn.writeMultReg(modbus_address=1, regnum=10123, valuelist=regValues)
-            result = conn.readReg(modbus_address=1, regnum=10126)[0][1]  # results register
+            conn.writeMultReg(modbus_address=address, regnum=10123, valuelist=regValues)
+            result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
             if result == 0:
                 logger.debug("Extra samples: " + str(extraReads))
-                data = conn.readReg(modbus_address=1, regnum=10001, numreg=(4 + extraReads))  # 2 CRC words, 2 address words + extraReads words data
+                data = conn.readReg(modbus_address=address, regnum=10001, numreg=(4 + extraReads))  # 2 CRC words, 2 address words + extraReads words data
 
                 # get the CRC
                 crcLow = data[0][0] * 256 + data[0][1]
