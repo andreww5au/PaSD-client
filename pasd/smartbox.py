@@ -827,7 +827,7 @@ class SMARTbox(transport.ModbusDevice):
             if sample_count is None:
                 self.logger.error('Error monitoring data sampling.')
                 return
-            elif sample_count >= sample_size - len(reglist) + 1:   # Allow for multiregister captures that don't divide exactly into 10000
+            elif sample_count >= sample_size // len(reglist):   # Allow for multiregister captures
                 done = True
 
             time.sleep(0.5)
