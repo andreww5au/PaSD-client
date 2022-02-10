@@ -14,6 +14,7 @@ logging.basicConfig()
 
 from pasd import conversion   # Conversion functions between register values and actual temps/voltages/currents
 from pasd import transport    # Modbus API
+from pasd import command_api  # System register API, for reset, firmware upload and rapid sampling
 
 # Register definitions - only one mapping here now (SMARTBOX_POLL_REGS_1 and SMARTBOX_CONF_REGS_1 ), and these define
 # the registers and codes for Modbus register map revision 1 (where SYS_MBRV==1).
@@ -787,6 +788,50 @@ class SMARTbox(transport.ModbusDevice):
         else:
             self.logger.error('Could not load and write threshold data.')
         return False
+
+    def reset(self):
+        """
+        Sends a command to reset the microcontroller.
+
+        :return: None
+        """
+        command_api.reset_microcontroller(conn=self.conn,
+                                          address=self.modbus_address,
+                                          logger=self.logger)
+
+    def get_sample(self, interval, reglist):
+        """
+        Return the sensor data for the registers in reglist, sampled every 'interval' milliseconds, for as long as it
+        takes to record 10000 values (5000 samples of 2 registers, 2500 samples of 4 registers, etc).
+
+        :param interval: How often (in milliseconds) to sample the data
+        :param reglist:  Which register numbers to sample
+        :return: A dictionary with register number as key, and lists of register samples as values.
+        """
+        result = command_api.start_sample(conn=self.conn,
+                                          address=self.modbus_address,
+                                          interval=interval,
+                                          reglist=reglist,
+                                          logger=self.logger)
+
+        if not result:
+            self.logger.error('Error starting data sampling.')
+            return
+
+        sample_size = command_api.get_sample_size(conn=self.conn, address=self.modbus_address, logger=self.logger)
+        done = False
+        while not done:
+            sample_count = command_api.get_sample_count(conn=self.conn, address=self.modbus_address, logger=self.logger)
+            if sample_count is None:
+                self.logger.error('Error monitoring data sampling.')
+                return
+            elif sample_count >= sample_size:
+                done = True
+
+            time.sleep(0.5)
+
+        data = command_api.get_sample_data(conn=self.conn, address=self.modbus_address, reglist=reglist)
+        return data
 
 
 """
