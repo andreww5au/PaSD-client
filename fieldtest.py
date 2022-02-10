@@ -17,7 +17,7 @@ import traceback
 
 LOGFILE = 'fieldtest.log'
 HOSTNAME = 'pasd-fndh.mwa128t.org'
-FNDH_ADDRESS = 31
+FNDH_ADDRESS = 100
 SMARTBOX_ADDRESSES = [1, 2]
 
 SBOXES = {}

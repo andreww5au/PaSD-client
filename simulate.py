@@ -72,19 +72,19 @@ if __name__ == '__main__':
         print('Simulating SMARTbox as "s" on address %d.' % int(args.address))
     elif args.task.upper() == 'FNDH':
         if args.address is None:
-            args.address = 31
+            args.address = 100
         flogger = logging.getLogger('FNDH:%d' % int(args.address))
         f = SIM_OBJECT = sim_fndh.SimFNDH(conn=conn, modbus_address=int(args.address), logger=flogger)
         simthread = threading.Thread(target=f.sim_loop, daemon=False, name='FNDH.thread')
         print('Simulating FNDH as "f" on address %d.' % args.address)
     elif args.task.upper() == 'STATION':
         flogger = logging.getLogger('FNDH:%d' % 31)
-        s = SIM_OBJECT = sim_station.Sim_Station(conn=conn, modbus_address=31, logger=flogger)
+        s = SIM_OBJECT = sim_station.Sim_Station(conn=conn, modbus_address=100, logger=flogger)
         simthread = threading.Thread(target=s.sim_loop, daemon=False, name='FNDH.thread')
-        print('Simulating entire station as "s" - FNDH on address 31, SMARTboxes on addresses 1-24.')
+        print('Simulating entire station as "s" - FNDH on address 100, SMARTboxes on addresses 1-24.')
     elif args.task.upper() == 'MCCS':
         if args.address is None:
-            args.address = 99
+            args.address = 199
         mlogger = logging.getLogger('MCCS:%d' % int(args.address))
         s = SIM_OBJECT = station.Station(conn=conn, station_id=int(args.address), logger=mlogger)
         simthread = threading.Thread(target=s.listen, daemon=False, kwargs={'maxtime':999999}, name='MCCS.thread')

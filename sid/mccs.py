@@ -11,7 +11,7 @@ logging.basicConfig()
 
 from pasd import transport
 
-MCCS_ADDRESS = 63
+MCCS_ADDRESS = 199
 
 # Register numbers for when the MCCS is acting as a Modbus slave) - copied from pasd/station.py
 PHYSANT_REGSTART = 0  # One register for each physical antenna, eg 1-256
