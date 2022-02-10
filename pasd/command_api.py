@@ -1,5 +1,82 @@
 """
-Code to handle starting/stopping/reading fast-sampling sensor data from a smartbox or FNPC.
+Code to handle commands to the microcontroller using the system register block, 10001-10126, including uploading
+new firmware, resetting the microcontroller, and starting/stopping/reading fast-sampling sensor data from a smartbox or
+FNPC.
+
+System registers definitions:
+
+----------------------------------------------------------
+CRC_LOW: 10001
+CRC_HIGH: 10002
+
+CRC registers.  CRC32 is computed for all registers from ADDRESS to COMMAND, or 10003 - 10125.
+If a command does not write to all registers the CRC is still calculated as if all the registers are initialised with 0
+The CRC is calculated lower byte then upper byte
+
+
+----------------------------------------------------------
+ADDRESS_LOW: 10003
+ADDRESS_HIGH_COUNT: 10004
+
+Address registers (for firmware upload) - the 24-bit program memory address to write to.  The count (in registers) is stored
+in the upper byte of ADDRESS_HIGH_COUNT
+
+
+----------------------------------------------------------
+SEGMENT_DATA: 10005 - 10124,  120 words of data
+
+Segment data registers - For firmware uploads, as the PIC24 has 24-bit instructions these
+are packed - lower (L), middle (M), upper (U) - into the data registers as follows.  For example, 3
+instructions 0, 1, 2 would be stored in registers 10005-9 as follows:
+
+        10005: M0L0  (L0 in lower byte of 10008, M0 in upper byte of 10008)
+        10006: L1U0  (U0 in lower byte of 10006
+        10007: U1M1
+        10008: M2L2
+        10009: U2  (upper byte of 10008 is wasted)
+
+
+----------------------------------------------------------
+COMMAND: 10125
+
+The COMMAND register must always be the last register written.  This is why it has the highest address
+of all the data comprising a command from CRC upwards.  This works well for bulk multi-register writes
+of program data as the entire 125 registers are sent in one write instruction.
+
+    ERASE_COMMAND = 1 - erase and prepare to update
+    WRITE_SEGMENT_COMMAND = 2 - write segment defined by ADDRESS and SEGMENT_DATA
+    VERIFY_COMMAND = 3
+    UPDATE_COMMAND = 4
+    RESET_COMMAND = 5
+    SAMPLE_START_COMMAND = 7 - start sampling.  The sample parameters are in SEGMENT_DATA
+    SAMPLE_STOP_COMMAND = 8  - stop sampling (if running)
+    SAMPLE_STATE_COMMAND = 9 - get the sample state
+    SAMPLE_SIZE_COMMAND = 10 - get the size of the sampling buffer, result in RESULT_DATA1
+    SAMPLE_READ_COMMAND = 11 - read a chunk of sample data
+    SAMPLE_COUNT_COMMAND = 12 - read which sampleCount it is up to
+
+
+----------------------------------------------------------
+RESULT: 10126
+
+The result register has to be separately read as it doesn't map onto MODBUS codes.  It contains
+the result of the last command executed.
+
+Result codes are:
+    0 = OK
+    1 = ERROR
+    2 = CRC_ERROR
+    3 = UNKNOWN_COMMAND
+
+
+----------------------------------------------------------
+SAMPLING:
+
+Sampling happens asynchronously via a number of commands.  A SAMPLE_START_COMMAND is used to initiate a sampling sequence.
+While this happens, SAMPLE_STATE_COMMAND can be polled for completion, or you can ask for the number of samples
+taken so far (SAMPLE_COUNT_COMMAND).  When sampling is complete, data may be read using SAMPLE_READ_COMMAND,
+although if you keep track of SAMPLE_COUNT_COMMAND you can read right up to the last sample completed.
+
 
 Written by Teik Oh, modified by Andrew Williams
 """
@@ -9,14 +86,18 @@ import zlib
 
 logging.basicConfig()
 
-RESET_SAMPLE = 5
+ERASE_COMMAND = 1          # erase and prepare to update
+WRITE_SEGMENT_COMMAND = 2  # write segment defined by ADDRESS and SEGMENT_DATA
+VERIFY_COMMAND = 3
+UPDATE_COMMAND = 4
+RESET_COMMAND = 5          # Reset the microcontroller. Checks CRC.
 
-START_SAMPLE = 7
-STOP_SAMPLE = 8
-STATE_SAMPLE = 9
-SIZE_SAMPLE = 10
-READ_SAMPLE = 11
-COUNT_SAMPLE = 12
+SAMPLE_START_COMMAND = 7   # start sampling.The sample parameters are in SEGMENT_DATA. Checks CRC.
+SAMPLE_STOP_COMMAND = 8    # stop sampling( if running). Does not check CRC.
+SAMPLE_STATE_COMMAND = 9   # get the sample state. Does not check CRC.
+SAMPLE_SIZE_COMMAND = 10   # get the size of the sampling buffer, result in RESULT_DATA1. Does not check CRC.
+SAMPLE_READ_COMMAND = 11   # read a chunk of sample data. Does not check CRC on command, but sends CRC with data.
+SAMPLE_COUNT_COMMAND = 12  # read which sampleCount it is up to. Does not check CRC.
 
 
 def reset_microcontroller(conn, address, logger=logging):
@@ -31,12 +112,12 @@ def reset_microcontroller(conn, address, logger=logging):
     logger.debug("Issuing sample reset command")
 
     registerBytes = bytearray(246)
-    registerBytes[244] = RESET_SAMPLE  # Reset command, in the least sig byte of COMMAND register
+    registerBytes[244] = RESET_COMMAND  # Reset command, in the least sig byte of COMMAND register
 
     crc32 = zlib.crc32(registerBytes)
     regValues = [crc32 & 0xffff, crc32 >> 16]
     conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
-    conn.writeReg(modbus_address=address, regnum=10125, value=RESET_SAMPLE)  # reset
+    conn.writeReg(modbus_address=address, regnum=10125, value=RESET_COMMAND)  # reset
 
 
 def start_sample(conn, address, interval, reglist, logger=logging):
@@ -75,7 +156,7 @@ def start_sample(conn, address, interval, reglist, logger=logging):
 
     # and the sample start command. Note that this is here so the CRC is calculated correctly - it's sent in a
     # separate writeReg() call, not as part of the registerBytes array.
-    registerBytes[244] = START_SAMPLE  # least sig byte of COMMAND register
+    registerBytes[244] = SAMPLE_START_COMMAND  # least sig byte of COMMAND register
 
     # now, calc crc
     crc32 = zlib.crc32(registerBytes)
@@ -87,7 +168,7 @@ def start_sample(conn, address, interval, reglist, logger=logging):
 
     logger.debug("writing command chunk")
     conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
-    conn.writeReg(modbus_address=address, regnum=10125, value=START_SAMPLE)  # start sample command
+    conn.writeReg(modbus_address=address, regnum=10125, value=SAMPLE_START_COMMAND)  # start sample command
 
     # read result
     result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
@@ -110,7 +191,7 @@ def stop_sample(conn, address, logger=logging):
     """
     logger.debug("Issuing sample stop command")
 
-    conn.writeReg(modbus_address=address, regnum=10125, value=STOP_SAMPLE)  # sample stop command
+    conn.writeReg(modbus_address=address, regnum=10125, value=SAMPLE_STOP_COMMAND)  # sample stop command
 
     result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
     if result == 0:
@@ -132,7 +213,7 @@ def get_sample_count(conn, address, logger=logging):
     """
     logger.debug("Issuing sample count command")
 
-    conn.writeReg(modbus_address=address, regnum=10125, value=COUNT_SAMPLE)  # sample count command
+    conn.writeReg(modbus_address=address, regnum=10125, value=SAMPLE_COUNT_COMMAND)  # sample count command
 
     result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
     if result == 0:
@@ -155,7 +236,7 @@ def get_sample_size(conn, address, logger=logging):
     """
     logger.debug("Issuing sample size command")
 
-    conn.writeReg(modbus_address=address, regnum=10125, value=SIZE_SAMPLE)  # sample size command
+    conn.writeReg(modbus_address=address, regnum=10125, value=SAMPLE_SIZE_COMMAND)  # sample size command
 
     result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
     if result == 0:
@@ -178,7 +259,7 @@ def get_sample_state(conn, address, logger=logging):
     """
     logger.debug("Issuing sample state command")
 
-    conn.writeReg(modbus_address=address, regnum=10125, value=STATE_SAMPLE)  # sample state command
+    conn.writeReg(modbus_address=address, regnum=10125, value=SAMPLE_STATE_COMMAND)  # sample state command
 
     result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
     if result == 0:
@@ -200,7 +281,7 @@ def get_sample_data(conn, address, reglist, logger=logging):
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
     :return: 0 = STOPPED, 1 = SAMPLING, or None on failure
     """
-    conn.writeReg(modbus_address=address, regnum=10125, value=COUNT_SAMPLE)  # sample count command
+    conn.writeReg(modbus_address=address, regnum=10125, value=SAMPLE_COUNT_COMMAND)  # sample count command
 
     result = conn.readReg(modbus_address=address, regnum=10126)[0][1]  # results register
     if result == 0:
@@ -224,7 +305,7 @@ def get_sample_data(conn, address, reglist, logger=logging):
         for i in range(0, numFullReads):
             startAddress = i * 100
             # the starting address, number of words to read and the read command (11)
-            regValues = [startAddress, 100, READ_SAMPLE]
+            regValues = [startAddress, 100, SAMPLE_READ_COMMAND]
 
             # 10123 = COMMAND_REGISTER - 2.  The 2 bytes before it denote starting address and num words to read
             conn.writeMultReg(modbus_address=address, regnum=10123, valuelist=regValues)
@@ -268,7 +349,7 @@ def get_sample_data(conn, address, reglist, logger=logging):
             startAddress = numFullReads * 100
 
             # the starting address, number of words to read and the read command (11)
-            regValues = [startAddress, extraReads, READ_SAMPLE]
+            regValues = [startAddress, extraReads, SAMPLE_READ_COMMAND]
 
             # 10123 = COMMAND_REGISTER - 2.  The 2 bytes before it denote starting address and num words to read
             conn.writeMultReg(modbus_address=address, regnum=10123, valuelist=regValues)
