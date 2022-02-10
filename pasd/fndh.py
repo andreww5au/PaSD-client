@@ -693,7 +693,7 @@ class FNDH(transport.ModbusDevice):
         outf = open(filename, 'w')
         outf.write(', '.join([str(regdict[regnum]) for regnum in reglist]) + '\n')
         for i in range(len(data[reglist[0]])):
-            outf.write(', '.join([data[regnum][i] for regnum in reglist]) + '\n')
+            outf.write(', '.join(['%d' % data[regnum][i] for regnum in reglist]) + '\n')
         outf.close()
 
 
