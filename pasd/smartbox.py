@@ -817,21 +817,45 @@ class SMARTbox(transport.ModbusDevice):
         if not result:
             self.logger.error('Error starting data sampling.')
             return
+        self.logger.info('Start sampling register/s %s every %d milliseconds' % (reglist, interval))
 
         sample_size = command_api.get_sample_size(conn=self.conn, address=self.modbus_address, logger=self.logger)
+        sample_count = 0
         done = False
         while not done:
             sample_count = command_api.get_sample_count(conn=self.conn, address=self.modbus_address, logger=self.logger)
             if sample_count is None:
                 self.logger.error('Error monitoring data sampling.')
                 return
-            elif sample_count >= sample_size:
+            elif sample_count >= sample_size - len(reglist) + 1:   # Allow for multiregister captures that don't divide exactly into 10000
                 done = True
 
             time.sleep(0.5)
 
+        self.logger.info('Downloading %d samples' % sample_count)
         data = command_api.get_sample_data(conn=self.conn, address=self.modbus_address, reglist=reglist)
         return data
+
+    def save_sample(self, interval, reglist, filename):
+        """
+        Call get_sample(), then save the results in CSV format in the given filename.
+
+        :param interval: How often (in milliseconds) to sample the data
+        :param reglist:  Which register numbers to sample
+        :param filename: Filename to save the sample data in
+        :return: None
+        """
+        data = self.get_sample(interval=interval, reglist=reglist)
+        regdict = {}
+        for regname in self.register_map['POLL'].keys():
+            regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
+            if regnum in reglist:
+                regdict[regnum] = regname
+        outf = open(filename, 'w')
+        outf.write(', '.join([str(regdict[regnum]) for regnum in reglist]) + '\n')
+        for i in range(len(data[reglist[0]])):
+            outf.write(', '.join([data[regnum][i] for regnum in reglist]) + '\n')
+        outf.close()
 
 
 """

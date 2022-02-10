@@ -15,6 +15,7 @@ logging.basicConfig()
 from pasd import conversion   # Conversion functions between register values and actual temps/voltages/currents
 from pasd import smartbox     # SMARTbox controller, so we can subclass the PortStatus class
 from pasd import transport    # Modbus API
+from pasd import command_api  # System register API, for reset, firmware upload and rapid sampling
 
 # Register definitions and status code mapping - only one mapping here now (FNDH_POLL_REGS_1,
 # FNDH_CONF_REGS_1 and FNDH_CODES_1), and these define the registers and codes for Modbus register map
@@ -626,6 +627,74 @@ class FNDH(transport.ModbusDevice):
             self.ports[portnum].desire_enabled_offline = bool(self.portconfig[portnum][1])
         ok = self.write_portconfig()
         return ok
+
+    def reset(self):
+        """
+        Sends a command to reset the microcontroller.
+
+        :return: None
+        """
+        command_api.reset_microcontroller(conn=self.conn,
+                                          address=self.modbus_address,
+                                          logger=self.logger)
+
+    def get_sample(self, interval, reglist):
+        """
+        Return the sensor data for the registers in reglist, sampled every 'interval' milliseconds, for as long as it
+        takes to record 10000 values (5000 samples of 2 registers, 2500 samples of 4 registers, etc).
+
+        :param interval: How often (in milliseconds) to sample the data
+        :param reglist:  Which register numbers to sample
+        :return: A dictionary with register number as key, and lists of register samples as values.
+        """
+        result = command_api.start_sample(conn=self.conn,
+                                          address=self.modbus_address,
+                                          interval=interval,
+                                          reglist=reglist,
+                                          logger=self.logger)
+
+        if not result:
+            self.logger.error('Error starting data sampling.')
+            return
+        self.logger.info('Start sampling register/s %s every %d milliseconds' % (reglist, interval))
+
+        sample_size = command_api.get_sample_size(conn=self.conn, address=self.modbus_address, logger=self.logger)
+        sample_count = 0
+        done = False
+        while not done:
+            sample_count = command_api.get_sample_count(conn=self.conn, address=self.modbus_address, logger=self.logger)
+            if sample_count is None:
+                self.logger.error('Error monitoring data sampling.')
+                return
+            elif sample_count >= sample_size - len(reglist) + 1:   # Allow for multiregister captures that don't divide exactly into 10000
+                done = True
+
+            time.sleep(0.5)
+
+        self.logger.info('Downloading %d samples' % sample_count)
+        data = command_api.get_sample_data(conn=self.conn, address=self.modbus_address, reglist=reglist)
+        return data
+
+    def save_sample(self, interval, reglist, filename):
+        """
+        Call get_sample(), then save the results in CSV format in the given filename.
+
+        :param interval: How often (in milliseconds) to sample the data
+        :param reglist:  Which register numbers to sample
+        :param filename: Filename to save the sample data in
+        :return: None
+        """
+        data = self.get_sample(interval=interval, reglist=reglist)
+        regdict = {}
+        for regname in self.register_map['POLL'].keys():
+            regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
+            if regnum in reglist:
+                regdict[regnum] = regname
+        outf = open(filename, 'w')
+        outf.write(', '.join([str(regdict[regnum]) for regnum in reglist]) + '\n')
+        for i in range(len(data[reglist[0]])):
+            outf.write(', '.join([data[regnum][i] for regnum in reglist]) + '\n')
+        outf.close()
 
 
 """
