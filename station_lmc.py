@@ -503,7 +503,7 @@ if __name__ == '__main__':
                             logger=slogger)
         initialise_db(db=db, stn=s)
 
-        print('Starting up entire station as "s" - FNDH on address 100, SMARTboxes on addresses 1-24.')
+        print('Starting up entire station as "s" - FNDH on address 101, SMARTboxes on addresses 1-24.')
         s.full_startup()
         s.poll_data()
 

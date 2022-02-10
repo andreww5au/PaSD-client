@@ -61,7 +61,7 @@ if __name__ == '__main__':
         print(s)
     elif args.task.upper() == 'FNDH':
         if args.address is None:
-            args.address = 100
+            args.address = 101
         flogger = logging.getLogger('FNDH:%d' % int(args.address))
         f = fndh.FNDH(conn=conn, modbus_address=int(args.address), logger=flogger)
         print('Polling FNDH as "f" on address %d.' % int(args.address))
@@ -75,7 +75,7 @@ if __name__ == '__main__':
     elif args.task.upper() == 'STATION':
         slogger = logging.getLogger('ST')
         s = station.Station(conn=conn, station_id=1, logger=slogger)
-        print('Starting up entire station as "s" - FNDH on address 100, SMARTboxes on addresses 1-24.')
+        print('Starting up entire station as "s" - FNDH on address 101, SMARTboxes on addresses 1-24.')
         s.fieldtest_startup()
     elif args.task.upper() == 'MCCS':
         if args.address is None:

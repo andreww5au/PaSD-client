@@ -637,7 +637,7 @@ conn = transport.Connection(hostname='134.7.50.185')  # address of ethernet-seri
 # or
 conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
 
-f = fndh.FNDH(conn=conn, modbus_address=100)
+f = fndh.FNDH(conn=conn, modbus_address=101)
 f.poll_data()
 f.configure_all_off()
 f.configure_final()

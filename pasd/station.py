@@ -18,7 +18,7 @@ START_MODE = 'FULL'   # Do full smartbox/pdoc mapping on startup
 # START_MODE = 'FIELD'    # Skip smartbox/pdoc mapping on startup
 
 SLAVE_MODBUS_ADDRESS = 199   # Address that technician's SID devices use to reach the MCCS as a slave device
-FNDH_ADDRESS = 100   # Modbus address of the FNDH controller
+FNDH_ADDRESS = 101   # Modbus address of the FNDH controller
 
 # All possible SMARTbox addresses, plus one to make sure the code can handle a dead box
 # MAX_SMARTBOX = 26    # Don't try to talk to smartboxes above this address value
