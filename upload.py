@@ -33,10 +33,10 @@ if __name__ == '__main__':
     if (args.host is None) and (args.device is None):
         args.host = 'pasd-fndh.mwa128t.org'
 
-    if ('FN' in args.filename) and (int(args.address) != 31):
+    if ('FN' in args.filename) and (int(args.address) not in [31, 101]):
         print('Trying to push FNDH image to a smartbox? %s' % args.filename)
         sys.exit(-1)
-    elif args.filename.upper().startswith('S') and (int(args.address == 31)):
+    elif args.filename.upper().startswith('S') and (int(args.address) in [31, 101]):
         print('Trying to push smartbox image to an FNDH? %s' % args.filename)
         sys.exit(-1)
 

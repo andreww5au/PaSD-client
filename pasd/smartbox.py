@@ -846,6 +846,8 @@ class SMARTbox(transport.ModbusDevice):
         :return: None
         """
         data = self.get_sample(interval=interval, reglist=reglist)
+        if data is None:
+            return
         regdict = {}
         for regname in self.register_map['POLL'].keys():
             regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
