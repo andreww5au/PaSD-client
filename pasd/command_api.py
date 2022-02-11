@@ -82,6 +82,7 @@ Written by Teik Oh, modified by Andrew Williams
 """
 
 import logging
+import math
 import zlib
 
 logging.basicConfig()
@@ -98,6 +99,35 @@ SAMPLE_STATE_COMMAND = 9   # get the sample state. Does not check CRC.
 SAMPLE_SIZE_COMMAND = 10   # get the size of the sampling buffer, result in RESULT_DATA1. Does not check CRC.
 SAMPLE_READ_COMMAND = 11   # read a chunk of sample data. Does not check CRC on command, but sends CRC with data.
 SAMPLE_COUNT_COMMAND = 12  # read which sampleCount it is up to. Does not check CRC.
+
+
+def filter_constant(freq=10.0):
+    """
+    Given a cutoff frequency in Hz, return the 16-bit value that should be written to a Smartbox or FNDH
+    telemetry register to enable low-pass filtering with that cutoff frequency.
+
+    :param freq: Low-pass cut off frequency, in Hz
+    :return: 16-bit register value to write to enable filtering
+    """
+    dt = 0.001  # input: time step in seconds: 0.001 = 1ms
+
+    alpha = dt / ((1 / (2 * math.pi * freq)) + dt)
+    # print("Alpha: " + str(alpha))
+    mantissaBits = 11  # 11 bits mantissa in current format
+    base = math.log(alpha) / math.log(2)
+    # print("Base: " + str(base))
+    rightShift = -int(base)
+    lowerRange = 2 ** (-rightShift)
+    # print("Lower range: " + str(lowerRange))
+    upperRange = 2 ** (-rightShift - 1)
+    # print("Upper range: " + str(upperRange))
+    mantissaStep = (lowerRange - upperRange) / (2 ** (mantissaBits - 1))
+    # print("Mantissa step: " + str(mantissaStep))
+    mantissa = int((alpha - upperRange) / mantissaStep)
+    # print("Right shift: " + str(rightShift))
+    # print("Mantissa: " + str(mantissa))
+    # print("Filter hex code: " + hex(mantissa + rightShift * (2 ** 11)))
+    return mantissa + rightShift * (2 ** 11)
 
 
 def reset_microcontroller(conn, address, logger=logging):
