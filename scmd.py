@@ -61,7 +61,7 @@ def init():
     CP = conparser(defaults={})
     CPfile = CP.read(CPPATH)
     if not CPfile:
-        print("None of the specified configuration files found by mwaconfig.py: %s" % (CPPATH,))
+        print("Configuration file not found in: %s" % (CPPATH,))
 
     config = CP['station_%03d' % STATION_ID]
     dbuser = config['dbuser']
