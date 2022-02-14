@@ -449,7 +449,9 @@ def send_hex(conn, filename, address, logger=logging):
     :return:
     """
 
-    assert IntelHex is not None
+    if IntelHex is None:
+        logger.critical('intelhex library no available, exiting.')
+        return False
 
     # this is a pain.  In order to calculate CRC32 we need to give zlib.crc32() an array of bytes
     # The CRC is calculated for registers ADDRESS_LOW to COMMAND and these are stored in these
