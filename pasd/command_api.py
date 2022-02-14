@@ -449,6 +449,8 @@ def send_hex(conn, filename, address, logger=logging):
     :return:
     """
 
+    assert IntelHex is not None
+
     # this is a pain.  In order to calculate CRC32 we need to give zlib.crc32() an array of bytes
     # The CRC is calculated for registers ADDRESS_LOW to COMMAND and these are stored in these
     # 246 bytes least significant byte first.
@@ -606,7 +608,10 @@ def send_hex(conn, filename, address, logger=logging):
         updateResult = conn.readReg(modbus_address=address, regnum=10126)[0][1]
         if updateResult == 0:
             logger.info("Update ok.  Call reset_microcontroller to boot into new firmware.")
+            return True
         else:
             logger.info("Update failed: " + str(updateResult))
+            return False
     else:
         logger.info("Verify failed: " + str(verifyResult))
+        return False

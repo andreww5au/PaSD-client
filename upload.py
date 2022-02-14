@@ -2,13 +2,18 @@
 
 import argparse
 import logging
+import socket
 import sys
 
 from pasd import transport
-from pasd import firmware_upload
+from pasd import command_api
 
 LOGFILE = 'upload.log'
 
+if socket.gethostname().startswith('orthrus'):
+    DEFHOST = 'pasd-fndh2.mwa128t.org'
+else:
+    DEFHOST = 'pasd-fndh.mwa128t.org'
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Upload new firmware to an FNDH or smartbox')
@@ -31,14 +36,17 @@ if __name__ == '__main__':
         loglevel = logging.INFO
 
     if (args.host is None) and (args.device is None):
-        args.host = 'pasd-fndh.mwa128t.org'
+        args.host = DEFHOST
 
-    if ('FN' in args.filename) and (int(args.address) not in [31, 101]):
+    if args.filename.upper().startswith('FNPC') and (int(args.address) not in [31, 101]):
         print('Trying to push FNDH image to a smartbox? %s' % args.filename)
         sys.exit(-1)
-    elif args.filename.upper().startswith('S') and (int(args.address) in [31, 101]):
+    elif args.filename.upper().startswith('SBox') and (int(args.address) not in list(range(1, 25))):
         print('Trying to push smartbox image to an FNDH? %s' % args.filename)
         sys.exit(-1)
+    else:
+        print('Filename must start with "FNPC" (and go to address 31 or 101), or "SBox" (and go to')
+        print('address 1-24).')
 
     fh = logging.FileHandler(filename=LOGFILE, mode='w')
     fh.setLevel(logging.DEBUG)   # All log messages go to the log file
@@ -57,4 +65,6 @@ if __name__ == '__main__':
     tlogger.setLevel(loglevel)
     conn = transport.Connection(hostname=args.host, devicename=args.device, port=int(args.portnum), multidrop=False, logger=tlogger)
 
-    firmware_upload.send_hex(conn=conn, filename=args.filename, modbus_address=int(args.address))
+    ok = command_api.send_hex(conn=conn, filename=args.filename, address=int(args.address))
+    if ok:
+        command_api.reset_microcontroller(conn, int(args.address), logger=logging)

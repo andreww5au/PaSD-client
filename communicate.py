@@ -2,10 +2,15 @@
 
 import argparse
 import logging
+import socket
 import sys
 
 LOGFILE = 'communicate.log'
 
+if socket.gethostname().startswith('orthrus'):
+    DEFHOST = 'pasd-fndh2.mwa128t.org'
+else:
+    DEFHOST = 'pasd-fndh.mwa128t.org'
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Communicate with a remote SMARTbox, FNDH, an entire station, or the MCCS, by sending packets in "master" mode.',
@@ -23,7 +28,7 @@ if __name__ == '__main__':
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
     args = parser.parse_args()
     if (args.host is None) and (args.device is None):
-        args.host = 'pasd-fndh.mwa128t.org'
+        args.host = DEFHOST
 
     if args.debug:
         loglevel = logging.DEBUG
