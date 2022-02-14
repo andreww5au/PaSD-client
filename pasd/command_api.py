@@ -45,9 +45,9 @@ of program data as the entire 125 registers are sent in one write instruction.
 
     ERASE_COMMAND = 1 - erase and prepare to update
     WRITE_SEGMENT_COMMAND = 2 - write segment defined by ADDRESS and SEGMENT_DATA
-    VERIFY_COMMAND = 3
-    UPDATE_COMMAND = 4
-    RESET_COMMAND = 5
+    VERIFY_COMMAND = 3 - Verify the microcontroller code written to memory
+    UPDATE_COMMAND = 4 - Update the microcontroller to boot from the newly written firmware on next reboot
+    RESET_COMMAND = 5 - Reboot the micocontroller
     SAMPLE_START_COMMAND = 7 - start sampling.  The sample parameters are in SEGMENT_DATA
     SAMPLE_STOP_COMMAND = 8  - stop sampling (if running)
     SAMPLE_STATE_COMMAND = 9 - get the sample state
@@ -93,12 +93,12 @@ except ImportError:
 
 logging.basicConfig()
 
-ERASE_COMMAND = 1          # erase and prepare to update
-WRITE_SEGMENT_COMMAND = 2  # write segment defined by ADDRESS and SEGMENT_DATA
-VERIFY_COMMAND = 3
-UPDATE_COMMAND = 4
+ERASE_COMMAND = 1          # erase and prepare to update. Checks CRC.
+WRITE_SEGMENT_COMMAND = 2  # write segment defined by ADDRESS and SEGMENT_DATA. Checks CRC.
+VERIFY_COMMAND = 3         # Verify the microcontroller code written to memory. Checks CRC.
+UPDATE_COMMAND = 4         # Update the microcontroller to boot from the newly written firmware on next reboot. Checks CRC.
 RESET_COMMAND = 5          # Reset the microcontroller. Checks CRC.
-
+PEEK_ROM_COMMAND = 6       # Return a block of microcontroller ROM. Sends CRC with data.
 SAMPLE_START_COMMAND = 7   # start sampling.The sample parameters are in SEGMENT_DATA. Checks CRC.
 SAMPLE_STOP_COMMAND = 8    # stop sampling( if running). Does not check CRC.
 SAMPLE_STATE_COMMAND = 9   # get the sample state. Does not check CRC.
