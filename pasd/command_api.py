@@ -85,6 +85,12 @@ import logging
 import math
 import zlib
 
+try:
+    from intelhex import IntelHex
+except ImportError:
+    IntelHex = None
+
+
 logging.basicConfig()
 
 ERASE_COMMAND = 1          # erase and prepare to update
@@ -425,3 +431,182 @@ def get_sample_data(conn, address, reglist, logger=logging):
         return resultDict
     else:
         logger.error("sample count command failed: " + str(result))
+
+
+def send_hex(conn, filename, address, logger=logging):
+    """
+    Takes the name of a file in Intel hex format, and sends it to the specified Modbus address, then commands the
+    microcontroller to swap to the new ROM bank. The caller must issue a reset command using the reset_microcontroller()
+    function after this function exits, to boot into the new firmware.
+
+    Note that it's up to the caller to make sure that the firmware in the file matches the hardware on the specified
+    modbus address - otherwise the device will be 'bricked', and need a manual firmware upload in the lab.
+
+    :param conn: A pasd.transport.Connection() object
+    :param filename: The name of a file containing and Intel Hex format firmware binary
+    :param address: Modbus address
+    :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
+    :return:
+    """
+
+    # this is a pain.  In order to calculate CRC32 we need to give zlib.crc32() an array of bytes
+    # The CRC is calculated for registers ADDRESS_LOW to COMMAND and these are stored in these
+    # 246 bytes least significant byte first.
+    registerBytes = bytearray(246)
+
+    #######################################
+
+    # start by erasing the EEPROM
+    print("Issuing erase command...")
+    registerBytes[244] = ERASE_COMMAND  # least sig byte of COMMAND register
+    crc32 = zlib.crc32(registerBytes)
+    # bytearrays are created with all zero's
+    # for i in range(0, 246):  # clear for next calc
+    #     registerBytes[i] = 0
+
+    # write CRC separately to command
+    conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=[crc32 & 0xffff, crc32 >> 16])
+    conn.writeReg(modbus_address=address, regnum=10125, value=ERASE_COMMAND)  # , timeout=10.0)
+    logger.debug("Erase return code: " + str(conn.readReg(modbus_address=address, regnum=10126)[0][1]))  # least sig byte
+
+    # a rom hex file consists of segments which are start/end marker of addresses of bytes to write
+    # PIC24 has 24-bit instructions but addressing is compatible with 16-bit data presumably so increments of
+    # 2 for addressed instructions.
+    #
+    # So, every 4th byte is zero in the hex file
+    logger.info("Reading file %s" % filename)
+    ih = IntelHex(filename)
+
+    logger.info("Segments found:")
+    logger.info(ih.segments())
+
+    numWrites = 0  # number of write chunks.  This is used for verifying
+
+    for segment in ih.segments():
+        start = segment[0]
+        end = segment[1]
+        if start < 0x1003000:  # this is the magic dual partition boot config that should never be changed
+            logger.info("Segment: " + str(start) + " - " + str(end))  # in bytes
+            address = start
+            addressWords = start >> 1  # addresses are in bytes = 4 bytes per instruction.  But as far as PIC24 addressing goes this has to be halved
+            while address < end:
+                length = end - address
+                if length > 320:  # 320 = 80 "4 byte" instructions which is 240 bytes packed into SEGMENT_DATA
+                    length = 320
+
+                logger.info("Chunk: " + str(address) + " - " + str(length))
+
+                i = 0
+                j = 4  # there are 2 address registers below here
+                while i < length:
+                    registerBytes[j] = ih[address + i]
+                    registerBytes[j + 1] = ih[address + i + 1]
+                    registerBytes[j + 2] = ih[address + i + 2]
+                    i = i + 4
+                    j = j + 3
+
+                # word count and set into highcount reg
+                numWords = j // 2
+
+                if j & 1 > 0:
+                    numWords = numWords + 1
+
+                addressLow = addressWords & 0xffff
+                addressHighCount = (addressWords >> 16) | ((numWords - 2) << 8)  # the -2 is because we don't count address
+
+                # mirror address registers in registerBytes
+                registerBytes[0] = addressLow & 0xff
+                registerBytes[1] = addressLow >> 8
+                registerBytes[2] = addressHighCount & 0xff
+                registerBytes[3] = addressHighCount >> 8
+
+                # and the write command
+                registerBytes[244] = WRITE_SEGMENT_COMMAND  # least sig byte of COMMAND register
+
+                # now, calc crc
+                crc32 = zlib.crc32(registerBytes)
+
+                # and build a list for multiwrite
+                regValues = [crc32 & 0xffff, crc32 >> 16]
+                for i in range(0, numWords):
+                    regValues.append(registerBytes[i * 2] + (registerBytes[i * 2 + 1] << 8))
+
+                if length < 320:
+                    # partial write
+                    logger.info("writing partial chunk...")
+                    conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
+                    conn.writeReg(modbus_address=address, regnum=10125, value=WRITE_SEGMENT_COMMAND)  # write command
+                else:
+                    # full write, add on command
+                    print("writing chunk... " + str(len(regValues)))
+                    #                    regValues.append(2)
+                    conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
+                    # ideally, should just append 2 to regValues above but for some reason transport.py hangs with 125 registers
+                    # so split into 2 writes - 124 registers and the separate command.
+                    conn.writeReg(modbus_address=address, regnum=10125, value=WRITE_SEGMENT_COMMAND)  # write command
+
+                logger.debug("write return code: " + str(conn.readReg(modbus_address=address, regnum=10126)))  # [0][1]))  # least sig byte
+
+                # one more
+                numWrites = numWrites + 1
+
+                # clear for next lop
+                for i in range(0, 246):  # clear for next calc
+                    registerBytes[i] = 0
+
+                # and do the next block
+                address = address + 320
+                addressWords = addressWords + 160
+
+    logger.info(str(numWrites) + " chunks written.  Verifying...")
+
+    # to verify, put numWrites as a 32-bit unsigned int into the first two SEGMENT_DATA registers
+    registerBytes[4] = numWrites & 0xff
+    registerBytes[5] = (numWrites >> 8) & 0xff
+    registerBytes[6] = (numWrites >> 16) & 0xff
+    registerBytes[7] = (numWrites >> 24) & 0xff
+
+    # set address to zero
+    registerBytes[0] = 0
+    registerBytes[1] = 0
+    registerBytes[2] = 0
+    registerBytes[3] = 0
+
+    # and the verify command
+    registerBytes[244] = VERIFY_COMMAND  # least sig byte of COMMAND register
+
+    # now, calc crc
+    crc32 = zlib.crc32(registerBytes)
+    for i in range(0, 246):  # clear for next calc
+        registerBytes[i] = 0
+
+    # and build a list for multiwrite
+    regValues = [crc32 & 0xffff, crc32 >> 16]
+    regValues.append(0)  # empty address x 2
+    regValues.append(0)
+    regValues.append(numWrites & 0xffff)
+    regValues.append(numWrites >> 16)
+
+    conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
+    conn.writeReg(modbus_address=address, regnum=10125, value=VERIFY_COMMAND)  # trust but verify
+
+    verifyResult = conn.readReg(modbus_address=address, regnum=10126)[0][1]
+    if verifyResult == 0:
+        logger.info("verify ok.  Updating.")
+
+        # the update command
+        registerBytes[244] = UPDATE_COMMAND  # least sig byte of COMMAND register
+        # now, calc crc
+        crc32 = zlib.crc32(registerBytes)
+        for i in range(0, 246):  # clear for next calc
+            registerBytes[i] = 0
+        regValues = [crc32 & 0xffff, crc32 >> 16]
+        conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
+        conn.writeReg(modbus_address=address, regnum=10125, value=UPDATE_COMMAND)  # update
+        updateResult = conn.readReg(modbus_address=address, regnum=10126)[0][1]
+        if updateResult == 0:
+            logger.info("Update ok.  Call reset_microcontroller to boot into new firmware.")
+        else:
+            logger.info("Update failed: " + str(updateResult))
+    else:
+        logger.info("Verify failed: " + str(verifyResult))
