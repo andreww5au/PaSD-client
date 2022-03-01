@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import os
 import socket
 import sys
 
@@ -38,15 +39,19 @@ if __name__ == '__main__':
     if (args.host is None) and (args.device is None):
         args.host = DEFHOST
 
-    if args.filename.upper().startswith('FNPC') and (int(args.address) not in [31, 101]):
-        print('Trying to push FNDH image to a smartbox? %s' % args.filename)
-        sys.exit(-1)
-    elif args.filename.upper().startswith('SBox') and (int(args.address) not in list(range(1, 25))):
-        print('Trying to push smartbox image to an FNDH? %s' % args.filename)
-        sys.exit(-1)
+    if os.path.basename(args.filename).upper().startswith('FNPC'):
+        if (int(args.address) not in [31, 101]):
+            print('Trying to push FNDH image to a smartbox? %s' % args.filename)
+            print('Filename must start with "FNPC" (and go to address 31 or 101), or "SBox" (and go to address 1-24).')
+            sys.exit(-1)
+    elif os.path.basename(args.filename).upper().startswith('SBox'):
+        if (int(args.address) not in list(range(1, 25))):
+            print('Trying to push smartbox image to an FNDH? %s' % args.filename)
+            print('Filename must start with "FNPC" (and go to address 31 or 101), or "SBox" (and go to address 1-24).')
+            sys.exit(-1)
     else:
-        print('Filename must start with "FNPC" (and go to address 31 or 101), or "SBox" (and go to')
-        print('address 1-24).')
+        print('Filename must start with "FNPC" (and go to address 31 or 101), or "SBox" (and go to address 1-24).')
+        sys.exit(-1)
 
     fh = logging.FileHandler(filename=LOGFILE, mode='w')
     fh.setLevel(logging.DEBUG)   # All log messages go to the log file
