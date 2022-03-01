@@ -63,6 +63,6 @@ if __name__ == '__main__':
     tlogger = logging.getLogger('T')
     conn = transport.Connection(hostname=args.host, devicename=args.device, port=int(args.portnum), multidrop=False, logger=tlogger)
 
-    ok = command_api.send_hex(conn=conn, filename=args.filename, address=int(args.address))
+    ok = command_api.send_hex(conn=conn, filename=args.filename, modbus_address=int(args.address))
     if ok:
         command_api.reset_microcontroller(conn, int(args.address), logger=logging)

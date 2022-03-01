@@ -433,7 +433,7 @@ def get_sample_data(conn, address, reglist, logger=logging):
         logger.error("sample count command failed: " + str(result))
 
 
-def send_hex(conn, filename, address, logger=logging):
+def send_hex(conn, filename, modbus_address, logger=logging):
     """
     Takes the name of a file in Intel hex format, and sends it to the specified Modbus address, then commands the
     microcontroller to swap to the new ROM bank. The caller must issue a reset command using the reset_microcontroller()
@@ -444,11 +444,11 @@ def send_hex(conn, filename, address, logger=logging):
 
     :param conn: A pasd.transport.Connection() object
     :param filename: The name of a file containing and Intel Hex format firmware binary
-    :param address: Modbus address
+    :param modbus_address: Modbus address
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
     :return:
     """
-    logger.info('Writing %s to modbus address %d' % (filename, address))
+    logger.info('Writing %s to modbus address %d' % (filename, modbus_address))
     if IntelHex is None:
         logger.critical('intelhex library no available, exiting.')
         return False
@@ -468,9 +468,9 @@ def send_hex(conn, filename, address, logger=logging):
         registerBytes[i] = 0
 
     # write CRC separately to command
-    conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=[crc32 & 0xffff, crc32 >> 16])
-    conn.writeReg(modbus_address=address, regnum=10125, value=ERASE_COMMAND)  # , timeout=10.0)
-    logger.debug("Erase return code: " + str(conn.readReg(modbus_address=address, regnum=10126)[0][1]))  # least sig byte
+    conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=[crc32 & 0xffff, crc32 >> 16])
+    conn.writeReg(modbus_address=modbus_address, regnum=10125, value=ERASE_COMMAND)  # , timeout=10.0)
+    logger.debug("Erase return code: " + str(conn.readReg(modbus_address=modbus_address, regnum=10126)[0][1]))  # least sig byte
 
     # a rom hex file consists of segments which are start/end marker of addresses of bytes to write
     # PIC24 has 24-bit instructions but addressing is compatible with 16-bit data presumably so increments of
@@ -537,18 +537,18 @@ def send_hex(conn, filename, address, logger=logging):
                 if length < 320:
                     # partial write
                     logger.info("writing partial chunk...")
-                    conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
-                    conn.writeReg(modbus_address=address, regnum=10125, value=WRITE_SEGMENT_COMMAND)  # write command
+                    conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=regValues)
+                    conn.writeReg(modbus_address=modbus_address, regnum=10125, value=WRITE_SEGMENT_COMMAND)  # write command
                 else:
                     # full write, add on command
                     print("writing chunk... " + str(len(regValues)))
                     #                    regValues.append(2)
-                    conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
+                    conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=regValues)
                     # ideally, should just append 2 to regValues above but for some reason transport.py hangs with 125 registers
                     # so split into 2 writes - 124 registers and the separate command.
-                    conn.writeReg(modbus_address=address, regnum=10125, value=WRITE_SEGMENT_COMMAND)  # write command
+                    conn.writeReg(modbus_address=modbus_address, regnum=10125, value=WRITE_SEGMENT_COMMAND)  # write command
 
-                logger.debug("write return code: " + str(conn.readReg(modbus_address=address, regnum=10126)))  # [0][1]))  # least sig byte
+                logger.debug("write return code: " + str(conn.readReg(modbus_address=modbus_address, regnum=10126)))  # [0][1]))  # least sig byte
 
                 # one more
                 numWrites = numWrites + 1
@@ -590,10 +590,10 @@ def send_hex(conn, filename, address, logger=logging):
     regValues.append(numWrites & 0xffff)
     regValues.append(numWrites >> 16)
 
-    conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
-    conn.writeReg(modbus_address=address, regnum=10125, value=VERIFY_COMMAND)  # trust but verify
+    conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=regValues)
+    conn.writeReg(modbus_address=modbus_address, regnum=10125, value=VERIFY_COMMAND)  # trust but verify
 
-    verifyResult = conn.readReg(modbus_address=address, regnum=10126)[0][1]
+    verifyResult = conn.readReg(modbus_address=modbus_address, regnum=10126)[0][1]
     if verifyResult == 0:
         logger.info("verify ok.  Updating.")
 
@@ -604,9 +604,9 @@ def send_hex(conn, filename, address, logger=logging):
         for i in range(0, 246):  # clear for next calc
             registerBytes[i] = 0
         regValues = [crc32 & 0xffff, crc32 >> 16]
-        conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
-        conn.writeReg(modbus_address=address, regnum=10125, value=UPDATE_COMMAND)  # update
-        updateResult = conn.readReg(modbus_address=address, regnum=10126)[0][1]
+        conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=regValues)
+        conn.writeReg(modbus_address=modbus_address, regnum=10125, value=UPDATE_COMMAND)  # update
+        updateResult = conn.readReg(modbus_address=modbus_address, regnum=10126)[0][1]
         if updateResult == 0:
             logger.info("Update ok.  Call reset_microcontroller to boot into new firmware.")
             return True
