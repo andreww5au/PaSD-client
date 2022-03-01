@@ -464,9 +464,8 @@ def send_hex(conn, filename, address, logger=logging):
     print("Issuing erase command...")
     registerBytes[244] = ERASE_COMMAND  # least sig byte of COMMAND register
     crc32 = zlib.crc32(registerBytes)
-    # bytearrays are created with all zero's
-    # for i in range(0, 246):  # clear for next calc
-    #     registerBytes[i] = 0
+    for i in range(0, 246):  # clear for next calc
+        registerBytes[i] = 0
 
     # write CRC separately to command
     conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=[crc32 & 0xffff, crc32 >> 16])
