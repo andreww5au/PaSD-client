@@ -44,7 +44,7 @@ if __name__ == '__main__':
             print('Trying to push FNDH image to a smartbox? %s' % args.filename)
             print('Filename must start with "FNPC" (and go to address 31 or 101), or "SBox" (and go to address 1-24).')
             sys.exit(-1)
-    elif os.path.basename(args.filename).upper().startswith('SBox'):
+    elif os.path.basename(args.filename).upper().startswith('SBOX'):
         if (int(args.address) not in list(range(1, 25))):
             print('Trying to push smartbox image to an FNDH? %s' % args.filename)
             print('Filename must start with "FNPC" (and go to address 31 or 101), or "SBox" (and go to address 1-24).')
