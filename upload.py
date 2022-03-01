@@ -57,7 +57,7 @@ if __name__ == '__main__':
     fh.setLevel(logging.DEBUG)   # All log messages go to the log file
     sh = logging.StreamHandler()
     sh.setLevel(loglevel)        # Some or all log messages go to the console
-
+    # noinspection PyArgumentList
     logging.basicConfig(handlers=[fh, sh],
                         level=logging.DEBUG,
                         format='%(levelname)s:%(name)s %(created)14.3f - %(message)s')
@@ -67,7 +67,6 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     tlogger = logging.getLogger('T')
-    tlogger.setLevel(loglevel)
     conn = transport.Connection(hostname=args.host, devicename=args.device, port=int(args.portnum), multidrop=False, logger=tlogger)
 
     ok = command_api.send_hex(conn=conn, filename=args.filename, address=int(args.address))

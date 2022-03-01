@@ -448,7 +448,7 @@ def send_hex(conn, filename, address, logger=logging):
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
     :return:
     """
-
+    logger.info('Writing %s to modbus address %d' % (filename, address))
     if IntelHex is None:
         logger.critical('intelhex library no available, exiting.')
         return False

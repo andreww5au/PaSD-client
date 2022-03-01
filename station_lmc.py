@@ -423,7 +423,7 @@ def main_loop(db, stn):
                     p.desire_enabled_offline = desire_enabled_offline
                     needs_write = True
             if needs_write:
-                stn.smartboxes[sid].write_portconfig()
+                stn.smartboxes[sid].write_portconfig(write_breaker=True)
 
         desired_active = update_station_state(db, stn=stn)
 
