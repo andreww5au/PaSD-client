@@ -13,7 +13,7 @@ else:
     DEFHOST = 'pasd-fndh.mwa128t.org'
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Communicate with a remote SMARTbox, FNDH, an entire station, or the MCCS, by sending packets in "master" mode.',
+    parser = argparse.ArgumentParser(description='Communicate with a remote SMARTbox, FNDH, FNCC, an entire station, or the MCCS, by sending packets in "master" mode.',
                                      epilog='Run this as "python -i %s" to drop into the Python prompt after starting up.' % sys.argv[0])
     parser.add_argument('task', nargs='?', default='station', help='What to talk to - smartbox, fndh, station or mccs')
     parser.add_argument('--host', dest='host', default=None,
@@ -46,6 +46,7 @@ if __name__ == '__main__':
 
     from pasd import transport
     from pasd import fndh
+    from pasd import fncc
     from pasd import smartbox
     from pasd import station
     from sid import mccs
@@ -77,6 +78,14 @@ if __name__ == '__main__':
         f.configure_final()
         f.poll_data()
         print(f)
+    elif args.task.upper() == 'FNCC':
+        if args.address is None:
+            args.address = 101
+        flogger = logging.getLogger('FNCC:%d' % int(args.address))
+        fc = fncc.FNCC(conn=conn, modbus_address=int(args.address), logger=flogger)
+        print('Polling FNCC as "fc" on address %d.' % int(args.address))
+        fc.poll_data()
+        print(fc)
     elif args.task.upper() == 'STATION':
         slogger = logging.getLogger('ST')
         s = station.Station(conn=conn, station_id=1, logger=slogger)
