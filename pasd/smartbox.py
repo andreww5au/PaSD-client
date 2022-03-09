@@ -29,7 +29,7 @@ from pasd import command_api  # System register API, for reset, firmware upload 
 # description, scaling_function) as value.
 
 FILT_FREQ = 0.5    # 2 second low-pass smoothing on all smartbox sensor readings
-
+SMOOTHED_REGLIST = list(range(17, 20)) + [21] + list(range(24, 36)) + list(range(48, 60))
 
 SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
                         'SYS_MBRV':    (1, 1, 'Modbus register map revision', None),
@@ -780,7 +780,7 @@ class SMARTbox(transport.ModbusDevice):
                 self.logger.info('Sensor low-pass smoothing disabled')
             else:
                 self.logger.info('Smoothing all sensors with a %3.1f Hz cutoff' % FILT_FREQ)
-            self.set_smoothing(FILT_FREQ, list(range(17, 22)) + list(range(24, 36)) + list(range(48, 60)))
+            self.set_smoothing(FILT_FREQ, SMOOTHED_REGLIST)
 
             for portnum in range(1, 13):
                 self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
