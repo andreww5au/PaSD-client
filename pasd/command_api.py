@@ -112,9 +112,12 @@ def filter_constant(freq=10.0):
     Given a cutoff frequency in Hz, return the 16-bit value that should be written to a Smartbox or FNDH
     telemetry register to enable low-pass filtering with that cutoff frequency.
 
-    :param freq: Low-pass cut off frequency, in Hz
+    :param freq: Low-pass cut off frequency, in Hz, or None to disable filtering
     :return: 16-bit register value to write to enable filtering
     """
+    if freq is None:
+        return 0
+
     dt = 0.001  # input: time step in seconds: 0.001 = 1ms
 
     alpha = dt / ((1 / (2 * math.pi * freq)) + dt)
