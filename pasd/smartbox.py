@@ -868,7 +868,7 @@ class SMARTbox(transport.ModbusDevice):
             outf.write(', '.join(['%d' % data[regnum][i] for regnum in reglist]) + '\n')
         outf.close()
 
-    def set_smoothing(self, freq=10.0, reglist=None):
+    def set_smoothing(self, freq=FILT_FREQ, reglist=None):
         """
         Apply the given low-pass frequency cutoff to a list of registers. All of the
         registers must be ones containing sensor values (temperatures, voltages, currents).

@@ -30,6 +30,9 @@ from pasd import command_api  # System register API, for reset, firmware upload 
 # Register maps are dictionaries with register name as key, and a tuple of (register_number, number_of_registers,
 # description, scaling_function) as value.
 
+FILT_FREQ = 0.5    # 2 second low-pass smoothing on all smartbox sensor readings
+SMOOTHED_REGLIST = list(range(17, 25))
+
 FNDH_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
                         'SYS_MBRV':    (1, 1, 'Modbus register map revision', None),
                         'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
@@ -621,6 +624,12 @@ class FNDH(transport.ModbusDevice):
             self.logger.error('No register map, call poll_data() first')
             return None
 
+        if FILT_FREQ is None:
+            self.logger.info('Sensor low-pass smoothing disabled')
+        else:
+            self.logger.info('Smoothing all sensors with a %3.1f Hz cutoff' % FILT_FREQ)
+        self.set_smoothing(FILT_FREQ, SMOOTHED_REGLIST)
+
         # Startup finished, now set all the port states as per the saved port configuration:
         for portnum in range(1, 29):
             self.ports[portnum].desire_enabled_online = bool(self.portconfig[portnum][0])
@@ -697,6 +706,19 @@ class FNDH(transport.ModbusDevice):
         for i in range(len(data[reglist[0]])):
             outf.write(', '.join(['%d' % data[regnum][i] for regnum in reglist]) + '\n')
         outf.close()
+
+    def set_smoothing(self, freq=FILT_FREQ, reglist=None):
+        """
+        Apply the given low-pass frequency cutoff to a list of registers. All of the
+        registers must be ones containing sensor values (temperatures, voltages, currents).
+
+        :param freq: Low-pass cut off frequency, in Hz, or None to disable filtering
+        :param reglist: List of sensor register numbers to apply that filter constant to
+        :return:
+        """
+        filt_constant = command_api.filter_constant(freq)
+        for reg in reglist:
+            self.conn.writeReg(self.modbus_address, reg, filt_constant)
 
 
 """
