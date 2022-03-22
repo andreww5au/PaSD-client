@@ -52,8 +52,14 @@ if __name__ == '__main__':
             print('Trying to push smartbox image to an FNDH? %s' % args.filename)
             print('Filename must start with "FNPC" (and go to address 31 or 101), or "SBox" (and go to address 1-24).')
             sys.exit(-1)
+    elif os.path.basename(args.filename).upper().startswith('FNCC'):
+        if (int(args.address) != 100):
+            print('Trying to push FNCC image to a smartbox or FNPC? %s' % args.filename)
+            print('Filename must start with "FNPC" (and go to address 31 or 101), or ')
+            print('    "SBox" (and go to address 1-24) or "FNCC" (and go to address 100).')
+            sys.exit(-1)
     else:
-        print('Filename must start with "FNPC" (and go to address 31 or 101), or "SBox" (and go to address 1-24).')
+        print('Filename must start with "FNPC" (to address 31 or 101), or "SBox" (to address 1-24) or "FNCC" (to address 100).')
         sys.exit(-1)
 
     if args.address == 0:
