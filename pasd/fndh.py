@@ -43,46 +43,50 @@ FNDH_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
                         'SYS_ADDRESS': (16, 1, 'MODBUS station ID', None),
 
                         # From here on register address and contents can change between firmware revisions
-                        'SYS_48V1_V': (17, 1, '48VDC PSU 1 output voltage', conversion.scale_48v),
-                        'SYS_48V2_V': (18, 1, '48VDC PSU 2 output voltage', conversion.scale_48v),
-                        'SYS_5V_V':    (19, 1, '5VDC PSU output voltage', conversion.scale_5v),
-                        'SYS_48V_I':   (20, 1, 'Total 48VDC output current', conversion.scale_48vcurrent),
-                        'SYS_48V_TEMP': (21, 1, '48VDC PSU 1+2 temperature', conversion.scale_temp),
-                        'SYS_5V_TEMP': (22, 1, '5VDC PSU temperature', conversion.scale_temp),
-                        'SYS_PCBTEMP': (23, 1, 'PCB temperature', conversion.scale_temp),
-                        'SYS_OUTTEMP': (24, 1, 'Outside temperature', conversion.scale_temp),
-                        'SYS_STATUS':  (25, 1, 'System status code', None),
-                        'SYS_LIGHTS':  (26, 1, 'LED state codes', None),
+                        'SYS_48V1_V': (17, 1, '48VDC PSU 1 output voltage', conversion.scale_48v),          # AN12
+                        'SYS_48V2_V': (18, 1, '48VDC PSU 2 output voltage', conversion.scale_48v),          # AN13
+                        'SYS_48V_I':   (19, 1, 'Total 48VDC output current', conversion.scale_48vcurrent),  # AN11
+                        'SYS_48V1_TEMP': (20, 1, '48VDC PSU 1 temperature', conversion.scale_temp),         # AN14
+                        'SYS_48V2_TEMP': (21, 1, '48VDC PSU 1 temperature', conversion.scale_temp),         # AN15
+                        'SYS_PANELTEMP': (22, 1, 'Switch panel PCB temperature', conversion.scale_temp),    # AN08
+                        'SYS_FNCBTEMP': (23, 1, 'FNCB board temperature', conversion.scale_temp),           # AN09
+                        'SYS_HUMIDITY': (24, 1, 'FNCB board humidity', conversion.scale_humidity),          # AN10
+                        'SYS_5V_TEMP': (25, 1, '5VDC PSU temperature', conversion.scale_temp),              # AN18
+                        'SYS_OUTTEMP': (26, 1, 'Outside temperature', conversion.scale_temp),               # AN19
+                        'SYS_SENSE01': (27, 1, 'Extra temperature 1', conversion.scale_temp),               # AN20
+                        'SYS_SENSE02': (28, 1, 'Extra temperature 2', conversion.scale_temp),               # AN07
+                        'SYS_STATUS':  (29, 1, 'System status code', None),
+                        'SYS_LIGHTS':  (30, 1, 'LED state codes', None),
 
                         # Per-port status variables
-                        'P01_STATE': (27, 1, 'Port 01 state bitmap (r/w)', None),
-                        'P02_STATE': (28, 1, 'Port 02 state bitmap (r/w)', None),
-                        'P03_STATE': (29, 1, 'Port 03 state bitmap (r/w)', None),
-                        'P04_STATE': (30, 1, 'Port 04 state bitmap (r/w)', None),
-                        'P05_STATE': (31, 1, 'Port 05 state bitmap (r/w)', None),
-                        'P06_STATE': (32, 1, 'Port 06 state bitmap (r/w)', None),
-                        'P07_STATE': (33, 1, 'Port 07 state bitmap (r/w)', None),
-                        'P08_STATE': (34, 1, 'Port 08 state bitmap (r/w)', None),
-                        'P09_STATE': (35, 1, 'Port 09 state bitmap (r/w)', None),
-                        'P10_STATE': (36, 1, 'Port 10 state bitmap (r/w)', None),
-                        'P11_STATE': (37, 1, 'Port 11 state bitmap (r/w)', None),
-                        'P12_STATE': (38, 1, 'Port 12 state bitmap (r/w)', None),
-                        'P13_STATE': (39, 1, 'Port 13 state bitmap (r/w)', None),
-                        'P14_STATE': (40, 1, 'Port 14 state bitmap (r/w)', None),
-                        'P15_STATE': (41, 1, 'Port 15 state bitmap (r/w)', None),
-                        'P16_STATE': (42, 1, 'Port 16 state bitmap (r/w)', None),
-                        'P17_STATE': (43, 1, 'Port 17 state bitmap (r/w)', None),
-                        'P18_STATE': (44, 1, 'Port 18 state bitmap (r/w)', None),
-                        'P19_STATE': (45, 1, 'Port 19 state bitmap (r/w)', None),
-                        'P20_STATE': (46, 1, 'Port 20 state bitmap (r/w)', None),
-                        'P21_STATE': (47, 1, 'Port 21 state bitmap (r/w)', None),
-                        'P22_STATE': (48, 1, 'Port 22 state bitmap (r/w)', None),
-                        'P23_STATE': (49, 1, 'Port 23 state bitmap (r/w)', None),
-                        'P24_STATE': (50, 1, 'Port 24 state bitmap (r/w)', None),
-                        'P25_STATE': (51, 1, 'Port 25 state bitmap (r/w)', None),
-                        'P26_STATE': (52, 1, 'Port 26 state bitmap (r/w)', None),
-                        'P27_STATE': (53, 1, 'Port 27 state bitmap (r/w)', None),
-                        'P28_STATE': (54, 1, 'Port 28 state bitmap (r/w)', None),
+                        'P01_STATE': (31, 1, 'Port 01 state bitmap (r/w)', None),
+                        'P02_STATE': (32, 1, 'Port 02 state bitmap (r/w)', None),
+                        'P03_STATE': (33, 1, 'Port 03 state bitmap (r/w)', None),
+                        'P04_STATE': (34, 1, 'Port 04 state bitmap (r/w)', None),
+                        'P05_STATE': (35, 1, 'Port 05 state bitmap (r/w)', None),
+                        'P06_STATE': (36, 1, 'Port 06 state bitmap (r/w)', None),
+                        'P07_STATE': (37, 1, 'Port 07 state bitmap (r/w)', None),
+                        'P08_STATE': (38, 1, 'Port 08 state bitmap (r/w)', None),
+                        'P09_STATE': (39, 1, 'Port 09 state bitmap (r/w)', None),
+                        'P10_STATE': (40, 1, 'Port 10 state bitmap (r/w)', None),
+                        'P11_STATE': (41, 1, 'Port 11 state bitmap (r/w)', None),
+                        'P12_STATE': (42, 1, 'Port 12 state bitmap (r/w)', None),
+                        'P13_STATE': (43, 1, 'Port 13 state bitmap (r/w)', None),
+                        'P14_STATE': (44, 1, 'Port 14 state bitmap (r/w)', None),
+                        'P15_STATE': (45, 1, 'Port 15 state bitmap (r/w)', None),
+                        'P16_STATE': (46, 1, 'Port 16 state bitmap (r/w)', None),
+                        'P17_STATE': (47, 1, 'Port 17 state bitmap (r/w)', None),
+                        'P18_STATE': (48, 1, 'Port 18 state bitmap (r/w)', None),
+                        'P19_STATE': (49, 1, 'Port 19 state bitmap (r/w)', None),
+                        'P20_STATE': (50, 1, 'Port 20 state bitmap (r/w)', None),
+                        'P21_STATE': (51, 1, 'Port 21 state bitmap (r/w)', None),
+                        'P22_STATE': (52, 1, 'Port 22 state bitmap (r/w)', None),
+                        'P23_STATE': (53, 1, 'Port 23 state bitmap (r/w)', None),
+                        'P24_STATE': (54, 1, 'Port 24 state bitmap (r/w)', None),
+                        'P25_STATE': (55, 1, 'Port 25 state bitmap (r/w)', None),
+                        'P26_STATE': (56, 1, 'Port 26 state bitmap (r/w)', None),
+                        'P27_STATE': (57, 1, 'Port 27 state bitmap (r/w)', None),
+                        'P28_STATE': (58, 1, 'Port 28 state bitmap (r/w)', None),
 }
 
 # TODO - add PDoC port serial number block (28 * 4 registers) in here, to be read once on boot, not polled.

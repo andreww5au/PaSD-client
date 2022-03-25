@@ -63,13 +63,27 @@ def scale_temp(value, reverse=False, pcb_version=0):
         return value / 100.0     # raw_value is a signed 16-bit integer containing temp in 1/100th of a degree
 
 
-# TODO - fix all the uses (and simulated ports in sim_smartbox) to use no conversion, raw ADU values
+def scale_humidity(value, reverse=False, pcb_version=0):
+    """
+    Given a raw register value and the PCB version number, find out what scale and offset are needed, convert the raw
+    value to percent humidity.
+
+    This returns the value unchanged, as an integer reading in percent humidity
+
+    :param value: raw register contents as a value from 0-65535
+    :param reverse: Boolean, True to perform physical->raw conversion instead of raw->physical
+    :param pcb_version: integer PCB version number, 0-65535
+    :return: output_value in humidity (unless reverse=True)
+    """
+    return value
+
+
 def scale_FEMcurrent(value, reverse=False, pcb_version=0):
     """
     Given a raw register value and the PCB version number, find out what scale and offset are needed, convert the raw
     value to mA.
 
-    Note that for now, this returns the value unchanged, in both directions, until we settle on a final representation.
+    This returns the value unchanged, as an integer reading in mA
 
     :param value: raw register contents as a value from 0-65535, or crude estimate of the current in Amps
     :param reverse: Boolean, True to perform physical->raw conversion instead of raw->physical
