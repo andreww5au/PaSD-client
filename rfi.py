@@ -7,14 +7,9 @@ send updated information as needed to the hardware in the field.
 """
 
 import argparse
-from configparser import ConfigParser as conparser
 import logging
 import sys
 import time
-
-DEFAULT_STATION_NUMBER = 1
-CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
-          './pasd.conf', './pasd-local.conf']
 
 
 def main_loop(stn):
@@ -86,11 +81,6 @@ def main_loop(stn):
 
 
 if __name__ == '__main__':
-    CP = conparser(defaults={})
-    CPfile = CP.read(CPPATH)
-    if not CPfile:
-        print("None of the specified configuration files found by mwaconfig.py: %s" % (CPPATH,))
-
     parser = argparse.ArgumentParser(description='RFI test a PaSD station',
                                      epilog='Run this as "python -i %s" to drop into the Python prompt after starting up.' % sys.argv[0])
     parser.add_argument('--host', dest='host', default=None,
@@ -105,12 +95,6 @@ if __name__ == '__main__':
         loglevel = logging.DEBUG
     else:
         loglevel = logging.INFO
-
-    config = CP['station_%03d' % args.station_id]
-    dbuser = config['dbuser']
-    dbhost = config['dbhost']
-    dbpass = config['dbpass']
-    dbname = config['dbname']
 
     sh = logging.StreamHandler()
     sh.setLevel(loglevel)  # Some or all log messages go to the console
@@ -128,11 +112,11 @@ if __name__ == '__main__':
         tlogger.setLevel(logging.INFO)
 
     while True:
-        conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=False, logger=tlogger)
+        conn = transport.Connection(hostname=args.host, multidrop=False, logger=tlogger)
 
         slogger = logging.getLogger('ST')
         s = station.Station(conn=conn,
-                            station_id=args.station_id,
+                            station_id=1,
                             logger=slogger)
 
         print('Starting up entire station as "s" - FNDH on address 101, SMARTboxes on addresses 1-24.')
