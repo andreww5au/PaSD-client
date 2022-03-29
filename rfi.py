@@ -12,7 +12,7 @@ import sys
 import time
 
 
-def main_loop(stn):
+def main_loop(stn, toggleports=False):
     """
     Run forever in a loop
       -Query the field hardware to get all the current sensor and port parameters and update the instance data
@@ -22,8 +22,10 @@ def main_loop(stn):
       -Query the stations table to see if we're meant to start up, or shut down
 
     :param stn: An instance of station.Station()
+    :param toggleports: If True, turn some ports on and off to generate RFI
     :return: False if there was a communications error, None if an exit was requested by setting stn.wants_exit True
     """
+    poweron = True
     while not stn.wants_exit:
         last_loop_start_time = time.time()
 
@@ -75,6 +77,22 @@ def main_loop(stn):
             for path, value in fdict.items():
                 data.append((path, (stime, value)))
 
+        if toggleports:
+            for sid in stn.smartboxes.keys():
+                for pid in stn.smartboxes[sid].ports.keys():
+                    p = stn.smartboxes[sid].ports[pid]
+                    if divmod(pid, 4)[1] == 0:   # Every 4th port
+                        p.desire_enabled_online, p.desire_enabled_offline = poweron
+                        logging.info('Turning %s port %d on smartbox %d' % ({False:'Off', True:'On'}[poweron], pid, sid))
+                stn.smartboxes[sid].write_portconfig(write_breaker=True)
+
+            p = stn.fndh.ports[17]
+            p.desire_enabled_online, p.desire_enabled_offline = poweron
+            stn.fndh.write_portconfig()
+            logging.info('Turning %s port %d on FNDH' % ({False: 'Off', True: 'On'}[poweron], 17))
+
+            poweron = not poweron
+
         logging.debug(data)
 
         time.sleep(max(0.0, 15 - (time.time() - last_loop_start_time)))
@@ -87,6 +105,8 @@ if __name__ == '__main__':
                         help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
+    parser.add_argument('--toggle', dest='toggle', default=False, action='store_true',
+                        help='If given, toggle some ports on and off every 15 seconds.')
     args = parser.parse_args()
     if (args.host is None) and (args.device is None):
         args.host = '10.128.30.2'
@@ -124,7 +144,7 @@ if __name__ == '__main__':
         s.fieldtest_startup()
         s.poll_data()
 
-        result = main_loop(s)
+        result = main_loop(s, toggleports=args.toggle)
         if result is False:
             logging.error('Station unreachable, trying again in 10 seconds')
             time.sleep(10)
