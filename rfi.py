@@ -82,12 +82,12 @@ def main_loop(stn, toggleports=False):
                 for pid in stn.smartboxes[sid].ports.keys():
                     p = stn.smartboxes[sid].ports[pid]
                     if divmod(pid, 4)[1] == 0:   # Every 4th port
-                        p.desire_enabled_online, p.desire_enabled_offline = poweron
+                        p.desire_enabled_online, p.desire_enabled_offline = poweron, poweron
                         logging.info('Turning %s port %d on smartbox %d' % ({False:'Off', True:'On'}[poweron], pid, sid))
                 stn.smartboxes[sid].write_portconfig(write_breaker=True)
 
             p = stn.fndh.ports[17]
-            p.desire_enabled_online, p.desire_enabled_offline = poweron
+            p.desire_enabled_online, p.desire_enabled_offline = poweron, poweron
             stn.fndh.write_portconfig()
             logging.info('Turning %s port %d on FNDH' % ({False: 'Off', True: 'On'}[poweron], 17))
 
