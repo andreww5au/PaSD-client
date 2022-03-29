@@ -99,7 +99,7 @@ if __name__ == '__main__':
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
     args = parser.parse_args()
     if (args.host is None) and (args.device is None):
-        args.host = '(10.128.30.2'
+        args.host = '10.128.30.2'
 
     if args.debug:
         loglevel = logging.DEBUG
