@@ -80,7 +80,7 @@ if __name__ == '__main__':
         print(f)
     elif args.task.upper() == 'FNCC':
         if args.address is None:
-            args.address = 101
+            args.address = 100
         flogger = logging.getLogger('FNCC:%d' % int(args.address))
         fc = fncc.FNCC(conn=conn, modbus_address=int(args.address), logger=flogger)
         print('Polling FNCC as "fc" on address %d.' % int(args.address))
