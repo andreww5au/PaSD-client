@@ -497,6 +497,7 @@ if __name__ == '__main__':
         slogger = logging.getLogger('ST')
         s = station.Station(conn=conn,
                             station_id=args.station_id,
+                            do_full_startup = True,
                             antenna_map=get_antenna_map(db, args.station_id),
                             portconfig_fndh=fndhpc,
                             portconfig_smartboxes=sbpc,

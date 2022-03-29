@@ -14,9 +14,6 @@ logging.basicConfig()
 from pasd import fndh
 from pasd import smartbox
 
-START_MODE = 'FULL'   # Do full smartbox/pdoc mapping on startup
-# START_MODE = 'FIELD'    # Skip smartbox/pdoc mapping on startup
-
 SLAVE_MODBUS_ADDRESS = 199   # Address that technician's SID devices use to reach the MCCS as a slave device
 FNDH_ADDRESS = 101   # Modbus address of the FNDH controller
 
@@ -107,6 +104,7 @@ class Station(object):
                  conn,
                  station_id=None,
                  logger=None,
+                 do_full_startup=False,
                  antenna_map=None,
                  portconfig_smartboxes=None,
                  portconfig_fndh=None,
@@ -129,6 +127,7 @@ class Station(object):
         self.station_id = station_id
         self.active = False    # True if the station is powered up and smartboxes are being polled
         self.status = 'OFF'    # 'ACTIVE', 'STARTUP', 'SHUTDOWN', 'ERROR', or 'OFF'
+        self.do_full_startup = do_full_startup    # True if we are to determine which smartbox is connected to which PDoC on startup
         self.desired_active = False    # Set to True if the MCCS wants this station powered up, False if it wants us to power down
         self.smartbox_class = smartbox_class
         self.fndh_class = fndh_class
@@ -359,7 +358,7 @@ class Station(object):
             if self.fndh.statuscode != fndh.STATUS_OK:
                 self.logger.warning('FNDH has status %d (%s)' % (self.fndh.statuscode, self.fndh.status))
             if self.fndh.statuscode == fndh.STATUS_UNINITIALISED and self.active:   # FNDH is UNINITIALISED, but we're meant to be 'active'
-                if START_MODE == 'FULL':
+                if self.full_startup:
                     fndh_ok = self.full_startup()   # Turn off all the PDoC ports, then turn them back on with delays, to find the smartbox<->PDoC mapping
                 else:
                     fndh_ok = self.fieldtest_startup()
@@ -399,7 +398,7 @@ class Station(object):
         send_portstate = False
         for smb in self.smartboxes.values():
             if smb.statuscode == smartbox.STATUS_POWERDOWN:
-                if START_MODE != 'FULL':     # No port mapping, switch off all ports
+                if not self.do_full_startup:     # No port mapping, switch off all ports
                     for p in self.fndh.ports.values():
                         p.locally_forced_off = True
                         send_portstate = True
@@ -421,7 +420,7 @@ class Station(object):
         # to be powered down and restarted with a full smartbox address detection sequence), then it will set it's
         # status code and indicator LED code to the 'POWERUP' value.
         if self.fndh.statuscode == fndh.STATUS_POWERUP:
-            if START_MODE == 'FULL':
+            if self.do_full_startup:
                 self.full_startup()  # Turn off all the PDoC ports, then turn them back on with delays, to find the smartbox<->PDoC mapping
             else:
                 self.fieldtest_startup()
