@@ -358,7 +358,7 @@ class Station(object):
             if self.fndh.statuscode != fndh.STATUS_OK:
                 self.logger.warning('FNDH has status %d (%s)' % (self.fndh.statuscode, self.fndh.status))
             if self.fndh.statuscode == fndh.STATUS_UNINITIALISED and self.active:   # FNDH is UNINITIALISED, but we're meant to be 'active'
-                if self.full_startup:
+                if self.do_full_startup:
                     fndh_ok = self.full_startup()   # Turn off all the PDoC ports, then turn them back on with delays, to find the smartbox<->PDoC mapping
                 else:
                     fndh_ok = self.fieldtest_startup()
