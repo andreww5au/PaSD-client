@@ -109,7 +109,7 @@ if __name__ == '__main__':
                         help='If given, toggle some ports on and off every 15 seconds.')
     args = parser.parse_args()
     if (args.host is None) and (args.device is None):
-        args.host = '10.128.30.2'
+        args.host = '10.128.30.1'
 
     if args.debug:
         loglevel = logging.DEBUG
