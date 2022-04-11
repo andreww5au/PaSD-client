@@ -69,6 +69,15 @@ Result codes are:
     3 = UNKNOWN_COMMAND
 
 
+------------------------------------------------------------
+CPU load and warnings:
+
+CPU_LOAD 10129
+WARNINGS_LSW 10130
+WARNINGS_MSW 10131
+ALARMS_LSW 10132
+ALARMS_MSW 10133
+
 ----------------------------------------------------------
 SAMPLING:
 
