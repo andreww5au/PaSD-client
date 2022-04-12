@@ -210,14 +210,11 @@ FNDH at address: %(modbus_address)s:
     Firmware revision: %(firmware_version)s
     Uptime: %(uptime)s seconds
     R.Address: %(station_value)s
-    48V Out 1: %(psu48v1_voltage)s V
-    48V Out 2: %(psu48v2_voltage)s V
-    5V out: %(psu5v_voltage)s V
+    48V: %(psu48v1_voltage)s V, %(psu48v2_voltage)s V
     48V Current: %(psu48v_current)s A 
-    48V Temp: %(psu48v_temp)s deg C
-    5V Temp: %(psu5v_temp)s deg C
-    PCB Temp: %(pcb_temp)s deg C
-    Outside Temp: %(outside_temp)s deg C
+    48V Temp: %(psu48v1_temp)s deg C, %(psu48v2_temp)s deg C
+    Switch panel Temp: %(panel_temp)s deg C
+    FNCB: %(fncb_temp)s deg C, %(fncb_humidity)s %% RH
     Status: %(statuscode)s (%(status)s)
     Service LED: %(service_led)s
     Indicator: %(indicator_code)s (%(indicator_state)s)
