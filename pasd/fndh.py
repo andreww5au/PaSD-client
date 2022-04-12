@@ -101,12 +101,23 @@ FNDH_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
 FNDH_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as well as under-value alarm and warning
                     'SYS_48V1_V_TH':(1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),
                     'SYS_48V2_V_TH':(1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),
-                    'SYS_5V_V_TH':(1009, 4, '5V PSU output voltage AH, WH, WL, AL', conversion.scale_5v),
-                    'SYS_48V_I_TH':(1013, 4, '48V PSU output current AH, WH, WL, AL', conversion.scale_48vcurrent),
-                    'SYS_48V_TEMP_TH':(1017, 4, '48V PSU temperature AH, WH, WL, AL', conversion.scale_temp),
-                    'SYS_5V_TEMP_TH':(1021, 4, '5V PSU temperature AH, WH, WL, AL', conversion.scale_temp),
-                    'SYS_PCBTEMP_TH':(1025, 4, 'PCB temperature AH, WH, WL, AL', conversion.scale_temp),
-                    'SYS_OUTTEMP_TH':(1029, 4, 'Outside temperature AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_48V_I_TH':(1009, 4, '48V PSU output current AH, WH, WL, AL', conversion.scale_48vcurrent),
+                    'SYS_48V1_TEMP_TH':(1013, 4, '48V PSU 1 temperature AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_48V2_TEMP_TH':(1017, 4, '48V PSU 2 temperature AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_PANELTEMP_TH':(1021, 4, 'Switch panel PCB temperature AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_FNCBTEMP_TH':(1025, 4, 'FNCB board temperature AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_HUMIDITY_TH':(1029, 4, 'FNCB board humidity AH, WH, WL, AL', conversion.scale_humidity),
+
+                    'SYS_SENSE01_TH': (1033, 4, 'Sensor 1 AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_SENSE02_TH': (1037, 4, 'Sensor 1 AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_SENSE03_TH': (1041, 4, 'Sensor 1 AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_SENSE04_TH': (1045, 4, 'Sensor 1 AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_SENSE05_TH': (1049, 4, 'Sensor 1 AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_SENSE06_TH': (1053, 4, 'Sensor 1 AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_SENSE07_TH': (1057, 4, 'Sensor 1 AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_SENSE08_TH': (1061, 4, 'Sensor 1 AH, WH, WL, AL', conversion.scale_temp),
+                    'SYS_SENSE09_TH': (1065, 4, 'Sensor 1 AH, WH, WL, AL', conversion.scale_temp),
+
 }
 
 
