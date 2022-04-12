@@ -327,12 +327,12 @@ class FNDH(transport.ModbusDevice):
     station_value: Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
     psu48v1_voltage: Voltage measured on the output of the first 48VDC power supply (Volts)
     psu48v2_voltage: Voltage measured on the output of the second 48VDC power supply (Volts)
-    psu5v_voltage: Voltage measured on the output of the 5VDC power supply (Volts)
     psu48v_current: Total current on the 48VDC bus (Amps)
-    psu48v_temp: Common temperature for both 48VDC power supplies (deg C)
-    psu5v_temp: Temperature of the 5VDC power supply (Volts)
-    pcb_temp: Temperature on the internal PCB (deg C)
-    outside_temp: Outside temperature (deg C)
+    psu48v1_temp: Common temperature for the first 48VDC power supply (deg C)
+    psu48v2_temp: Common temperature for the second 48VDC power supply (deg C)
+    panel_temp: Switch panel temperature (deg C)
+    fncb_temp: FNCB board temperature (deg C)
+    fncb_humidity: FNCB board humidity (%)
     statuscode: Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
     status: Status string, obtained from STATUS_CODES global (eg 'OK')
     service_led: True if the blue service indicator LED is switched ON.
@@ -368,12 +368,12 @@ class FNDH(transport.ModbusDevice):
         self.station_value = 0  # Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
         self.psu48v1_voltage = 0.0  # Voltage measured on the output of the first 48VDC power supply (Volts)
         self.psu48v2_voltage = 0.0  # Voltage measured on the output of the second 48VDC power supply (Volts)
-        self.psu5v_voltage = 0.0  # Voltage measured on the output of the 5VDC power supply (Volts)
         self.psu48v_current = 0.0  # Total current on the 48VDC bus (Amps)
-        self.psu48v_temp = 0.0  # Common temperature for both 48VDC power supplies (deg C)
-        self.psu5v_temp = 0.0  # Temperature of the 5VDC power supply (Volts)
-        self.pcb_temp = 0.0  # Temperature on the internal PCB (deg C)
-        self.outside_temp = 0.0  # Outside temperature (deg C)
+        self.psu48v1_temp = 0.0  # Common temperature for the first 48VDC power supply (deg C)
+        self.psu48v2_temp = 0.0  # Common temperature for the second 48VDC power supply (deg C)
+        self.panel_temp = 0.0  # Switch panel temperature (deg C)
+        self.fncb_temp = 0.0  # FNCB board temperature (deg C)
+        self.fncb_humidity = 0.0  # FNCB board humidity (%)
         self.statuscode = STATUS_UNINITIALISED  # Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'  # Status string, obtained from STATUS_CODES global (eg 'OK')
         self.service_led = False  # True if the blue service indicator LED is switched ON.
@@ -465,18 +465,18 @@ class FNDH(transport.ModbusDevice):
                 self.psu48v1_voltage = scaled_float
             elif regname == 'SYS_48V2_V':
                 self.psu48v2_voltage = scaled_float
-            elif regname == 'SYS_5V_V':
-                self.psu5v_voltage = scaled_float
             elif regname == 'SYS_48V_I':
                 self.psu48v_current = scaled_float
-            elif regname == 'SYS_48V_TEMP':
-                self.psu48v_temp = scaled_float
-            elif regname == 'SYS_5V_TEMP':
-                self.psu5v_temp = scaled_float
-            elif regname == 'SYS_PCBTEMP':
-                self.pcb_temp = scaled_float
-            elif regname == 'SYS_OUTTEMP':
-                self.outside_temp = scaled_float
+            elif regname == 'SYS_48V1_TEMP':
+                self.psu48v1_temp = scaled_float
+            elif regname == 'SYS_48V2_TEMP':
+                self.psu48v2_temp = scaled_float
+            elif regname == 'SYS_PANELTEMP':
+                self.panel_temp = scaled_float
+            elif regname == 'SYS_FNCBTEMP':
+                self.fncb_temp = scaled_float
+            elif regname == 'SYS_HUMIDITY':
+                self.fncb_humidity = scaled_float
             elif regname == 'SYS_STATUS':
                 self.statuscode = raw_int
                 self.status = STATUS_CODES[self.statuscode]
