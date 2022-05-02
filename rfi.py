@@ -40,7 +40,6 @@ def main_loop(stn, toggleports=False):
         fdict = {}
         fdict['pasd.fieldtest.fndh.psu48v1_voltage'] = stn.fndh.psu48v1_voltage
         fdict['pasd.fieldtest.fndh.psu48v2_voltage'] = stn.fndh.psu48v2_voltage
-        fdict['pasd.fieldtest.fndh.psu5v_voltage'] = stn.fndh.psu5v_voltage
         fdict['pasd.fieldtest.fndh.psu48v_current'] = stn.fndh.psu48v_current
         fdict['pasd.fieldtest.fndh.psu48v_temp'] = stn.fndh.psu48v_temp
         fdict['pasd.fieldtest.fndh.psu5v_temp'] = stn.fndh.psu5v_temp
