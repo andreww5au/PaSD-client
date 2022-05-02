@@ -75,7 +75,10 @@ def scale_humidity(value, reverse=False, pcb_version=0):
     :param pcb_version: integer PCB version number, 0-65535
     :return: output_value in humidity (unless reverse=True)
     """
-    return value
+    if reverse:
+        return int(value)
+    else:
+        return value
 
 
 def scale_FEMcurrent(value, reverse=False, pcb_version=0):
@@ -90,7 +93,10 @@ def scale_FEMcurrent(value, reverse=False, pcb_version=0):
     :param pcb_version: integer PCB version number, 0-65535
     :return: output_value in mA
     """
-    return value
+    if reverse:
+        return int(value)
+    else:
+        return value
 
 
 def scale_48vcurrent(value, reverse=False, pcb_version=0):
