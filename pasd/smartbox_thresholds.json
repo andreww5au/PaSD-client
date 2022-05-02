@@ -1,9 +1,9 @@
 {
     "SYS_48V_V_TH": [
-        0.0,
-        0.0,
-        0.0,
-        0.0
+        55.0,
+        50.0,
+        35.0,
+        30.0
     ],
     "SYS_SENSE10_TH": [
         0.0,
@@ -102,39 +102,39 @@
         0.0
     ],
     "P01_CURRENT_TH": [
-        300
+        800
     ],
     "P02_CURRENT_TH": [
-        300
+        800
     ],
     "P03_CURRENT_TH": [
-        300
+        800
     ],
     "P04_CURRENT_TH": [
-        300
+        800
     ],
     "P05_CURRENT_TH": [
-        300
+        800
     ],
     "P06_CURRENT_TH": [
-        300
+        800
     ],
     "P07_CURRENT_TH": [
-        300
+        800
     ],
     "P08_CURRENT_TH": [
-        300
+        800
     ],
     "P09_CURRENT_TH": [
-        300
+        800
     ],
     "P10_CURRENT_TH": [
-        300
+        800
     ],
     "P11_CURRENT_TH": [
-        300
+        800
     ],
     "P12_CURRENT_TH": [
-        300
+        800
     ]
 }
