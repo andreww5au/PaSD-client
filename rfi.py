@@ -11,6 +11,8 @@ import logging
 import sys
 import time
 
+CYCLE_TIME = 5   # Loop cycle time for polling and toggling ports
+
 
 def main_loop(stn, toggleports=False):
     """
@@ -95,7 +97,7 @@ def main_loop(stn, toggleports=False):
 
         logging.debug(data)
 
-        time.sleep(max(0.0, 15 - (time.time() - last_loop_start_time)))
+        time.sleep(max(0.0, CYCLE_TIME - (time.time() - last_loop_start_time)))
 
 
 if __name__ == '__main__':
