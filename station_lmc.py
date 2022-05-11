@@ -31,9 +31,9 @@ FNDH_STATE_QUERY = """
 UPDATE pasd_fndh_state
     SET mbrv = %(mbrv)s, pcbrv = %(pcbrv)s, cpuid = %(cpuid)s, chipid = %(chipid)s, 
         firmware_version = %(firmware_version)s, uptime = %(uptime)s, psu48v1_voltage = %(psu48v1_voltage)s, 
-        psu48v2_voltage = %(psu48v2_voltage)s, psu5v_voltage = %(psu5v_voltage)s, psu48v_current = %(psu48v_current)s, 
-        psu48v_temp = %(psu48v_temp)s, psu5v_temp = %(psu5v_temp)s, pcb_temp = %(pcb_temp)s, 
-        outside_temp = %(outside_temp)s, status = %(status)s, indicator_state = %(indicator_state)s, 
+        psu48v2_voltage = %(psu48v2_voltage)s, psu48v_current = %(psu48v_current)s, 
+        psu48v1_temp = %(psu48v1_temp)s, psu48v2_temp = %(psu48v2_temp)s, panel_temp = %(panel_temp)s, 
+        fncb_temp = %(fncb_temp)s, fncb_humidity = %(fncb_humidity)s, status = %(status)s, indicator_state = %(indicator_state)s, 
         readtime = %(readtime)s
     WHERE (station_id = %(station_id)s)
 """
