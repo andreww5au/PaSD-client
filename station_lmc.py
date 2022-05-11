@@ -351,7 +351,6 @@ def main_loop(db, stn):
         fdict = {}
         fdict['pasd.fieldtest.fndh.psu48v1_voltage'] = stn.fndh.psu48v1_voltage
         fdict['pasd.fieldtest.fndh.psu48v2_voltage'] = stn.fndh.psu48v2_voltage
-        fdict['pasd.fieldtest.fndh.psu5v_voltage'] = stn.fndh.psu5v_voltage
         fdict['pasd.fieldtest.fndh.psu48v_current'] = stn.fndh.psu48v_current
         fdict['pasd.fieldtest.fndh.psu48v1_temp'] = stn.fndh.psu48v2_temp
         fdict['pasd.fieldtest.fndh.psu48v2_temp'] = stn.fndh.psu48v2_temp
