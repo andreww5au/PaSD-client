@@ -353,10 +353,11 @@ def main_loop(db, stn):
         fdict['pasd.fieldtest.fndh.psu48v2_voltage'] = stn.fndh.psu48v2_voltage
         fdict['pasd.fieldtest.fndh.psu5v_voltage'] = stn.fndh.psu5v_voltage
         fdict['pasd.fieldtest.fndh.psu48v_current'] = stn.fndh.psu48v_current
-        fdict['pasd.fieldtest.fndh.psu48v_temp'] = stn.fndh.psu48v_temp
-        fdict['pasd.fieldtest.fndh.psu5v_temp'] = stn.fndh.psu5v_temp
-        fdict['pasd.fieldtest.fndh.pcb_temp'] = stn.fndh.pcb_temp
-        fdict['pasd.fieldtest.fndh.outside_temp'] = stn.fndh.outside_temp
+        fdict['pasd.fieldtest.fndh.psu48v1_temp'] = stn.fndh.psu48v2_temp
+        fdict['pasd.fieldtest.fndh.psu48v2_temp'] = stn.fndh.psu48v2_temp
+        fdict['pasd.fieldtest.fndh.panel_temp'] = stn.fndh.panel_temp
+        fdict['pasd.fieldtest.fndh.fncb_temp'] = stn.fndh.fncb_temp
+        fdict['pasd.fieldtest.fndh.fncb_humidity'] = stn.fndh.fncb_humidity
         fdict['pasd.fieldtest.fndh.statuscode'] = stn.fndh.statuscode
         fdict['pasd.fieldtest.fndh.indicator_code'] = stn.fndh.indicator_code
         ftime = stn.fndh.readtime
