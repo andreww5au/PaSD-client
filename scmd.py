@@ -165,7 +165,7 @@ def fndh(portnums, action):
                                      'indicator_state':indicator_state}
                         print(FNDH_STRING % paramdict)
                 else:  # portlist suppled
-                    query = """SELECT pdoc_number, extract(epoch from status_timestamp), system_online, locally_forced_on, 
+                    query = """SELECT pdoc_number, extract(epoch from status_timestamp), smartbox_number, system_online, locally_forced_on, 
                                       locally_forced_off, power_state, power_sense, desire_enabled_online, desire_enabled_offline
                                FROM pasd_fndh_port_status
                                WHERE (station_id = %(station_id)s) AND (pdoc_number = ANY(%(port_number)s))
@@ -173,17 +173,26 @@ def fndh(portnums, action):
                     curs.execute(query, {'station_id':STATION_ID, 'port_number':portlist})
                     rows = curs.fetchall()
                     for row in rows:
-                        (pdoc_number, status_timestamp, system_online, locally_forced_on, locally_forced_off, power_state,
+                        (pdoc_number, status_timestamp, smartbox_number, system_online, locally_forced_on, locally_forced_off, power_state,
                          power_sense, desire_enabled_online, desire_enabled_offline) = row
+
                         if locally_forced_on:
                             lfstring = 'Forced:ON'
                         elif locally_forced_off:
                             lfstring = 'Forced:OFF'
                         else:
                             lfstring = 'NotForced'
+
+                        if smartbox_number:
+                            sbstring = "SB%02d" % smartbox_number
+                        else:
+                            sbstring = "----"
+
                         enstring = '(DesireEnabled:%s)' % ','.join([{False:'', True:'Online', None:'?'}[desire_enabled_online],
                                                                     {False:'', True:'Offline', None:'?'}[desire_enabled_offline]])
+
                         sysstring = '(System:%s)' % ({False:'Offline', True:'Online', None:'??line?'}[system_online])
+
                         status_items = ['Status(age %1.1f s):' % (time.time() - status_timestamp),
                                         {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[power_state],
                                         sysstring,
@@ -192,7 +201,7 @@ def fndh(portnums, action):
                                         {False:'PowerSense:OFF', True:'PowerSense:ON', None:'PowerSense:?'}[power_sense]
                                         ]
                         status_string = ' '.join(status_items)
-                        print("P%02d: %s" % (pdoc_number, status_string))
+                        print("P%02d(%s): %s" % (pdoc_number, sbstring, status_string))
 
             elif action.upper() in ['ON', 'OFF']:
                 if not portlist:
