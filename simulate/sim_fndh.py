@@ -26,20 +26,16 @@ FNDH at address: %(modbus_address)s:
     Firmware revision: %(firmware_version)s
     Uptime: %(uptime)s seconds
     R.Address: %(station_value)s
-    48V Out 1: %(psu48v1_voltage)4.2f V (%(psu48v1_voltage_state)s)
-    48V Out 2: %(psu48v2_voltage)4.2f V (%(psu48v2_voltage_state)s)
-    5V out: %(psu5v_voltage)4.2f V (%(psu5v_voltage_state)s)
-    48V Current: %(psu48v_current)4.2f A  (%(psu48v_current_state)s)
-    48V Temp: %(psu48v_temp)4.2f deg C (%(psu48v_temp_state)s)
-    5V Temp: %(psu5v_temp)4.2f deg C (%(psu5v_temp_state)s)
-    PCB Temp: %(pcb_temp)4.2f deg C (%(pcb_temp_state)s)
-    Outside Temp: %(outside_temp)4.2f deg C (%(outside_temp_state)s)
+    48V: %(psu48v1_voltage)s V, %(psu48v2_voltage)s V
+    48V Current: %(psu48v_current)s A 
+    48V Temp: %(psu48v1_temp)s deg C, %(psu48v2_temp)s deg C
+    Switch panel Temp: %(panel_temp)s deg C
+    FNCB: %(fncb_temp)s deg C, %(fncb_humidity)s %% RH
     Status: %(statuscode)s (%(status)s)
     Service LED: %(service_led)s
     Indicator: %(indicator_code)s (%(indicator_state)s)
-    Initialised: %(initialised)s
-    Online: %(online)s
 """
+
 
 
 def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
@@ -79,12 +75,13 @@ class SimFNDH(fndh.FNDH):
         self.station_value = modbus_address     # Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
         self.psu48v1_voltage = 48.1  # Voltage measured on the output of the first 48VDC power supply (Volts)
         self.psu48v2_voltage = 48.2  # Voltage measured on the output of the second 48VDC power supply (Volts)
-        self.psu5v_voltage = 5.1  # Voltage measured on the output of the 5VDC power supply (Volts)
         self.psu48v_current = 13.4  # Total current on the 48VDC bus (Amps)
-        self.psu48v_temp = 58.3  # Common temperature for both 48VDC power supplies (deg C)
-        self.psu5v_temp = 55.1  # Temperature of the 5VDC power supply (Volts)
-        self.pcb_temp = 48.0    # Temperature on the internal PCB (deg C)
-        self.outside_temp = 38.0    # Outside temperature (deg C)
+        self.psu48v1_temp = 45.1  # Common temperature for the first 48VDC power supply (deg C)
+        self.psu48v2_temp = 46.2  # Common temperature for the second 48VDC power supply (deg C)
+        self.panel_temp = 38.3  # Switch panel temperature (deg C)
+        self.fncb_temp = 39.4  # FNCB board temperature (deg C)
+        self.fncb_humidity = 41.0  # FNCB board humidity (%)
+        self.sensor_temps = {i:33.33 for i in range(1, 10)}  # Dictionary with sensor number (1-9) as key, and temperature as value
         self.statuscode = fndh.STATUS_UNINITIALISED    # Status value, one of the fndh.STATUS_* globals, and used as a key for fndh.STATUS_CODES (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'       # Status string, obtained from fndh.STATUS_CODES global (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
@@ -104,15 +101,9 @@ class SimFNDH(fndh.FNDH):
 
     def __str__(self):
         tmpdict = self.__dict__.copy()
-        tmpdict['psu48v1_voltage_state'] = self.sensor_states['SYS_48V1_V_TH']
-        tmpdict['psu48v2_voltage_state'] = self.sensor_states['SYS_48V2_V_TH']
-        tmpdict['psu5v_voltage_state'] = self.sensor_states['SYS_5V_V_TH']
-        tmpdict['psu48v_current_state'] = self.sensor_states['SYS_48V_I_TH']
-        tmpdict['psu48v_temp_state'] = self.sensor_states['SYS_48V_TEMP_TH']
-        tmpdict['psu5v_temp_state'] = self.sensor_states['SYS_5V_TEMP_TH']
-        tmpdict['pcb_temp_state'] = self.sensor_states['SYS_PCBTEMP_TH']
-        tmpdict['outside_temp_state'] = self.sensor_states['SYS_OUTTEMP_TH']
-        return STATUS_STRING % (tmpdict) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 29)]))
+        tmpdict['status_age'] = time.time() - self.readtime
+        return ((STATUS_STRING % tmpdict) +
+                "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 29)])))
 
     def poll_data(self):
         """
@@ -200,18 +191,18 @@ class SimFNDH(fndh.FNDH):
                     slave_registers[regnum] = scalefunc(self.psu48v1_voltage, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_48V2_V':
                     slave_registers[regnum] = scalefunc(self.psu48v2_voltage, reverse=True, pcb_version=self.pcbrv)
-                elif regname == 'SYS_5V_V':
-                    slave_registers[regnum] = scalefunc(self.psu5v_voltage, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_48V_I':
                     slave_registers[regnum] = scalefunc(self.psu48v_current, reverse=True, pcb_version=self.pcbrv)
-                elif regname == 'SYS_48V_TEMP':
-                    slave_registers[regnum] = scalefunc(self.psu48v_temp, reverse=True, pcb_version=self.pcbrv)
-                elif regname == 'SYS_5V_TEMP':
-                    slave_registers[regnum] = scalefunc(self.psu5v_temp, reverse=True, pcb_version=self.pcbrv)
-                elif regname == 'SYS_PCBTEMP':
-                    slave_registers[regnum] = scalefunc(self.pcb_temp, reverse=True, pcb_version=self.pcbrv)
-                elif regname == 'SYS_OUTTEMP':
-                    slave_registers[regnum] = scalefunc(self.outside_temp, reverse=True, pcb_version=self.pcbrv)
+                elif regname == 'SYS_48V1_TEMP':
+                    slave_registers[regnum] = scalefunc(self.psu48v1_temp, reverse=True, pcb_version=self.pcbrv)
+                elif regname == 'SYS_48V2_TEMP':
+                    slave_registers[regnum] = scalefunc(self.psu48v2_temp, reverse=True, pcb_version=self.pcbrv)
+                elif regname == 'SYS_PANELTEMP':
+                    slave_registers[regnum] = scalefunc(self.panel_temp, reverse=True, pcb_version=self.pcbrv)
+                elif regname == 'SYS_FNCBTEMP':
+                    slave_registers[regnum] = scalefunc(self.fncb_temp, reverse=True, pcb_version=self.pcbrv)
+                elif regname == 'SYS_HUMIDITY':
+                    slave_registers[regnum] = scalefunc(self.fncb_humidity, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_STATUS':
                     slave_registers[regnum] = self.statuscode
                 elif regname == 'SYS_LIGHTS':
@@ -397,12 +388,12 @@ class SimFNDH(fndh.FNDH):
             # Change the sensor values to generate a random walk around a mean value for each sensor
             self.psu48v1_voltage = random_walk(self.psu48v1_voltage, mean=48.1, scale=0.25)
             self.psu48v2_voltage = random_walk(self.psu48v2_voltage, mean=48.1, scale=0.25)
-            self.psu5v_voltage = random_walk(self.psu5v_voltage, mean=5.1, scale=0.25)
             self.psu48v_current = random_walk(self.psu48v_current, mean=13.4, scale=0.25)
-            self.psu48v_temp = random_walk(self.psu48v_temp, mean=58.3, scale=0.25)
-            self.psu5v_temp = random_walk(self.psu5v_temp, mean=55.1, scale=0.25)
-            self.pcb_temp = random_walk(self.pcb_temp, mean=48.1, scale=0.25)
-            self.outside_temp = random_walk(self.outside_temp, mean=38.1, scale=0.25)
+            self.psu48v1_temp = random_walk(self.psu48v1_temp, mean=58.3, scale=0.25)
+            self.psu48v2_temp = random_walk(self.psu48v2_temp, mean=5.1, scale=0.25)
+            self.panel_temp = random_walk(self.panel_temp, mean=55.1, scale=0.25)
+            self.fncb_temp = random_walk(self.fncb_temp, mean=48.1, scale=0.25)
+            self.fncb_humidity = random_walk(self.fncb_humidity, mean=38.1, scale=0.25)
 
             if self.initialised:     # Don't bother thresholding sensor values until the thresholds have been set
                 # For each threshold register, get the current value and threshold/s from the right local instance attribute
@@ -413,18 +404,20 @@ class SimFNDH(fndh.FNDH):
                         curvalue = self.psu48v1_voltage
                     elif regname == 'SYS_48V2_V_TH':
                         curvalue = self.psu48v2_voltage
-                    elif regname == 'SYS_5V_V_TH':
-                        curvalue = self.psu5v_voltage
                     elif regname == 'SYS_48V_I_TH':
                         curvalue = self.psu48v_current
-                    elif regname == 'SYS_48V_TEMP_TH':
-                        curvalue = self.psu48v_temp
-                    elif regname == 'SYS_5V_TEMP_TH':
-                        curvalue = self.psu5v_temp
-                    elif regname == 'SYS_PCBTEMP_TH':
-                        curvalue = self.pcb_temp
-                    elif regname == 'SYS_OUTTEMP_TH':
-                        curvalue = self.outside_temp
+                    elif regname == 'SYS_48V1_TEMP_TH':
+                        curvalue = self.psu48v1_temp
+                    elif regname == 'SYS_48V2_TEMP_TH':
+                        curvalue = self.psu48v2_temp
+                    elif regname == 'PANEL_TEMP_TH':
+                        curvalue = self.panel_temp
+                    elif regname == 'SYS_FNCBTEMP_TH':
+                        curvalue = self.fncb_temp
+                    elif regname == 'SYS_HUMIDITY_TH':
+                        curvalue = self.fncb_humidity
+                    elif regname.startswith('SYS_SENSE'):
+                        curvalue = self.sensor_temps[int(regname[9:11])]
                     else:
                         self.logger.critical('Configuration register %s not handled by simulation code')
                         return

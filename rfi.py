@@ -48,6 +48,8 @@ def main_loop(stn, toggleports=False):
         fdict['pasd.fieldtest.fndh.panel_temp'] = stn.fndh.panel_temp
         fdict['pasd.fieldtest.fndh.fncb_temp'] = stn.fndh.fncb_temp
         fdict['pasd.fieldtest.fndh.fncb_humidity'] = stn.fndh.fncb_humidity
+        for snum, stemp in stn.fndh.sensor_temps.items():
+            fdict['pasd.fieldtest.fndh.sensor%02d.temp' % snum] = stemp
         fdict['pasd.fieldtest.fndh.statuscode'] = stn.fndh.statuscode
         fdict['pasd.fieldtest.fndh.indicator_code'] = stn.fndh.indicator_code
         ftime = stn.fndh.readtime

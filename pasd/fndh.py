@@ -333,6 +333,7 @@ class FNDH(transport.ModbusDevice):
     panel_temp: Switch panel temperature (deg C)
     fncb_temp: FNCB board temperature (deg C)
     fncb_humidity: FNCB board humidity (%)
+    sensor_temps: A dictionary with sensor number (1-9) as key, and temperature as value
     statuscode: Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
     status: Status string, obtained from STATUS_CODES global (eg 'OK')
     service_led: True if the blue service indicator LED is switched ON.
@@ -374,6 +375,7 @@ class FNDH(transport.ModbusDevice):
         self.panel_temp = 0.0  # Switch panel temperature (deg C)
         self.fncb_temp = 0.0  # FNCB board temperature (deg C)
         self.fncb_humidity = 0.0  # FNCB board humidity (%)
+        self.sensor_temps = {}  # Dictionary with sensor number (1-9) as key, and (probably) temperature as value
         self.statuscode = STATUS_UNINITIALISED  # Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'  # Status string, obtained from STATUS_CODES global (eg 'OK')
         self.service_led = False  # True if the blue service indicator LED is switched ON.
@@ -435,6 +437,7 @@ class FNDH(transport.ModbusDevice):
         self.mbrv = transport.bytestoN(valuelist[0])
         self.pcbrv = transport.bytestoN(valuelist[1])
         self.register_map = FNDH_REGISTERS[self.mbrv]
+        self.sensor_temps = {}  # Dictionary with sensor number (1-9) as key, and (probably) temperature as value
 
         for regname in self.register_map['POLL'].keys():  # Iterate over all the register names in the current register map
             regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
@@ -484,6 +487,9 @@ class FNDH(transport.ModbusDevice):
                 self.service_led = bool(raw_value[0][0])
                 self.indicator_code = raw_value[0][1]
                 self.indicator_state = LED_CODES[self.indicator_code]
+            elif (regname[:9] == 'SYS_SENSE'):
+                sensor_num = int(regname[9:])
+                self.sensor_temps[sensor_num] = scaled_float
             elif (len(regname) >= 8) and ((regname[0] + regname[-6:]) == 'P_STATE'):
                 pnum = int(regname[1:-6])
                 self.ports[pnum].set_status_data(status_bitmap=raw_int, read_timestamp=read_timestamp)
