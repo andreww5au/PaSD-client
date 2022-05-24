@@ -213,7 +213,7 @@ FNDH at address: %(modbus_address)s:
     48V: %(psu48v1_voltage)s V, %(psu48v2_voltage)s V
     48V Current: %(psu48v_current)s A 
     48V Temp: %(psu48v1_temp)s deg C, %(psu48v2_temp)s deg C
-    Extra Temps: %(sense01)s, %(senseo2)s, %(sense03)s, %(sense04)s deg C
+    Extra Temps: %(sense01)s, %(sense02)s, %(sense03)s, %(sense04)s deg C
     Switch panel Temp: %(panel_temp)s deg C
     FNCB: %(fncb_temp)s deg C, %(fncb_humidity)s %% RH
     Status: %(statuscode)s (%(status)s)
