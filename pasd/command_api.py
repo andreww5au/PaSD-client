@@ -623,8 +623,8 @@ def send_hex(conn, filename, modbus_address, logger=logging):
             logger.info("Update ok.  Call reset_microcontroller to boot into new firmware.")
             return True
         else:
-            logger.info("Update failed: " + str(updateResult))
+            logger.info("Update FAILED, new firmware NOT swapped in!: " + str(updateResult))
             return False
     else:
-        logger.info("Verify failed: " + str(verifyResult))
+        logger.info("Verify FAILED, new firmware NOT written!: " + str(verifyResult))
         return False
