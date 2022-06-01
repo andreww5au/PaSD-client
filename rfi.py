@@ -142,6 +142,7 @@ if __name__ == '__main__':
 
         slogger = logging.getLogger('ST')
         s = station.Station(conn=conn,
+                            antenna_map={},
                             station_id=1,
                             do_full_startup=False,
                             logger=slogger)
