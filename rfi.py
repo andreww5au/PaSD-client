@@ -130,6 +130,8 @@ if __name__ == '__main__':
     from pasd import transport
     from pasd import station
 
+    station.MAX_SMARTBOX = 0
+
     tlogger = logging.getLogger('T')
     if loglevel == logging.DEBUG:
         print('Setting transport log level to info, DEBUG is very spammy. All other logging is at DEBUG level.')
