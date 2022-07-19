@@ -4,6 +4,18 @@ register values into real values.
 """
 
 
+def scale_none(value, reverse=False, pcb_version=0):
+    """
+    Null conversion - always return the input value.
+
+    :param value: raw register contents as a value from 0-65535, or a voltage in Volts
+    :param reverse: Boolean, True to perform physical->raw conversion instead of raw->physical
+    :param pcb_version: integer PCB version number, 0-65535
+    :return: output_value
+    """
+    return value
+
+
 def scale_5v(value, reverse=False, pcb_version=0):
     """
     Given a raw register value and the PCB version number, find out what scale and offset are needed, convert the raw

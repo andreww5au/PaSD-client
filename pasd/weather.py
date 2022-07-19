@@ -1,0 +1,479 @@
+#!/usr/bin/env python
+
+"""Classes to handle communications with an SKA-Low weather station, using a modified Smartbox
+
+   This code runs on the MCCS side in the control building, and talks to a physical weather station SMARTbox module in the field.
+"""
+
+import json
+import logging
+import time
+
+logging.basicConfig()
+
+from pasd import conversion   # Conversion functions between register values and actual temps/voltages/currents
+from pasd import transport    # Modbus API
+from pasd import command_api  # System register API, for reset, firmware upload and rapid sampling
+
+# Register definitions - only one mapping here now (SMARTBOX_POLL_REGS_1 and SMARTBOX_CONF_REGS_1 ), and these define
+# the registers and codes for Modbus register map revision 1 (where SYS_MBRV==1).
+#
+# When firmware updates require a new register map and status codes, define new dictionaries SMARTBOX_POLL_REGS_2
+# and SMARTBOX_CONF_REGS_2, and add them to the SMARTBOX_REGISTERS dictionary.
+#
+# When a SMARTbox is contacted, the SYS_MBRV register value (always defined to be in register 1) will be used to load
+# the appropriate register map.
+#
+# Register maps are dictionaries with register name as key, and a tuple of (register_number, number_of_registers,
+# description, scaling_function) as value.
+
+FILT_FREQ = 0.5    # 2 second low-pass smoothing on all smartbox sensor readings
+SMOOTHED_REGLIST = []
+
+WEATHER_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, between register map revisions
+                        'SYS_MBRV':    (1, 1, 'Modbus register map revision', None),
+                        'SYS_PCBREV':  (2, 1, 'PCB Revision number', None),
+                        'SYS_CPUID':   (3, 2, 'Microcontroller device ID', None),
+                        'SYS_CHIPID':  (5, 8, 'Chip unique device ID', None),
+                        'SYS_FIRMVER': (13, 1, 'Firmware version', None),
+                        'SYS_UPTIME':  (14, 2, 'Uptime in seconds', None),
+                        'SYS_ADDRESS': (16, 1, 'MODBUS station ID', None),
+
+                        # From here on register address and contents can change between firmware revisions
+                        'SYS_48V_V':     (17, 1, 'Incoming 48VDC voltage', conversion.scale_48v),
+                        'SYS_PSU_V':     (18, 1, 'PSU output voltage', conversion.scale_5v),
+                        'SYS_PSUTEMP': (19, 1, 'PSU Temperature', conversion.scale_temp),
+                        'SYS_PCBTEMP': (20, 1, 'PCB Temperature', conversion.scale_temp),
+                        'SYS_OUTTEMP': (21, 1, 'Outside Temperature', conversion.scale_temp),
+                        'SYS_STATUS':  (22, 1, 'System status code', None),
+                        'SYS_LIGHTS':  (23, 1, 'LED state codes', None),
+
+                        # Seven sensor inputs, each of which can be read as a raw ADU value
+                        # via the SAMPLE_N registers, or as an accumulated (since the last register read)
+                        # count of rising/falling edge events (via the COUNT_N registers)
+                        'SAMPLE_1': (24, 1, 'Sensor 1 - raw ADU', conversion.scale_temp),
+                        'SAMPLE_2': (25, 1, 'Sensor 2 - raw ADU', conversion.scale_temp),
+                        'SAMPLE_3': (26, 1, 'Sensor 3 - raw ADU', conversion.scale_temp),
+                        'SAMPLE_4': (27, 1, 'Sensor 4 - raw ADU', conversion.scale_temp),
+                        'SAMPLE_5': (28, 1, 'Sensor 5 - raw ADU', conversion.scale_temp),
+                        'SAMPLE_6': (29, 1, 'Sensor 6 - raw ADU', conversion.scale_temp),
+                        'SAMPLE_7': (30, 1, 'Sensor 7 - raw ADU', conversion.scale_temp),
+                        'COUNT_1': (31, 1, 'Counter 1 - of Sensor 1 events', conversion.scale_none),
+                        'COUNT_2': (32, 1, 'Counter 2 - of Sensor 1 events', conversion.scale_none),
+                        'COUNT_3': (33, 1, 'Counter 3 - of Sensor 1 events', conversion.scale_none),
+                        'COUNT_4': (34, 1, 'Counter 4 - of Sensor 1 events', conversion.scale_none),
+                        'COUNT_5': (35, 1, 'Counter 5 - of Sensor 1 events', conversion.scale_none),
+                        'COUNT_6': (36, 1, 'Counter 6 - of Sensor 1 events', conversion.scale_none),
+                        'COUNT_7': (37, 1, 'Counter 7 - of Sensor 1 events', conversion.scale_none),
+}
+
+# System threshold configuration registers (not polled)
+WEATHER_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as well as under-value alarm and warning
+                        'COUNT_1_CONF': (1001, 4, 'Sample 1: Mode, rise, fall, hold', conversion.scale_none),
+                        'COUNT_2_CONF': (1005, 4, 'Sample 2: Mode, rise, fall, hold', conversion.scale_none),
+                        'COUNT_3_CONF': (1009, 4, 'Sample 3: Mode, rise, fall, hold', conversion.scale_none),
+                        'COUNT_4_CONF': (1013, 4, 'Sample 4: Mode, rise, fall, hold', conversion.scale_none),
+                        'COUNT_5_CONF': (1017, 4, 'Sample 5: Mode, rise, fall, hold', conversion.scale_none),
+                        'COUNT_6_CONF': (1021, 4, 'Sample 6: Mode, rise, fall, hold', conversion.scale_none),
+                        'COUNT_7_CONF': (1025, 4, 'Sample 7: Mode, rise, fall, hold', conversion.scale_none),
+}
+
+# Translation between the integer in the SYS_STATUS register (.statuscode), and .status string
+# Note that the -1 (UNKNOWN) is for internal use only, if we haven't polled the hardware yet - we can't ever
+# receive a -1 from the actual hardware.
+STATUS_UNKNOWN = -1       # No contact with hardware yet, we don't know the status code
+STATUS_OK = 0             # Initialised, system health OK
+STATUS_WARNING = 1        # Initialised, and at least on sensor in WARNING, but none in ALARM or RECOVERY
+STATUS_ALARM = 2          # Initialised, and at least one sensor in ALARM
+STATUS_RECOVERY = 3       # Initialised, and at least one sensor in RECOVERY, but none in ALARM
+STATUS_UNINITIALISED = 4  # NOT initialised, regardless of sensor states
+STATUS_POWERDOWN = 5      # Local tech wants the MCCS to turn off 48V to all FNDH ports in the station (long press)
+STATUS_CODES = {-1:'UNKNOWN',
+                0:'OK',
+                1:'WARNING',
+                2:'ALARM',
+                3:'RECOVERY',
+                4:'UNINITIALISED',
+                5:'POWERDOWN'}
+
+# Translation between the integer the SYS_LIGHTS MSB (.indicator_code) and the .indicator_status string
+# Note that the -1 (UNKNOWN) is for internal use only, if we haven't polled the hardware yet - we can't ever
+# receive a -1 from the actual hardware.
+LED_UNKNOWN = -1        # No contact with hardware yet, we don't know what the LED state is
+LED_OFF = 0             # Probably never used, so we can tell if the power is on or off
+
+LED_GREEN = 10          # OK and 'offline' (haven't heard from MCCS lately)
+LED_GREENSLOW = 11      # OK and 'online'
+LED_GREENFAST = 12
+LED_GREENVFAST = 13
+LED_GREENDOTDASH = 14
+
+LED_YELLOW = 20         # WARNING and 'offline'
+LED_YELLOWSLOW = 21     # WARNING
+LED_YELLOWFAST = 22     # Uninitialised - thresholds not written
+LED_YELLOWVFAST = 23
+LED_YELLOWDOTDASH = 24
+
+LED_RED = 30            # ALARM and 'offline'
+LED_REDSLOW = 31        # ALARM
+LED_REDFAST = 32
+LED_REDVFAST = 33
+LED_REDDOTDASH = 34
+
+LED_YELLOWRED = 40      # RECOVERY and 'offline' (alternating yellow and red with no off-time)
+LED_YELLOWREDSLOW = 41  # RECOVERY (alternating short yellow and short red flashes)
+
+LED_GREENRED = 50       # Waiting for power-down from MCCS after long button press
+
+LED_CODES = {-1:'UKNOWN',
+             0:'OFF',
+             10:'GREEN',
+             11:'GREENSLOW',
+             12:'GREENFAST',
+             13:'GREENVFAST',
+             14:'GREENDOTDASH',
+
+             20:'YELLOW',
+             21:'YELLOWSLOW',
+             22:'YELLOWFAST',
+             23:'YELLOWVFAST',
+             24:'YELLOWDOTDASH',
+
+             30:'RED',
+             31:'REDSLOW',
+             32:'REDFAST',
+             33:'REDVFAST',
+             34:'REDDOTDASH',
+
+             40:'YELLOWRED',
+             41:'YELLOWREDSLOW',
+
+             50:'GREENRED'}
+
+
+# Dicts with register version number as key, and a dict of registers (defined above) as value
+WEATHER_REGISTERS = {1: {'POLL':WEATHER_POLL_REGS_1, 'CONF':WEATHER_CONF_REGS_1}}
+
+STATUS_STRING = """\
+Weather at address: %(modbus_address)s as of %(status_age)d ago:
+    ModBUS register revision: %(mbrv)s
+    PCB revision: %(pcbrv)s
+    CPU ID: %(cpuid)s
+    CHIP ID: %(chipid)s
+    Firmware revision: %(firmware_version)s
+    Uptime: %(uptime)s seconds
+    R.Address: %(station_value)s
+    Status: %(statuscode)s (%(status)s)
+    Service LED: %(service_led)s
+    Indicator: %(indicator_code)s (%(indicator_state)s)
+"""
+
+
+class Weather(transport.ModbusDevice):
+    """
+    Weather SMARTbox class, an instances of which represents a weather station inside an SKA-Low station, connected to an
+    FNDH via a shared low-speed serial bus.
+
+    Attributes are:
+    modbus_address: Modbus address of this SMARTbox (1-30)
+    mbrv: Modbus register-map revision number for this physical SMARTbox
+    pcbrv: PCB revision number for this physical SMARTbox
+    register_map: A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
+    sensor_temps: A dictionary with sensor number (1-12) as key, and temperature as value
+    cpuid: CPU identifier (integer)
+    chipid: Unique ID number (16 bytes), different for every physical SMARTbox
+    firmware_version: Firmware revision mumber for this physical SMARTbox
+    uptime: Time in seconds since this SMARTbox was powered up
+    station_value: Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
+    statuscode: Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
+    status: Status string, obtained from STATUS_CODES global (eg 'OK')
+    service_led: True if the blue service indicator LED is switched ON.
+    indicator_code: LED status value, one of the LED_* globals, and used as a key for LED_CODES
+    indicator_state: LED status string, obtained from LED_CODES
+    readtime: Unix timestamp for the last successful polled data from this SMARTbox
+    pdoc_number: Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
+
+    """
+
+    def __init__(self, conn=None, modbus_address=None, logger=None):
+        """
+        Instantiate an instance of SMARTbox() using a connection object, and the modbus address for that physical
+        SMARTbox.
+
+        This initialisation function doesn't communicate with the SMARTbox hardware, it just sets up the
+        data structures.
+
+        :param conn: An instance of transport.Connection() defining a connection to an FNDH
+        :param modbus_address: The modbus station address (1-30) for this physical SMARTbox
+        """
+        transport.ModbusDevice.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
+
+        self.mbrv = None   # Modbus register-map revision number for this physical SMARTbox
+        self.pcbrv = None  # PCB revision number for this physical SMARTbox
+        self.register_map = {}  # A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
+        self.sensor_temps = {}  # Dictionary with sensor number (1-12) as key, and (probably) temperature as value
+        self.cpuid = ''    # CPU identifier (integer)
+        self.chipid = []   # Unique ID number (16 bytes), different for every physical SMARTbox
+        self.firmware_version = 0  # Firmware revision mumber for this physical SMARTbox
+        self.uptime = 0            # Time in seconds since this SMARTbox was powered up
+        self.station_value = 0     # Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
+        self.statuscode = STATUS_UNKNOWN    # Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
+        self.status = 'UNKNOWN'       # Status string, obtained from STATUS_CODES global (eg 'OK')
+        self.service_led = False    # True if the blue service indicator LED is switched ON.
+        self.indicator_code = LED_UNKNOWN  # LED status value, one of the LED_* globals, and used as a key for LED_CODES
+        self.indicator_state = 'UNKNOWN'   # LED status string, obtained from LED_CODES
+        self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
+        self.pdoc_number = None   # Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
+
+    def __str__(self):
+        tmpdict = self.__dict__.copy()
+        tmpdict['status_age'] = time.time() - self.readtime
+        return ((STATUS_STRING % tmpdict)
+
+    def __repr__(self):
+        return str(self)
+
+    def poll_data(self):
+        """
+        Get all the polled registers from the device, and use the contents to fill in the instance data for this instance.
+
+        :return: True for success, None if there were any errors.
+        """
+        if self.register_map:  # We've talked to this box before, so we know the actual register map
+            tmp_regmap = self.register_map['POLL']
+        else:   # We haven't talked to this box, so use a default map to get the registers to read this time
+            tmp_regmap = WEATHER_POLL_REGS_1
+        maxregnum = max([data[0] for data in tmp_regmap.values()])
+        maxregname = [name for (name, data) in tmp_regmap.items() if data[0] == maxregnum][0]
+        poll_blocksize = maxregnum + (tmp_regmap[maxregname][1] - 1)  # number of registers to read
+
+        # Get a list of tuples, where each tuple is a two-byte register value, eg (0,255)
+        try:
+            valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=poll_blocksize)
+        except IOError:
+            self.logger.info('No data returned by readReg in poll_data for SMARTbox %d' % self.modbus_address)
+            return None
+        except Exception:
+            self.logger.exception('Exception in readReg in poll_data for SMARTbox %d' % self.modbus_address)
+            return None
+
+        read_timestamp = time.time()
+        if valuelist is None:
+            self.logger.error('Error in readReg in poll_data for SMARTbox %d, no data' % self.modbus_address)
+            return None
+
+        if len(valuelist) != poll_blocksize:
+            self.logger.warning('Only %d registers returned from SMARTbox %d by readReg in poll_data, expected %d' % (len(valuelist),
+                                                                                                                      self.modbus_address,
+                                                                                                                      poll_blocksize))
+            return None
+
+        self.mbrv = valuelist[0][0] * 256 + valuelist[0][1]
+        self.pcbrv = valuelist[1][0] * 256 + valuelist[1][1]
+        self.register_map = WEATHER_REGISTERS[self.mbrv]
+
+        self.sensor_temps = {}  # Dictionary with sensor number (1-12) as key, and (probably) temperature as value
+        for regname in self.register_map['POLL'].keys():  # Iterate over all the register names in the current register map
+            regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
+            raw_value = valuelist[regnum - 1:regnum + numreg - 1]
+            # print('%s: %s' % (regname, raw_value))
+            raw_int = None
+            scaled_float = None
+            if numreg <= 2:
+                raw_int = transport.bytestoN(raw_value)
+            if scalefunc:
+                scaled_float = scalefunc(raw_int, pcb_version=self.pcbrv)
+            # print("    int=%s, float=%s"  % (raw_int, scaled_float))
+            # Go through all the registers and update the instance data.
+            if regname == 'SYS_CPUID':
+                self.cpuid = hex(raw_int)
+            elif regname == 'SYS_CHIPID':
+                bytelist = []
+                for byte_tuple in bytelist:
+                    bytelist += list(byte_tuple)
+                self.chipid = list(bytes(bytelist).decode('utf8'))
+            elif regname == 'SYS_FIRMVER':
+                self.firmware_version = raw_int
+            elif regname == 'SYS_UPTIME':
+                self.uptime = raw_int
+            elif regname == 'SYS_ADDRESS':
+                self.station_value = raw_int
+            elif regname == 'SYS_STATUS':
+                self.statuscode = raw_int
+                self.status = STATUS_CODES[self.statuscode]
+            elif regname == 'SYS_LIGHTS':
+                self.service_led = bool(raw_value[0][0])
+                self.indicator_code = raw_value[0][1]
+                self.indicator_state = LED_CODES[self.indicator_code]
+            elif (regname[:9] == 'SYS_SENSE'):
+                sensor_num = int(regname[9:])
+                self.sensor_temps[sensor_num] = scaled_float
+            # TODO - add sample and count registers here
+        self.readtime = read_timestamp
+        return True
+
+    def read_uptime(self):
+        """
+        Read enough registers to get the register revision number, and the system uptime.
+
+        :return: uptime in seconds, or None if there was an error.
+        """
+        try:
+            valuelist = self.conn.readReg(modbus_address=self.modbus_address, regnum=1, numreg=16)
+        except IOError:
+            self.logger.info('No data returned in read_uptime for SMARTbox %d' % self.modbus_address)
+            return None
+        except:
+            self.logger.exception('Exception in readReg in read_uptime for SMARTbox %d' % self.modbus_address)
+            return None
+
+        if valuelist is None:
+            self.logger.error('Error in readReg in read_uptime for SMARTbox %d, no data' % self.modbus_address)
+            return None
+
+        if len(valuelist) != 16:
+            self.logger.warning('Only %d registers returned from SMARTbox %d by readReg in read_uptime, expected %d' % (len(valuelist),
+                                                                                                                        self.modbus_address,
+                                                                                                                        16))
+            return None
+
+        self.mbrv = valuelist[0][0] * 256 + valuelist[0][1]
+        self.pcbrv = valuelist[1][0] * 256 + valuelist[1][1]
+        self.register_map = WEATHER_REGISTERS[self.mbrv]
+        regnum, numreg, regdesc, scalefunc = self.register_map['POLL']['SYS_UPTIME']
+        raw_value = valuelist[regnum - 1:regnum + numreg - 1]
+        self.uptime = transport.bytestoN(raw_value)   # I know uptime is 2 registers, 4 bytes
+        return self.uptime
+
+    def configure(self, thresholds=None, portconfig=None):
+        """
+        Use the threshold data as given, or in self.thresholds read from the config file on initialisation, and write
+        it to the SMARTbox.
+
+        If that succeeds, use the port configuration (desired state online, desired state offline) as given, or in
+        self.portconfig read from the config file on initialisation, and write it to the SMARTbox.
+
+        Then, if that succeeds, write a '1' to the status register to tell the microcontroller to
+        transition out of the 'UNINITIALISED' state.
+
+        :param thresholds: A dictionary containing the ADC thresholds to write to the SMARTbox. If none, use defaults
+                           from the JSON file specified in THRESHOLD_FILENAME loaded on initialistion into self.thresholds
+        :param portconfig: A dictionary containing the port configuration data to write to the SMARTbox. If none, use
+                           defaults from the JSON file specified in PORTCONFIG_FILENAME loaded on initialistion into self.portconfig
+        :return: True for sucess
+        """
+
+        if not self.register_map:
+            self.logger.error('No register map, call poll_data() first')
+            return None
+
+        # TODO - write count config data here
+        ok = True
+
+        if ok:
+            try:
+                return self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
+            except:
+                self.logger.exception('Exception in transport.writeReg() in configure:')
+                return False
+        else:
+            self.logger.error('Could not finalise configuration.')
+        return False
+
+    def reset(self):
+        """
+        Sends a command to reset the microcontroller.
+
+        :return: None
+        """
+        command_api.reset_microcontroller(conn=self.conn,
+                                          address=self.modbus_address,
+                                          logger=self.logger)
+
+    def get_sample(self, interval, reglist):
+        """
+        Return the sensor data for the registers in reglist, sampled every 'interval' milliseconds, for as long as it
+        takes to record 10000 values (5000 samples of 2 registers, 2500 samples of 4 registers, etc).
+
+        :param interval: How often (in milliseconds) to sample the data
+        :param reglist:  Which register numbers to sample
+        :return: A dictionary with register number as key, and lists of register samples as values.
+        """
+        result = command_api.start_sample(conn=self.conn,
+                                          address=self.modbus_address,
+                                          interval=interval,
+                                          reglist=reglist,
+                                          logger=self.logger)
+
+        if not result:
+            self.logger.error('Error starting data sampling.')
+            return
+        self.logger.info('Start sampling register/s %s every %d milliseconds' % (reglist, interval))
+
+        sample_size = command_api.get_sample_size(conn=self.conn, address=self.modbus_address, logger=self.logger)
+        sample_count = 0
+        done = False
+        while not done:
+            sample_count = command_api.get_sample_count(conn=self.conn, address=self.modbus_address, logger=self.logger)
+            if sample_count is None:
+                self.logger.error('Error monitoring data sampling.')
+                return
+            elif sample_count >= sample_size // len(reglist):   # Allow for multiregister captures
+                done = True
+
+            time.sleep(0.5)
+
+        self.logger.info('Downloading %d samples' % sample_count)
+        data = command_api.get_sample_data(conn=self.conn, address=self.modbus_address, reglist=reglist)
+        return data
+
+    def save_sample(self, interval, reglist, filename):
+        """
+        Call get_sample(), then save the results in CSV format in the given filename.
+
+        :param interval: How often (in milliseconds) to sample the data
+        :param reglist:  Which register numbers to sample
+        :param filename: Filename to save the sample data in
+        :return: None
+        """
+        data = self.get_sample(interval=interval, reglist=reglist)
+        if data is None:
+            return
+        regdict = {}
+        for regname in self.register_map['POLL'].keys():
+            regnum, numreg, regdesc, scalefunc = self.register_map['POLL'][regname]
+            if regnum in reglist:
+                regdict[regnum] = regname
+        outf = open(filename, 'w')
+        outf.write(', '.join([str(regdict[regnum]) for regnum in reglist]) + '\n')
+        for i in range(len(data[reglist[0]])):
+            outf.write(', '.join(['%d' % data[regnum][i] for regnum in reglist]) + '\n')
+        outf.close()
+
+    def set_smoothing(self, freq=FILT_FREQ, reglist=None):
+        """
+        Apply the given low-pass frequency cutoff to a list of registers. All of the
+        registers must be ones containing sensor values (temperatures, voltages, currents).
+
+        :param freq: Low-pass cut off frequency, in Hz, or None to disable filtering
+        :param reglist: List of sensor register numbers to apply that filter constant to
+        :return:
+        """
+        filt_constant = command_api.filter_constant(freq)
+        for reg in reglist:
+            self.conn.writeReg(self.modbus_address, reg, filt_constant)
+
+
+"""
+Use as 'communicate.py smartbox', or:
+
+from pasd import transport
+from pasd import smartbox
+conn = transport.Connection(hostname='134.7.50.185')  # address of ethernet-serial bridge
+# or
+conn = transport.Connection(devicename='/dev/ttyS0')  # or 'COM5' for example, under Windows
+
+s = smartbox.SMARTbox(conn=conn, modbus_address=1)
+s.poll_data()
+s.configure()
+"""
