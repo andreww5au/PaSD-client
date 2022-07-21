@@ -50,7 +50,7 @@ WEATHER_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, 
 
                         # Seven sensor inputs, each of which can be read as a raw ADU value
                         # via the SAMPLE_N registers, or as an accumulated (since the last register read)
-                        # count of rising/falling edge events (via the COUNT_N registers)
+                        # count of rising/falling edge events in the last PERIOD_N deciseconds (via the COUNT_N and PERIOD_N registers)
                         'SAMPLE_1': (24, 1, 'Sensor 1 - raw ADU', conversion.scale_temp),
                         'SAMPLE_2': (25, 1, 'Sensor 2 - raw ADU', conversion.scale_temp),
                         'SAMPLE_3': (26, 1, 'Sensor 3 - raw ADU', conversion.scale_temp),
@@ -58,6 +58,8 @@ WEATHER_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, 
                         'SAMPLE_5': (28, 1, 'Sensor 5 - raw ADU', conversion.scale_temp),
                         'SAMPLE_6': (29, 1, 'Sensor 6 - raw ADU', conversion.scale_temp),
                         'SAMPLE_7': (30, 1, 'Sensor 7 - raw ADU', conversion.scale_temp),
+
+                        # Read all COUNT_N and PERIOD_N registers together as a set, so the PERIOD values are correct
                         'COUNT_1': (31, 1, 'Counter 1 - of Sensor 1 events', conversion.scale_none),
                         'COUNT_2': (32, 1, 'Counter 2 - of Sensor 1 events', conversion.scale_none),
                         'COUNT_3': (33, 1, 'Counter 3 - of Sensor 1 events', conversion.scale_none),
@@ -65,6 +67,15 @@ WEATHER_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, 
                         'COUNT_5': (35, 1, 'Counter 5 - of Sensor 1 events', conversion.scale_none),
                         'COUNT_6': (36, 1, 'Counter 6 - of Sensor 1 events', conversion.scale_none),
                         'COUNT_7': (37, 1, 'Counter 7 - of Sensor 1 events', conversion.scale_none),
+
+                        'PERIOD_1': (38, 1, 'Deciseconds since last COUNT_1 read', conversion.scale_none),
+                        'PERIOD_2': (39, 1, 'Deciseconds since last COUNT_2 read', conversion.scale_none),
+                        'PERIOD_3': (40, 1, 'Deciseconds since last COUNT_3 read', conversion.scale_none),
+                        'PERIOD_4': (41, 1, 'Deciseconds since last COUNT_4 read', conversion.scale_none),
+                        'PERIOD_5': (42, 1, 'Deciseconds since last COUNT_5 read', conversion.scale_none),
+                        'PERIOD_6': (43, 1, 'Deciseconds since last COUNT_6 read', conversion.scale_none),
+                        'PERIOD_7': (44, 1, 'Deciseconds since last COUNT_7 read', conversion.scale_none),
+
 }
 
 # System threshold configuration registers (not polled)
@@ -169,6 +180,94 @@ Weather at address: %(modbus_address)s as of %(status_age)d ago:
 """
 
 
+class Sensor(object):
+    """
+    Represents a single one of the 7 mulitpurpose sensor inputs in a weatherstation smartbox. Each sensor is
+    read from the microcontroller via the SAMPLE_N, COUNT_N and PERIOD_N registers for that sensor.
+
+    The SAMPLE_N register always contains the instantaneous raw ADC value for that analog input
+    The COUNT_N contains the number of rising/falling/both edges seen since the last COUNT_N register read
+    The PERIOD_N contains the number of deciseconds since the corresponding COUNT_N register was read and reset.
+
+    The read mode for each sensor is defined in the corresponding COUNT_N_CONF registers - four 16-bit words:
+        - MODE:
+            = 0 - no counting (COUNT_N and PERIOD_N registers do nothing), use raw value
+            = 1 - rising edge count
+            = 2 - falling edge count
+            = 3 - rising AND falling edge count
+            = 4 - stabilised. COUNT_N contains the raw ADC value, but only if it has been
+                    stable (less than RISING_EDGE of jitter) over HOLD_TIME seconds.
+        - RISING_EDGE - ADC value must be greater than this to count as a rising edge
+        - FALLING_EDGE - ADC value must be less than this to count as a falling edge
+        - HOLD_TIME - time in MILLIseconds that the value must be high and/or low to count as an edge
+
+    When in an edge detection counting mode the algorithm is quite basic.  Initial "low" state.
+
+        1) Wait for ADU to exceed RISING_EDGE_n value
+        2) Wait HOLD_TIME_n milliseconds (can be zero)
+        3) If it is still above - transition to high state else go back to 1)
+        4) Wait for ADU to fall below FALLING_EDGE_n value
+        5) Wait HOLD_TIME_n milliseconds
+        6) If it is still below - transition to low state else go back to 4)
+        7) go to 1)
+    """
+
+    def __init__(self, mode=0, rising_edge=0, falling_edge=0, hold_time=0, logger=logging):
+        self.mode = mode
+        self.rising_edge = rising_edge
+        self.falling_edge = falling_edge
+        self.hold_time = hold_time
+        self.sample = 0
+        self.count = 0
+        self.period = 0
+        self.logger = logger
+
+    def value(self):
+        """
+        Depending on the mode for this sensor, return either the raw value in self.sample (mode 0), or the
+        stabilised value in self.count (mode 4). If mode is 1, 2 or 3, return None and log an error.
+
+        :return: integer - Either a value in ADC, or None if there was an error
+        """
+        if self.mode == 0:
+            return self.sample
+        elif self.mode in [1, 2, 3]:
+            self.logger.error('Called .value() on a sensor in edge-counting mode.')
+            return None
+        elif self.mode == 4:
+            return self.count   # Stabilised value is in the COUNT_N register
+        else:
+            self.logger.error('Invalid mode %s for sensor' % self.mode)
+            return None
+
+    def rate(self):
+        """
+        If the sensor is in edge-counting mode, return the rate as the number of pulses per second, otherwise log an
+        error and return None
+
+        :return: float - Either a rate in edges per second, or None if there was an error
+        """
+        if self.mode in [1, 2, 3]:
+            if self.period != 0:
+                return 10.0 * float(self.count) / self.period
+            else:
+                return 0.0
+        elif self.mode in [0, 4]:
+            self.logger.error('Called .rate() on a sensor not in edge-counting mode.')
+            return None
+        else:
+            self.logger.error('Invalid mode %s for sensor' % self.mode)
+            return None
+
+    def config_to_registers(self):
+        """
+        Return a list of four 16-bit integers to write into the appropriate COUNT_N_CONF register block
+
+        :return: A list of 4 16-bit integers
+        """
+        return [self.mode, self.rising_edge, self.falling_edge, self.hold_time]
+
+
 class Weather(transport.ModbusDevice):
     """
     Weather SMARTbox class, an instances of which represents a weather station inside an SKA-Low station, connected to an
@@ -192,7 +291,7 @@ class Weather(transport.ModbusDevice):
     indicator_state: LED status string, obtained from LED_CODES
     readtime: Unix timestamp for the last successful polled data from this SMARTbox
     pdoc_number: Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
-
+    sensors: A dictionary, with 1-7 as the key, and instances of Sensor() as the values
     """
 
     def __init__(self, conn=None, modbus_address=None, logger=None):
@@ -224,11 +323,19 @@ class Weather(transport.ModbusDevice):
         self.indicator_state = 'UNKNOWN'   # LED status string, obtained from LED_CODES
         self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
         self.pdoc_number = None   # Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
+        self.sensors = {}
+        self.sensors[1] = Sensor(mode=2, rising_edge=3800, falling_edge=800, hold_time=100)  # Rain - falling edge
+        self.sensors[2] = Sensor(mode=1, rising_edge=3800, falling_edge=800, hold_time=20)   # Wind speed - rising edge
+        self.sensors[3] = Sensor(mode=4, rising_edge=10, falling_edge=0, hold_time=100)  # Wind direction - stabilised
+        self.sensors[4] = Sensor(mode=0)   # Temperature - raw
+        self.sensors[5] = Sensor(mode=0)   # Light - raw
+        self.sensors[6] = Sensor()   # unused
+        self.sensors[7] = Sensor()   # unused
 
     def __str__(self):
         tmpdict = self.__dict__.copy()
         tmpdict['status_age'] = time.time() - self.readtime
-        return ((STATUS_STRING % tmpdict)
+        return (STATUS_STRING % tmpdict)
 
     def __repr__(self):
         return str(self)
@@ -305,10 +412,15 @@ class Weather(transport.ModbusDevice):
                 self.service_led = bool(raw_value[0][0])
                 self.indicator_code = raw_value[0][1]
                 self.indicator_state = LED_CODES[self.indicator_code]
-            elif (regname[:9] == 'SYS_SENSE'):
-                sensor_num = int(regname[9:])
-                self.sensor_temps[sensor_num] = scaled_float
-            # TODO - add sample and count registers here
+            elif (regname[:7] == 'SAMPLE_'):
+                sensor_num = int(regname[7:])
+                self.sensors[sensor_num].sample = raw_int
+            elif (regname[:6] == 'COUNT_'):
+                sensor_num = int(regname[6:])
+                self.sensors[sensor_num].count = raw_int
+            elif (regname[:7] == 'PERIOD_'):
+                sensor_num = int(regname[7:])
+                self.sensors[sensor_num].period = raw_int
         self.readtime = read_timestamp
         return True
 
