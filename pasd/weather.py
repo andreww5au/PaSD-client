@@ -27,6 +27,8 @@ from pasd import command_api  # System register API, for reset, firmware upload 
 # Register maps are dictionaries with register name as key, and a tuple of (register_number, number_of_registers,
 # description, scaling_function) as value.
 
+MAX_HISTORY = 3600   # Accumulate counts for a max of 1 hour for more precision (eg for rain sensor)
+
 FILT_FREQ = 0.5    # 2 second low-pass smoothing on all smartbox sensor readings
 SMOOTHED_REGLIST = []
 
@@ -179,6 +181,28 @@ Weather at address: %(modbus_address)s as of %(status_age)d ago:
     Indicator: %(indicator_code)s (%(indicator_state)s)
 """
 
+# First column is ADU boundary value, second column is azimuth in degrees
+WIND_DIRS = [
+    (500, None),
+    (789, 112.5),
+    (912, 67.5),
+    (1088, 90.0),
+    (1431, 157.5),
+    (1817, 135.0),
+    (2107, 202.5),
+    (2472, 180.0),
+    (2823, 22.5),
+    (3120, 45.0),
+    (3358, 247.5),
+    (3477, 225.0),
+    (3641, 337.5),
+    (3761, 0.0),
+    (3848, 292.5),
+    (3942, 315.0),
+    (4041, 270.0),
+    (4095, None),
+]
+
 
 class Sensor(object):
     """
@@ -221,7 +245,21 @@ class Sensor(object):
         self.sample = 0
         self.count = 0
         self.period = 0
+        self.history = []   # List of (count, period) tuples for mode 1,2,3 sensors, capped at a total period of MAX_HISTORY
         self.logger = logger
+
+    def push_new(self):
+        """
+        Add the most recently set count,period pair, to accumulate a history of previous values for more precision
+
+        :return: None
+        """
+        if self.mode in [1, 2, 3]:
+            self.history.append((self.count, self.period))
+            total_time = sum([x[1] for x in self.history])
+            if total_time >= MAX_HISTORY:
+                self.history = self.history[1:]
+
 
     def value(self):
         """
@@ -434,6 +472,7 @@ class Weather(transport.ModbusDevice):
             elif (regname[:7] == 'PERIOD_'):
                 sensor_num = int(regname[7:])
                 self.sensors[sensor_num].period = raw_int
+                self.sensors[sensor_num].push_new()   # Add the most recent count,period pair to the history
         self.readtime = read_timestamp
         return True
 
@@ -475,10 +514,13 @@ class Weather(transport.ModbusDevice):
         Return the most recently read wind direction, as a compass bearing (0=North, 90=East), using the value of
         sensor 3.
 
-        :return: integer (0-360)
+        :return: integer (0-360), or None if the sensor is open circuit or shorted
         """
         v = self.sensors[3].value()
-
+        for boundary, azimuth in WIND_DIRS:
+            if v < boundary:
+                return azimuth
+        return None
 
     def configure(self, thresholds=None, portconfig=None):
         """
