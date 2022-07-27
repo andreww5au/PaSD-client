@@ -80,13 +80,13 @@ WEATHER_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, 
 
 # System threshold configuration registers (not polled)
 WEATHER_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as well as under-value alarm and warning
-                        'COUNT_1_CONF': (1001, 4, 'Sample 1: Mode, rise, fall, hold', conversion.scale_none),
-                        'COUNT_2_CONF': (1005, 4, 'Sample 2: Mode, rise, fall, hold', conversion.scale_none),
-                        'COUNT_3_CONF': (1009, 4, 'Sample 3: Mode, rise, fall, hold', conversion.scale_none),
-                        'COUNT_4_CONF': (1013, 4, 'Sample 4: Mode, rise, fall, hold', conversion.scale_none),
-                        'COUNT_5_CONF': (1017, 4, 'Sample 5: Mode, rise, fall, hold', conversion.scale_none),
-                        'COUNT_6_CONF': (1021, 4, 'Sample 6: Mode, rise, fall, hold', conversion.scale_none),
-                        'COUNT_7_CONF': (1025, 4, 'Sample 7: Mode, rise, fall, hold', conversion.scale_none),
+                        'SENSOR_1_CONF': (1001, 4, 'Sample 1: Mode, rise, fall, hold', conversion.scale_none),
+                        'SENSOR_2_CONF': (1005, 4, 'Sample 2: Mode, rise, fall, hold', conversion.scale_none),
+                        'SENSOR_3_CONF': (1009, 4, 'Sample 3: Mode, rise, fall, hold', conversion.scale_none),
+                        'SENSOR_4_CONF': (1013, 4, 'Sample 4: Mode, rise, fall, hold', conversion.scale_none),
+                        'SENSOR_5_CONF': (1017, 4, 'Sample 5: Mode, rise, fall, hold', conversion.scale_none),
+                        'SENSOR_6_CONF': (1021, 4, 'Sample 6: Mode, rise, fall, hold', conversion.scale_none),
+                        'SENSOR_7_CONF': (1025, 4, 'Sample 7: Mode, rise, fall, hold', conversion.scale_none),
 }
 
 # Translation between the integer in the SYS_STATUS register (.statuscode), and .status string
@@ -212,7 +212,8 @@ class Sensor(object):
         7) go to 1)
     """
 
-    def __init__(self, mode=0, rising_edge=0, falling_edge=0, hold_time=0, logger=logging):
+    def __init__(self, sid, mode=0, rising_edge=0, falling_edge=0, hold_time=0, logger=logging):
+        self.sid = sid
         self.mode = mode
         self.rising_edge = rising_edge
         self.falling_edge = falling_edge
@@ -258,6 +259,18 @@ class Sensor(object):
         else:
             self.logger.error('Invalid mode %s for sensor' % self.mode)
             return None
+
+    def __str__(self):
+        if self.mode in [1, 2, 3]:
+            vs = '%0.4f' % self.rate()
+        elif self.mode in [0, 4]:
+            vs = '%0.4f' % self.value()
+        else:
+            vs = '?'
+        return "Sensor %d: %s" % (self.sid, vs)
+
+    def __repr__(self):
+        return str(self)
 
     def config_to_registers(self):
         """
@@ -324,13 +337,13 @@ class Weather(transport.ModbusDevice):
         self.readtime = 0    # Unix timestamp for the last successful polled data from this SMARTbox
         self.pdoc_number = None   # Physical PDoC port on the FNDH that this SMARTbox is plugged into. Populated by the station initialisation code on powerup
         self.sensors = {}
-        self.sensors[1] = Sensor(mode=2, rising_edge=3800, falling_edge=800, hold_time=100)  # Rain - falling edge
-        self.sensors[2] = Sensor(mode=1, rising_edge=3800, falling_edge=800, hold_time=20)   # Wind speed - rising edge
-        self.sensors[3] = Sensor(mode=4, rising_edge=10, falling_edge=0, hold_time=100)  # Wind direction - stabilised
-        self.sensors[4] = Sensor(mode=0)   # Temperature - raw
-        self.sensors[5] = Sensor(mode=0)   # Light - raw
-        self.sensors[6] = Sensor()   # unused
-        self.sensors[7] = Sensor()   # unused
+        self.sensors[1] = Sensor(sid=1, mode=2, rising_edge=3800, falling_edge=800, hold_time=100)  # Rain - falling edge
+        self.sensors[2] = Sensor(sid=2, mode=1, rising_edge=3800, falling_edge=800, hold_time=20)   # Wind speed - rising edge
+        self.sensors[3] = Sensor(sid=3, mode=4, rising_edge=10, falling_edge=0, hold_time=100)  # Wind direction - stabilised
+        self.sensors[4] = Sensor(sid=4, mode=0)   # Temperature - raw
+        self.sensors[5] = Sensor(sid=5, mode=0)   # Light - raw
+        self.sensors[6] = Sensor(sid=6)   # unused
+        self.sensors[7] = Sensor(sid=7)   # unused
 
     def __str__(self):
         tmpdict = self.__dict__.copy()
@@ -457,6 +470,16 @@ class Weather(transport.ModbusDevice):
         self.uptime = transport.bytestoN(raw_value)   # I know uptime is 2 registers, 4 bytes
         return self.uptime
 
+    def wind_dir(self):
+        """
+        Return the most recently read wind direction, as a compass bearing (0=North, 90=East), using the value of
+        sensor 3.
+
+        :return: integer (0-360)
+        """
+        v = self.sensors[3].value()
+
+
     def configure(self, thresholds=None, portconfig=None):
         """
         Use the threshold data as given, or in self.thresholds read from the config file on initialisation, and write
@@ -479,8 +502,19 @@ class Weather(transport.ModbusDevice):
             self.logger.error('No register map, call poll_data() first')
             return None
 
-        # TODO - write count config data here
         ok = True
+        for sensorid, sensor in self.sensors:
+            conf_block = sensor.config_to_registers()
+            regname = 'SENSOR_%d_CONF' % sensorid
+            try:
+                tok = self.conn.writeReg(modbus_address=self.modbus_address,
+                                         regnum=self.register_map['CONF'][regname][0],
+                                         value=conf_block)
+                if not tok:
+                    ok = False
+            except:
+                self.logger.exception('Exception in transport.writeReg() in configure:')
+                return False
 
         if ok:
             try:
@@ -489,7 +523,7 @@ class Weather(transport.ModbusDevice):
                 self.logger.exception('Exception in transport.writeReg() in configure:')
                 return False
         else:
-            self.logger.error('Could not finalise configuration.')
+            self.logger.error('Error sending sensor configuration.')
         return False
 
     def reset(self):
