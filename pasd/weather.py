@@ -28,6 +28,9 @@ from pasd import command_api  # System register API, for reset, firmware upload 
 # description, scaling_function) as value.
 
 MAX_HISTORY = 3600   # Accumulate counts for a max of 1 hour for more precision (eg for rain sensor)
+MM_PER_COUNT = 0.2794   # mm of rain for each tick of the rain sensor
+KPH_PER_CPS = 2.400    # One count per second represents 2.400 Kilometres per hour of wind speed
+
 
 FILT_FREQ = 0.5    # 2 second low-pass smoothing on all smartbox sensor readings
 SMOOTHED_REGLIST = []
@@ -179,6 +182,10 @@ Weather at address: %(modbus_address)s as of %(status_age)d ago:
     Status: %(statuscode)s (%(status)s)
     Service LED: %(service_led)s
     Indicator: %(indicator_code)s (%(indicator_state)s)
+    Wind: Direction %(wind_dir)s, speed %(wind_speed)s
+    Temperature: %(temperature)s
+    Light: %(light)s
+    Rain: %(rain_avg)s
 """
 
 # First column is ADU boundary value, second column is azimuth in degrees
@@ -202,6 +209,12 @@ WIND_DIRS = [
     (4041, 270.0),
     (4095, None),
 ]
+
+# Table 1 is degreesC x 100 for ADC values on 256 ADU boundaries with tweaks for the two extremes
+TEMPS1 = [20000, 12068, 9470, 8004, 6957, 6120, 5406, 4765, 4168, 3592, 3020, 2430, 1798, 1083, 201, -20000]
+
+# Table 2 is delta degreesC x 100 with tweaks for the end points to give 'out of range' values
+TEMPS2 = [0, 2598, 1466, 1047, 837, 714, 641, 597, 576, 572, 590, 632, 715, 882, 1294, 0]
 
 
 class Sensor(object):
@@ -297,22 +310,20 @@ class Sensor(object):
             self.logger.error('Invalid mode %s for sensor' % self.mode)
             return None
 
-    def avg_rate(self):
+    def avg_data(self):
         """
-        If the sensor is in edge-counting mode, return the rate as the number of pulses per second, as seen over the
-        aggregated history of count,period measurements (using self.history), otherwise log an error and return None
+        If the sensor is in edge-counting mode, return the total count ocer the history period, and the total number of
+        seconds, as seen over the aggregated history of count,period measurements (using self.history),
+        otherwise log an error and return None, None
 
-        :return: float - Either a rate in edges per second, or None if there was an error
+        :return: tuple of (total_count, total_seconds)
         """
         if self.mode in [1, 2, 3]:
             tcount = sum([x[0] for x in self.history])
-            tperiod = 10.0 * sum([x[1] for x in self.history])
-            if tperiod != 0:
-                return tcount / tperiod
-            else:
-                return 0.0
+            tperiod = sum([x[1] for x in self.history]) / 10.0
+            return tcount, tperiod
         else:
-            return None
+            return None, None
 
     def __str__(self):
         if self.mode in [1, 2, 3]:
@@ -402,6 +413,26 @@ class Weather(transport.ModbusDevice):
     def __str__(self):
         tmpdict = self.__dict__.copy()
         tmpdict['status_age'] = time.time() - self.readtime
+        tmpdict['wind_dir'] = "?"
+        tmpdict['wind_speed'] = "?"
+        tmpdict['rain_avg'] = "?"
+        tmpdict['temperature'] = "?"
+        tmpdict['light'] = "?"
+        v = self.wind_dir()
+        if v is not None:
+            tmpdict['wind_dir'] = "%d degrees E of N" % v
+        v = self.wind_speed()
+        if v is not None:
+            tmpdict['wind_speed'] = "%0.4f km/hour" % v
+        v = self.rain_avg()
+        if v is not None:
+            tmpdict['rain_avg'] = "%0.4f mm/hour"
+        v = self.temperature()
+        if v is not None:
+            tmpdict['temperature'] = "%0.2f degC" % v
+        v = self.light()
+        if v is not None:
+            tmpdict['light'] = "%0.4f Lux" % v
         return (STATUS_STRING % tmpdict)
 
     def __repr__(self):
@@ -533,10 +564,60 @@ class Weather(transport.ModbusDevice):
         :return: integer (0-360), or None if the sensor is open circuit or shorted
         """
         v = self.sensors[3].value()
+        if v is None:
+            return None
         for boundary, azimuth in WIND_DIRS:
             if v < boundary:
                 return azimuth
         return None
+
+    def rain_avg(self):
+        """
+        Return a rolling average of rainfall in mm/hour, using the avg_data() function on sensor 1
+
+        Each count is 0.2794 mm of rain.
+
+        :return: mm of rain per hour
+        """
+        tcount, tseconds = self.sensors[1].avg_data()
+        if not tseconds:  # Invalid response, or zero
+            return None
+        return 3600 * MM_PER_COUNT * tcount / tseconds
+
+    def wind_speed(self):
+        """
+        Return the most recent wind speed, in metres per second, using the rate() function on sensor 2
+
+        :return: wind speed in m/s
+        """
+        cps = self.sensors[2].rate()
+        if cps is None:
+            return None
+        return KPH_PER_CPS * cps
+
+    def temperature(self):
+        """
+        Return the air temperature, in degrees C, using the value() method of sensor 4
+
+        :return: temperature in degrees C
+        """
+        v = int(self.sensors[4].value())
+        if v is None:
+            return None
+        temp_ndx = (v & 0x0f00) >> 8
+        temps32b = (TEMPS2[temp_ndx] * (v & 0x00ff) + 0x80) >> 8
+        return (TEMPS1[temp_ndx] - temps32b) / 100.0
+
+    def light(self):
+        """
+        Returns the ambient light level in Lux using the value() method of sensor 5
+
+        :return: Light level in Lux
+        """
+        v = self.sensors[5].value()
+        if v is None:
+            return None
+        return 114400.0 - (v / 4095.0 * 114400.0)   # Assuming a 1.5k pullup resistor
 
     def configure(self, thresholds=None, portconfig=None):
         """

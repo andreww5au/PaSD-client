@@ -48,6 +48,7 @@ if __name__ == '__main__':
     from pasd import fndh
     from pasd import fncc
     from pasd import smartbox
+    from pasd import weather
     from pasd import station
     from sid import mccs
 
@@ -86,6 +87,14 @@ if __name__ == '__main__':
         print('Polling FNCC as "fc" on address %d.' % int(args.address))
         fc.poll_data()
         print(fc)
+    elif args.task.upper() == 'WEATHER':
+        if args.address is None:
+            args.address = 103
+        flogger = logging.getLogger('FNCC:%d' % int(args.address))
+        w = weather.Weather(conn=conn, modbus_address=int(args.address), logger=flogger)
+        print('Polling weather station as "w" on address %d.' % int(args.address))
+        w.poll_data()
+        print(w)
     elif args.task.upper() == 'STATION':
         slogger = logging.getLogger('ST')
         s = station.Station(conn=conn, station_id=1, logger=slogger)
