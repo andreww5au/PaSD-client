@@ -256,10 +256,9 @@ class Sensor(object):
         """
         if self.mode in [1, 2, 3]:
             self.history.append((self.count, self.period))
-            total_time = sum([x[1] for x in self.history])
+            total_time = 10.0 * sum([x[1] for x in self.history])   # period values are in tenths of a second
             if total_time >= MAX_HISTORY:
                 self.history = self.history[1:]
-
 
     def value(self):
         """
@@ -281,8 +280,8 @@ class Sensor(object):
 
     def rate(self):
         """
-        If the sensor is in edge-counting mode, return the rate as the number of pulses per second, otherwise log an
-        error and return None
+        If the sensor is in edge-counting mode, return the rate as the number of pulses per second, as seen over the
+        most recent count (using the current values of count and period), otherwise log an error and return None
 
         :return: float - Either a rate in edges per second, or None if there was an error
         """
@@ -296,6 +295,23 @@ class Sensor(object):
             return None
         else:
             self.logger.error('Invalid mode %s for sensor' % self.mode)
+            return None
+
+    def avg_rate(self):
+        """
+        If the sensor is in edge-counting mode, return the rate as the number of pulses per second, as seen over the
+        aggregated history of count,period measurements (using self.history), otherwise log an error and return None
+
+        :return: float - Either a rate in edges per second, or None if there was an error
+        """
+        if self.mode in [1, 2, 3]:
+            tcount = sum([x[0] for x in self.history])
+            tperiod = 10.0 * sum([x[1] for x in self.history])
+            if tperiod != 0:
+                return tcount / tperiod
+            else:
+                return 0.0
+        else:
             return None
 
     def __str__(self):
