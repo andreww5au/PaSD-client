@@ -269,7 +269,7 @@ class Sensor(object):
         """
         if self.mode in [1, 2, 3]:
             self.history.append((self.count, self.period))
-            total_time = 10.0 * sum([x[1] for x in self.history])   # period values are in tenths of a second
+            total_time = 0.1 * sum([x[1] for x in self.history])   # period values are in tenths of a second
             if total_time >= MAX_HISTORY:
                 self.history = self.history[1:]
 
@@ -426,13 +426,13 @@ class Weather(transport.ModbusDevice):
             tmpdict['wind_speed'] = "%0.4f km/hour" % v
         v = self.rain_avg()
         if v is not None:
-            tmpdict['rain_avg'] = "%0.4f mm/hour"
+            tmpdict['rain_avg'] = "%0.4f mm/hour" % v
         v = self.temperature()
         if v is not None:
             tmpdict['temperature'] = "%0.2f degC" % v
         v = self.light()
         if v is not None:
-            tmpdict['light'] = "%0.4f Lux" % v
+            tmpdict['light'] = "%0.4f Lux (%d raw)" % (v, self.sensors[5].value())
         return (STATUS_STRING % tmpdict)
 
     def __repr__(self):
