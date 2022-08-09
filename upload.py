@@ -58,6 +58,12 @@ if __name__ == '__main__':
             print('Filename must start with "FNPC" (and go to address 31 or 101), or ')
             print('    "SBox" (and go to address 1-24) or "FNCC" (and go to address 100).')
             sys.exit(-1)
+    elif os.path.basename(args.filename).upper().startswith('WEATH'):
+        if (int(args.address) != 103):
+            print('Trying to push Weather image to a smartbox, FNPC or FNCC? %s' % args.filename)
+            print('Filename must start with "FNPC" (and go to address 31 or 101), or ')
+            print('    "SBox" (and go to address 1-24) or "FNCC" (and go to address 100).')
+            sys.exit(-1)
     else:
         print('Filename must start with "FNPC" (to address 31 or 101), or "SBox" (to address 1-24) or "FNCC" (to address 100).')
         sys.exit(-1)
