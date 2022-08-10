@@ -617,7 +617,7 @@ class Weather(transport.ModbusDevice):
         v = self.sensors[5].value()
         if v is None:
             return None
-        return 114400.0 - (v / 4095.0 * 114400.0)   # Assuming a 1.5k pullup resistor
+        return max(0.0, 104346.0 - (v / 3736.0 * 104346.0))   # Assuming a 1.5k bias resistor and a 3.01 V bias
 
     def configure(self, thresholds=None, portconfig=None):
         """
