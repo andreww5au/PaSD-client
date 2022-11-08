@@ -1,9 +1,16 @@
 #!/usr/bin/env python
 
 """
-Manage a single PaSD station - control and monitor the hardware via Modbus commands to the specified IP
-address, and update the relevant tables in the PaSD database. Monitor the port state tables in that database, and
-send updated information as needed to the hardware in the field.
+EMC test a single PaSD station - control and monitor the hardware via Modbus commands to the specified IP
+address, and optionally toggle either PDoC ports on the FNDH, or FEM ports on the smartboxes.
+
+On startup, it will turn on all 28 PDoC ports, with a 5 second delay between each port. It will then try to
+talk to smartboxes on address 1 through MAX_SMARTBOX, and for each one that responds, it will use the
+time since powerup on that box to determine which PDoC port it is connected to.
+
+It will then loop, polling the FNDH and each smartbox every CYCLE_TIME seconds.  If --togglepdocs or --togglefems
+are given, it will cycle every odd-numbered PDoC (1,3,5,...27) every CYCLE_TIME seconds, or every
+odd-numbered FEM port (1,2,5,7,9,11) on every connected smartbox, every CYCLE_TIME seconds.
 """
 
 import argparse
@@ -12,19 +19,18 @@ import sys
 import time
 
 CYCLE_TIME = 5   # Loop cycle time for polling and toggling ports
+MAX_SMARTBOX = 4  # Don't try to communicate with any smartbox addresses higher than this value.
 
 
-def main_loop(stn, toggleports=False):
+def main_loop(stn, togglepdocs=False, togglefems=False):
     """
     Run forever in a loop
       -Query the field hardware to get all the current sensor and port parameters and update the instance data
       -Use the instance data to update the database sensor and port parameters
-      -Query the database to look for commanded changes in station or port state
-      -Write the commanded state data to the field hardware if it's different
-      -Query the stations table to see if we're meant to start up, or shut down
 
     :param stn: An instance of station.Station()
-    :param toggleports: If True, turn some ports on and off to generate RFI
+    :param togglepdocs: If True, turn some ports on and off to generate RFI
+    :param togglefems: If True, turn some ports on and off to generate RFI
     :return: False if there was a communications error, None if an exit was requested by setting stn.wants_exit True
     """
     poweron = True
@@ -81,21 +87,25 @@ def main_loop(stn, toggleports=False):
             for path, value in fdict.items():
                 data.append((path, (stime, value)))
 
-        if toggleports:
+        if togglefems:
             for sid in stn.smartboxes.keys():
                 for pid in stn.smartboxes[sid].ports.keys():
                     p = stn.smartboxes[sid].ports[pid]
-                    if divmod(pid, 4)[1] == 0:   # Every 4th port
-                        p.desire_enabled_online = p.desire_enabled_offline = poweron
+                    if divmod(pid, 2)[1] == 1:   # Every odd numbered port
+                        p.desire_enabled_online = poweron
+                        p.desire_enabled_offline = poweron
                         logging.info('Turning %s port %d on smartbox %d' % ({False:'Off', True:'On'}[poweron], pid, sid))
                 stn.smartboxes[sid].write_portconfig(write_breaker=True)
 
-            p = stn.fndh.ports[17]
-            p.desire_enabled_online = p.desire_enabled_offline = poweron
+        if togglepdocs:
+            for pid in range(1, 29, 2):
+                p = stn.fndh.ports[pid]
+                p.desire_enabled_online = poweron
+                p.desire_enabled_offline = poweron
             stn.fndh.write_portconfig()
             logging.info('Turning %s port %d on FNDH' % ({False: 'Off', True: 'On'}[poweron], 17))
 
-            poweron = not poweron
+        poweron = not poweron
 
         logging.debug(data)
 
@@ -103,14 +113,16 @@ def main_loop(stn, toggleports=False):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='RFI test a PaSD station',
-                                     epilog='Run this as "python -i %s" to drop into the Python prompt after starting up.' % sys.argv[0])
+    parser = argparse.ArgumentParser(description='EMC test a PaSD station',
+                                     epilog='Defaults to normal station startup, then regular polling of SB and FNDH data')
     parser.add_argument('--host', dest='host', default=None,
                         help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
-    parser.add_argument('--toggle', dest='toggle', default=False, action='store_true',
-                        help='If given, toggle some ports on and off every 15 seconds.')
+    parser.add_argument('--togglepdocs', dest='togglepdocs', default=False, action='store_true',
+                        help='If given, toggle every odd numbered PDoC port in the FNDH on and off every 15 seconds.')
+    parser.add_argument('--togglefems', dest='togglefems', default=False, action='store_true',
+                        help='If given, toggle every odd numbered FEM on every smartbox on and off every 15 seconds.')
     args = parser.parse_args()
     if (args.host is None) and (args.device is None):
         args.host = '10.128.30.1'
@@ -130,12 +142,16 @@ if __name__ == '__main__':
     from pasd import transport
     from pasd import station
 
-    station.MAX_SMARTBOX = 0
+    station.MAX_SMARTBOX = MAX_SMARTBOX
 
     tlogger = logging.getLogger('T')
     if loglevel == logging.DEBUG:
         print('Setting transport log level to info, DEBUG is very spammy. All other logging is at DEBUG level.')
         tlogger.setLevel(logging.INFO)
+
+    if args.togglepdocs and args.togglefems:
+        logging.error("Can't specify both '--togglepdocs' and '--togglefems', only one at  a time.")
+        sys.exit(-1)
 
     while True:
         conn = transport.Connection(hostname=args.host, multidrop=False, logger=tlogger)
@@ -148,11 +164,11 @@ if __name__ == '__main__':
                             logger=slogger)
 
         print('Starting up entire station as "s" - FNDH on address 101, SMARTboxes on addresses 1-24.')
-        s.fieldtest_startup()
+        s.full_startup()
         print('We have these smartboxes: %s' % s.smartboxes.keys())
         s.poll_data()
 
-        result = main_loop(s, toggleports=args.toggle)
+        result = main_loop(s, togglepdocs=args.togglepdocs, togglefems=args.togglefems)
         if result is False:
             logging.error('Station unreachable, trying again in 10 seconds')
             time.sleep(10)
