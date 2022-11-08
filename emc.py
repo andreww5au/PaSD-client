@@ -4,13 +4,16 @@
 EMC test a single PaSD station - control and monitor the hardware via Modbus commands to the specified IP
 address, and optionally toggle either PDoC ports on the FNDH, or FEM ports on the smartboxes.
 
-On startup, it will turn on all 28 PDoC ports, with a 5 second delay between each port. It will then try to
-talk to smartboxes on address 1 through MAX_SMARTBOX, and for each one that responds, it will use the
-time since powerup on that box to determine which PDoC port it is connected to.
+On startup, it will turn on all 28 PDoC ports, with a 5-second delay between each port. It will then try to
+talk to smartboxes on address 1 through MAX_SMARTBOX, and for each one that responds, it will initialise that
+smartbox, and use the time since powerup on that box to determine which PDoC port it is connected to.
 
 It will then loop, polling the FNDH and each smartbox every CYCLE_TIME seconds.  If --togglepdocs or --togglefems
 are given, it will cycle every odd-numbered PDoC (1,3,5,...27) every CYCLE_TIME seconds, or every
 odd-numbered FEM port (1,2,5,7,9,11) on every connected smartbox, every CYCLE_TIME seconds.
+
+Note that any smartboxes turned off if --togglepdocs is passed, will be re-initialised, and their FEMs turned
+back on, each time the PDoC port is turned back on.
 """
 
 import argparse
@@ -18,7 +21,7 @@ import logging
 import sys
 import time
 
-CYCLE_TIME = 5   # Loop cycle time for polling and toggling ports
+CYCLE_TIME = 10   # Loop cycle time for polling and toggling ports
 MAX_SMARTBOX = 4  # Don't try to communicate with any smartbox addresses higher than this value.
 
 
