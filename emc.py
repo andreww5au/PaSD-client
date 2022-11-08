@@ -12,7 +12,7 @@ It will then loop, polling the FNDH and each smartbox every CYCLE_TIME seconds. 
 are given, it will cycle every odd-numbered PDoC (1,3,5,...27) every CYCLE_TIME seconds, or every
 odd-numbered FEM port (1,2,5,7,9,11) on every connected smartbox, every CYCLE_TIME seconds.
 
-Note that any smartboxes turned off if --togglepdocs is passed, will be re-initialised, and their FEMs turned
+Note that any smartboxes turned off, if --togglepdocs is passed, will be re-initialised, and their FEMs turned
 back on, each time the PDoC port is turned back on.
 """
 
@@ -39,6 +39,26 @@ def main_loop(stn, togglepdocs=False, togglefems=False):
     poweron = True
     while not stn.wants_exit:
         last_loop_start_time = time.time()
+
+        if togglefems:
+            for sid in stn.smartboxes.keys():
+                for pid in stn.smartboxes[sid].ports.keys():
+                    p = stn.smartboxes[sid].ports[pid]
+                    if divmod(pid, 2)[1] == 1:   # Every odd numbered port
+                        p.desire_enabled_online = poweron
+                        p.desire_enabled_offline = poweron
+                        logging.info('Turning %s port %d on smartbox %d' % ({False:'Off', True:'On'}[poweron], pid, sid))
+                stn.smartboxes[sid].write_portconfig(write_breaker=True)
+
+        if togglepdocs:
+            for pid in range(1, 29, 2):
+                p = stn.fndh.ports[pid]
+                p.desire_enabled_online = poweron
+                p.desire_enabled_offline = poweron
+            stn.fndh.write_portconfig()
+            logging.info('Turning %s port %d on FNDH' % ({False: 'Off', True: 'On'}[poweron], 17))
+
+        poweron = not poweron
 
         # Query the field hardware to get all the current sensor and port parameters and update the instance data
         stn.poll_data()  # If station is not active, only FNDH data can be polled
@@ -89,26 +109,6 @@ def main_loop(stn, togglepdocs=False, togglefems=False):
                 fdict['pasd.fieldtest.sb%02d.sensor%02d.temp' % (sbnum, snum)] = stemp
             for path, value in fdict.items():
                 data.append((path, (stime, value)))
-
-        if togglefems:
-            for sid in stn.smartboxes.keys():
-                for pid in stn.smartboxes[sid].ports.keys():
-                    p = stn.smartboxes[sid].ports[pid]
-                    if divmod(pid, 2)[1] == 1:   # Every odd numbered port
-                        p.desire_enabled_online = poweron
-                        p.desire_enabled_offline = poweron
-                        logging.info('Turning %s port %d on smartbox %d' % ({False:'Off', True:'On'}[poweron], pid, sid))
-                stn.smartboxes[sid].write_portconfig(write_breaker=True)
-
-        if togglepdocs:
-            for pid in range(1, 29, 2):
-                p = stn.fndh.ports[pid]
-                p.desire_enabled_online = poweron
-                p.desire_enabled_offline = poweron
-            stn.fndh.write_portconfig()
-            logging.info('Turning %s port %d on FNDH' % ({False: 'Off', True: 'On'}[poweron], 17))
-
-        poweron = not poweron
 
         logging.debug(data)
 
