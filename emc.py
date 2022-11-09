@@ -42,21 +42,22 @@ def main_loop(stn, togglepdocs=False, togglefems=False):
 
         if togglefems:
             for sid in stn.smartboxes.keys():
+                logging.info('Turning %s ports 1,3,5,7,9,11 on smartbox %d' % ({False:'Off', True:'On'}[poweron], sid))
                 for pid in stn.smartboxes[sid].ports.keys():
                     p = stn.smartboxes[sid].ports[pid]
                     if divmod(pid, 2)[1] == 1:   # Every odd numbered port
                         p.desire_enabled_online = poweron
                         p.desire_enabled_offline = poweron
-                        logging.info('Turning %s port %d on smartbox %d' % ({False:'Off', True:'On'}[poweron], pid, sid))
+
                 stn.smartboxes[sid].write_portconfig(write_breaker=True)
 
         if togglepdocs:
+            logging.info('Turning %s ports 1,3, ... ,25,27 on FNDH' % ({False: 'Off', True: 'On'}[poweron],))
             for pid in range(1, 29, 2):
                 p = stn.fndh.ports[pid]
                 p.desire_enabled_online = poweron
                 p.desire_enabled_offline = poweron
             stn.fndh.write_portconfig()
-            logging.info('Turning %s port %d on FNDH' % ({False: 'Off', True: 'On'}[poweron], 17))
 
         poweron = not poweron
 
