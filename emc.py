@@ -119,7 +119,7 @@ def main_loop(stn, togglepdocs=False, togglefems=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='EMC test a PaSD station',
                                      epilog='Defaults to normal station startup, then regular polling of SB and FNDH data')
-    parser.add_argument('--host', dest='host', default=None,
+    parser.add_argument('--host', dest='host', default='10.128.30.1',
                         help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
@@ -128,8 +128,6 @@ if __name__ == '__main__':
     parser.add_argument('--togglefems', dest='togglefems', default=False, action='store_true',
                         help='If given, toggle every odd numbered FEM on every smartbox on and off every 15 seconds.')
     args = parser.parse_args()
-    if (args.host is None) and (args.device is None):
-        args.host = '10.128.30.1'
 
     if args.debug:
         loglevel = logging.DEBUG
