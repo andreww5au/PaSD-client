@@ -53,11 +53,18 @@ def main_loop(stn, togglepdocs=False, togglefems=False):
 
         if togglepdocs:
             logging.info('Turning %s ports 1,3, ... ,25,27 on FNDH' % ({False: 'Off', True: 'On'}[poweron],))
+            sblist = []
             for pid in range(1, 29, 2):
                 p = stn.fndh.ports[pid]
                 p.desire_enabled_online = poweron
                 p.desire_enabled_offline = poweron
+                if stn.fndh.ports[pid].smartbox_address:  # If a smartbox is connected to that port
+                    sblist.append(stn.fndh.ports[pid].smartbox_address)
             stn.fndh.write_portconfig()
+
+            if poweron:  # Just switched on some pdocs, so initialise any smartboxes connected to them
+                for sid in sblist:
+                    stn.smartboxes[sid].poll_data()
 
         poweron = not poweron
 
