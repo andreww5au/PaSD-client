@@ -383,10 +383,15 @@ class Station(object):
                 if test_ok:
                     self.logger.info('Adding smartbox on address %d to the station')
                     self.smartboxes[sadd] = smb   # If we heard a reply, add it to self.smartboxes, if not, ignore it
+                    for p in self.fndh.ports.values():
+                        if p.smartbox_address == sadd:  # Assume it's still on the same PDoC port
+                            smb.pdoc_number = p.port_number
             else:
                 smb_ok = self.smartboxes[sadd].poll_data()
                 if not smb_ok:
                     self.logger.error("Can't reach SMARTbox %d with poll_data(), removing it from station" % sadd)
+                    # Leave it in the FNDH port status, so we can assume it's stayed at that address if we see it return
+                    # self.fndh.ports[self.smartboxes[sadd].pdoc_number].smartbox_address = 0
                     del self.smartboxes[sadd]
 
         # If any of the SMARTboxes have had a long button-press (indicating that a local technician wants that SMARTbox

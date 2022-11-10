@@ -62,9 +62,8 @@ def main_loop(stn, togglepdocs=False, togglefems=False):
                     sblist.append(stn.fndh.ports[pid].smartbox_address)
             stn.fndh.write_portconfig()
 
-            if poweron:  # Just switched on some pdocs, so initialise any smartboxes connected to them
-                for sid in sblist:
-                    stn.smartboxes[sid].poll_data()
+            if poweron and sblist:  # Just switched on some pdocs, so initialise any smartboxes connected to them
+                stn.poll_data()
 
         poweron = not poweron
 
@@ -154,6 +153,7 @@ if __name__ == '__main__':
     station.MAX_SMARTBOX = MAX_SMARTBOX
 
     tlogger = logging.getLogger('T')
+    tlogger.setLevel(logging.CRITICAL)
     if loglevel == logging.DEBUG:
         print('Setting transport log level to info, DEBUG is very spammy. All other logging is at DEBUG level.')
         tlogger.setLevel(logging.INFO)
