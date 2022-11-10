@@ -174,7 +174,7 @@ if __name__ == '__main__':
 
         print('Starting up entire station as "s" - FNDH on address 101, SMARTboxes on addresses 1-24.')
         s.full_startup()
-        print('We have these smartboxes: %s' % s.smartboxes.keys())
+        print('We have these smartboxes: %s' % list(s.smartboxes.keys()))
         s.poll_data()
 
         result = main_loop(s, togglepdocs=args.togglepdocs, togglefems=args.togglefems)

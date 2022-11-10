@@ -284,8 +284,8 @@ class Station(object):
 
             address_on_times[sadd] = time.time() - uptime
 
-        self.logger.info('ON times: %s' % port_on_times)
-        self.logger.info('ADDRESS times: %s' % address_on_times)
+        self.logger.debug('ON times: %s' % port_on_times)
+        self.logger.debug('ADDRESS times: %s' % address_on_times)
 
         for portnum in range(1, 29):
             ontime = port_on_times[portnum]
