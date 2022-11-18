@@ -52,9 +52,9 @@ def main_loop(stn, togglepdocs=False, togglefems=False):
                 stn.smartboxes[sid].write_portconfig(write_breaker=True)
 
         if togglepdocs:
-            logging.info('Turning %s ports 1,3, ... ,25,27 on FNDH' % ({False: 'Off', True: 'On'}[poweron],))
+            logging.info('Turning %s ports 2,4, ... ,26,28 on FNDH' % ({False: 'Off', True: 'On'}[poweron],))
             sblist = []
-            for pid in range(1, 29, 2):
+            for pid in range(2, 29, 2):
                 p = stn.fndh.ports[pid]
                 p.desire_enabled_online = poweron
                 p.desire_enabled_offline = poweron
