@@ -163,6 +163,7 @@ def fndh(portnums, action):
                      readtime, service_led, psu48v1_temp, psu48v2_temp, panel_temp, fncb_temp,
                      fncb_humidity) = rows[0]
                     age = time.time() - readtime
+
                 if not portlist:
                     paramdict = {'station_id':STATION_ID,
                                  'uptime':uptime,
@@ -284,73 +285,82 @@ def sb(portnums, action, sbnum):
     with DB:
         with DB.cursor() as curs:
             if action.upper() == 'STATUS':
+                query = """SELECT smartbox_number, mbrv, pcbrv, cpuid, chipid, firmware_version, uptime, 
+                                  incoming_voltage, psu_voltage, psu_temp, pcb_temp, outside_temp, status, 
+                                  indicator_state, readtime, pdoc_number, service_led
+                           FROM pasd_smartbox_state
+                           WHERE (station_id = %(station_id)s) AND (smartbox_number = ANY(%(modbus_address)s))
+                           ORDER BY smartbox_number"""
+                curs.execute(query, {'station_id':STATION_ID, 'modbus_address':sboxes})
+                rows = curs.fetchall()
+                for row in rows:
+                    (smartbox_number, mbrv, pcbrv, cpuid, chipid, firmware_version, uptime,
+                     incoming_voltage, psu_voltage, psu_temp, pcb_temp, outside_temp, status,
+                     indicator_state, readtime, pdoc_number, service_led) = row
+                    age = time.time() - readtime
+
                 if not portlist:
-                    query = """SELECT smartbox_number, mbrv, pcbrv, cpuid, chipid, firmware_version, uptime, 
-                                      incoming_voltage, psu_voltage, psu_temp, pcb_temp, outside_temp, status, 
-                                      indicator_state, readtime, pdoc_number, service_led
-                               FROM pasd_smartbox_state
-                               WHERE (station_id = %(station_id)s) AND (smartbox_number = ANY(%(modbus_address)s))
-                               ORDER BY smartbox_number"""
-                    curs.execute(query, {'station_id':STATION_ID, 'modbus_address':sboxes})
-                    rows = curs.fetchall()
-                    for row in rows:
-                        (smartbox_number, mbrv, pcbrv, cpuid, chipid, firmware_version, uptime,
-                         incoming_voltage, psu_voltage, psu_temp, pcb_temp, outside_temp, status,
-                         indicator_state, readtime, pdoc_number, service_led) = row
-                        paramdict = {'station_id':STATION_ID,
-                                     'modbus_address':smartbox_number,
-                                     'uptime':uptime,
-                                     'age':time.time() - readtime,
-                                     'mbrv':mbrv,
-                                     'pcbrv':pcbrv,
-                                     'cpuid':cpuid,
-                                     'chipid':chipid,
-                                     'firmware_version':firmware_version,
-                                     'incoming_voltage':incoming_voltage,
-                                     'psu_voltage':psu_voltage,
-                                     'psu_temp':psu_temp,
-                                     'pcb_temp':pcb_temp,
-                                     'outside_temp':outside_temp,
-                                     'status':status,
-                                     'indicator_state':indicator_state,
-                                     'readtime':readtime,
-                                     'pdoc_number':pdoc_number,
-                                     'service_led':service_led}
+                    paramdict = {'station_id':STATION_ID,
+                                 'modbus_address':smartbox_number,
+                                 'uptime':uptime,
+                                 'age':age,
+                                 'mbrv':mbrv,
+                                 'pcbrv':pcbrv,
+                                 'cpuid':cpuid,
+                                 'chipid':chipid,
+                                 'firmware_version':firmware_version,
+                                 'incoming_voltage':incoming_voltage,
+                                 'psu_voltage':psu_voltage,
+                                 'psu_temp':psu_temp,
+                                 'pcb_temp':pcb_temp,
+                                 'outside_temp':outside_temp,
+                                 'status':status,
+                                 'indicator_state':indicator_state,
+                                 'readtime':readtime,
+                                 'pdoc_number':pdoc_number,
+                                 'service_led':service_led}
+                    if age < 30:
                         print(SMARTBOX_STRING % paramdict)
+                    else:
+                        print("Last update %0.1f seconds ago, station code not running." % age)
                 else:  # portlist suppled
-                    query = """SELECT smartbox_number, port_number, extract(epoch from status_timestamp), system_online, 
-                                      current_draw, locally_forced_on, locally_forced_off, breaker_tripped, power_state,
-                                      desire_enabled_online, desire_enabled_offline
-                               FROM pasd_smartbox_port_status
-                               WHERE (station_id = %(station_id)s) AND 
-                                     (smartbox_number = ANY(%(modbus_address)s)) AND 
-                                     (port_number = ANY(%(port_number)s))
-                               ORDER BY smartbox_number, port_number"""
-                    curs.execute(query, {'station_id':STATION_ID, 'modbus_address':sboxes, 'port_number':portlist})
-                    rows = curs.fetchall()
-                    for row in rows:
-                        (smartbox_number, port_number, status_timestamp, system_online,
-                         current_draw, locally_forced_on, locally_forced_off, breaker_tripped, power_state,
-                         desire_enabled_online, desire_enabled_offline) = row
-                        if locally_forced_on:
-                            lfstring = 'Forced:ON'
-                        elif locally_forced_off:
-                            lfstring = 'Forced:OFF'
-                        else:
-                            lfstring = 'NotForced'
-                        enstring = '(DesireEnabled:%s)' % ','.join(
-                                [{False:'', True:'Online', None:'?'}[desire_enabled_online],
-                                 {False:'', True:'Offline', None:'?'}[desire_enabled_offline]])
-                        sysstring = '(System:%s)' % ({False:'Offline', True:'Online', None:'??line?'}[system_online])
-                        status_items = ['Status(age %1.1f s):' % (time.time() - status_timestamp),
-                                        {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[power_state],
-                                        sysstring,
-                                        enstring,
-                                        lfstring,
-                                        'Current:%5.1f' % current_draw
-                                        ]
-                        status_string = ' '.join(status_items)
-                        print("SB%02d, P%02d: %s" % (smartbox_number, port_number, status_string))
+                    if age < 30:
+                        query = """SELECT smartbox_number, port_number, extract(epoch from status_timestamp), system_online, 
+                                          current_draw, locally_forced_on, locally_forced_off, breaker_tripped, power_state,
+                                          desire_enabled_online, desire_enabled_offline
+                                   FROM pasd_smartbox_port_status
+                                   WHERE (station_id = %(station_id)s) AND 
+                                         (smartbox_number = ANY(%(modbus_address)s)) AND 
+                                         (port_number = ANY(%(port_number)s))
+                                   ORDER BY smartbox_number, port_number"""
+                        curs.execute(query, {'station_id':STATION_ID, 'modbus_address':sboxes, 'port_number':portlist})
+                        rows = curs.fetchall()
+                        for row in rows:
+                            (smartbox_number, port_number, status_timestamp, system_online,
+                             current_draw, locally_forced_on, locally_forced_off, breaker_tripped, power_state,
+                             desire_enabled_online, desire_enabled_offline) = row
+                            if locally_forced_on:
+                                lfstring = 'Forced:ON'
+                            elif locally_forced_off:
+                                lfstring = 'Forced:OFF'
+                            else:
+                                lfstring = 'NotForced'
+                            enstring = '(DesireEnabled:%s)' % ','.join(
+                                    [{False:'', True:'Online', None:'?'}[desire_enabled_online],
+                                     {False:'', True:'Offline', None:'?'}[desire_enabled_offline]])
+                            sysstring = '(System:%s)' % ({False:'Offline', True:'Online', None:'??line?'}[system_online])
+                            status_items = ['Status(age %1.1f s):' % (time.time() - status_timestamp),
+                                            {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[power_state],
+                                            sysstring,
+                                            enstring,
+                                            lfstring,
+                                            'Current:%5.1f' % current_draw
+                                            ]
+                            status_string = ' '.join(status_items)
+                            print("SB%02d, P%02d: %s" % (smartbox_number, port_number, status_string))
+                    else:
+                        print("Last update %0.1f seconds ago, station code not running." % age)
+
             elif action.upper() in ['ON', 'OFF']:
                 if not portlist:
                     print('No matching ports, exiting.')
