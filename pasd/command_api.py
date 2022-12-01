@@ -445,7 +445,49 @@ def get_sample_data(conn, address, reglist, logger=logging):
         logger.error("sample count command failed: " + str(result))
 
 
-def send_hex(conn, filename, modbus_address, logger=logging):
+def get_hex_info(filename, logger=logging):
+    """
+    Takes the name of a Hex firmware file, and reads the version numbers that the Hex file was defined for
+    (modbus API revision, PCB revision) and the firmware version number, from a few bytes appended to the end
+    of the firmware binary, in the form:
+
+    ;PaSD mbrev=1 pcbrev=2 firmver=3
+
+    :param filename: Name of the Intel Hex file
+    :param logger: An optional logging.Logger instance
+    :return: A dictionary with 'mbrev', pcbrev' and 'firmver' as keys, and integers as values, or an empty dictionary.
+    """
+    hexFile = open(filename, "r")
+    header = ""
+    for line in hexFile.readlines():
+        if line.startswith(";PaSD"):
+            header = line
+    hexFile.close()
+
+    if not header:
+        logger.warning("command_api.get_hex_info - no version header found")
+        return {}
+
+    logger.debug("command_api.get_hex_info - header: " + header)
+
+    result = {}
+    params = header.split()
+    for i in range(1, len(params)):
+        param = params[i].split("=")
+        if param[0] == "mbrev":
+            result['mbrev'] = int(param[1])
+        elif param[0] == "pcbrev":
+            result['pcbrev'] = int(param[1])
+        elif param[0] == "firmver":
+            result['firmver'] = int(param[1])
+        else:
+            logger.warning("command_api.get_hex_info - Unexpected parameter: %s=%s" % (param[0], param[1]))
+
+    logger.info("command_api.get_hex_info - parameters are: %s" % (result,))
+    return result
+
+
+def send_hex(conn, filename, modbus_address, logger=logging, force=False):
     """
     Takes the name of a file in Intel hex format, and sends it to the specified Modbus address, then commands the
     microcontroller to swap to the new ROM bank. The caller must issue a reset command using the reset_microcontroller()
@@ -458,8 +500,57 @@ def send_hex(conn, filename, modbus_address, logger=logging):
     :param filename: The name of a file containing and Intel Hex format firmware binary
     :param modbus_address: Modbus address
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
+    :param force: If True, force firmware upload even if version number does not match that reported by hardware.
     :return:
     """
+    params = get_hex_info(filename=filename, logger=logger)
+    if not params:
+        logger.warning("command_api.send_hex - No version information in hex file")
+        if not force:
+            logger.error("command_api.send_hex - aborting upload. Ese force=True to force firmware upload.")
+            return False
+
+    # Get a list of tuples, where each tuple is a two-byte register value, eg (0,255)
+    try:
+        valuelist = conn.readReg(modbus_address=modbus_address, regnum=1, numreg=13)
+    except IOError:
+        logger.info('No data returned by readReg in poll_data for SMARTbox %d' % modbus_address)
+        return None
+    except Exception:
+        logger.exception('Exception in readReg in poll_data for SMARTbox %d' % modbus_address)
+        return None
+
+    if valuelist is None:
+        logger.error('Error in readReg in poll_data for SMARTbox %d, no data' % modbus_address)
+        return None
+
+    if len(valuelist) != 13:
+        logger.warning('Only %d registers returned from SMARTbox %d by readReg in poll_data, expected %d' % (len(valuelist),
+                                                                                                             modbus_address,
+                                                                                                             13))
+        return None
+
+    mbrv = valuelist[0][0] * 256 + valuelist[0][1]
+    pcbrv = valuelist[1][0] * 256 + valuelist[1][1]
+    firmver = valuelist[12][0] * 256 + valuelist[12][1]
+
+    if mbrv != params.get('mbrv', None):   # Modbus API protocol revision is different
+        logger.warning("command_api.send_hex - Modbus API revision is different to to firmware on device.")
+        logger.warning("                       Existing=%d, New=%s" % (mbrv, params.get('mbrv', None)))
+        if not force:
+            logger.error("command_api.send_hex - aborting upload. Use force=True to force firmware upload.")
+            return False
+
+    if pcbrv != params.get('pcbrv', None):   # Hardware on board is different
+        logger.warning("command_api.send_hex - Actual device hardware different to firmware target.")
+        logger.warning("                       Hardware=%d, Firmware target=%s" % (pcbrv, params.get('pcbrv', None)))
+        if not force:
+            logger.error("command_api.send_hex - aborting upload. Use force=True to force firmware upload.")
+            return False
+
+    logger.info("command_api.send_hex - Existing firmware version %s, new firmware version %s" % (firmver,
+                                                                                                  params.get('firmver', 'Unknown')))
+
     logger.info('Writing %s to modbus address %d' % (filename, modbus_address))
     if IntelHex is None:
         logger.critical('intelhex library no available, exiting.')
@@ -620,7 +711,10 @@ def send_hex(conn, filename, modbus_address, logger=logging):
         conn.writeReg(modbus_address=modbus_address, regnum=10125, value=UPDATE_COMMAND)  # update
         updateResult = conn.readReg(modbus_address=modbus_address, regnum=10126)[0][1]
         if updateResult == 0:
-            logger.info("Update ok.  Call reset_microcontroller to boot into new firmware.")
+            logger.info("Update finished. Old firmware version %s, new firmware version %s" % (firmver,
+                                                                                               params.get('firmver',
+                                                                                                          'Unknown')))
+            logger.info("Call reset_microcontroller to boot into new firmware.")
             return True
         else:
             logger.info("Update FAILED, new firmware NOT swapped in!: " + str(updateResult))
