@@ -22,7 +22,7 @@ CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
 
 FNDH_STRING = """\
-FNDH on station %(station_id)s at address: %(modbus_address)s - last update %(age)s seconds ago:
+FNDH on station %(station_id)s - last update %(age)s seconds ago:
     ModBUS register revision: %(mbrv)s
     PCB revision: %(pcbrv)s
     CPU ID: %(cpuid)s
