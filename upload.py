@@ -37,6 +37,7 @@ if __name__ == '__main__':
                         help='TCP port number to use')
     parser.add_argument('--address', dest='address', default=0,
                         help='Modbus address')
+    parser.add_argument('--force', dest='force', default=False, action='store_true')
     args = parser.parse_args()
 
     if (args.host is None) and (args.device is None):
@@ -44,29 +45,50 @@ if __name__ == '__main__':
 
     if os.path.basename(args.filename).upper().startswith('FNPC'):
         if (int(args.address) not in [31, 101]):
-            print('Trying to push FNDH image to a smartbox? %s' % args.filename)
+            print('Trying to push FNPC image to a smartbox, weather station or FNCC? %s' % args.filename)
             print('Filename must start with "FNPC" (and go to address 31 or 101), or "SBox" (and go to address 1-24).')
-            sys.exit(-1)
+            if not args.force:
+                print('Exiting.')
+                sys.exit(-1)
+            else:
+                print("Proceeding to risk bricking the hardware anyway, as --force specified. ")
     elif os.path.basename(args.filename).upper().startswith('SBOX'):
         if (int(args.address) not in list(range(1, 25))):
-            print('Trying to push smartbox image to an FNDH? %s' % args.filename)
+            print('Trying to push smartbox image to an FNPC, weather station or FNCC?? %s' % args.filename)
             print('Filename must start with "FNPC" (and go to address 31 or 101), or "SBox" (and go to address 1-24).')
-            sys.exit(-1)
+            if not args.force:
+                print('Exiting.')
+                sys.exit(-1)
+            else:
+                print("Proceeding to risk bricking the hardware anyway, as --force specified. ")
     elif os.path.basename(args.filename).upper().startswith('FNCC'):
         if (int(args.address) != 100):
-            print('Trying to push FNCC image to a smartbox or FNPC? %s' % args.filename)
+            print('Trying to push FNCC image to a smartbox, weather station or FNPC? %s' % args.filename)
             print('Filename must start with "FNPC" (and go to address 31 or 101), or ')
             print('    "SBox" (and go to address 1-24) or "FNCC" (and go to address 100).')
-            sys.exit(-1)
+            if not args.force:
+                print('Exiting.')
+                sys.exit(-1)
+            else:
+                print("Proceeding to risk bricking the hardware anyway, as --force specified. ")
     elif os.path.basename(args.filename).upper().startswith('WEATH'):
         if (int(args.address) != 103):
             print('Trying to push Weather image to a smartbox, FNPC or FNCC? %s' % args.filename)
             print('Filename must start with "FNPC" (and go to address 31 or 101), or ')
             print('    "SBox" (and go to address 1-24) or "FNCC" (and go to address 100).')
-            sys.exit(-1)
+            if not args.force:
+                print('Exiting.')
+                sys.exit(-1)
+            else:
+                print("Proceeding to risk bricking the hardware anyway, as --force specified. ")
     else:
-        print('Filename must start with "FNPC" (to address 31 or 101), or "SBox" (to address 1-24) or "FNCC" (to address 100).')
-        sys.exit(-1)
+        print('Filename must start with "FNPC" (to address 31 or 101), or "SBox" (to address 1-24),')
+        print('or "FNCC" (to address 100), or "WEATH" (to address 103).')
+        if not args.force:
+            print('Exiting.')
+            sys.exit(-1)
+        else:
+            print("Proceeding to risk bricking the hardware anyway, as --force specified. ")
 
     if args.address == 0:
         print('Must supply a modbus address to send the new firmware to')
@@ -75,6 +97,7 @@ if __name__ == '__main__':
     tlogger = logging.getLogger('T')
     conn = transport.Connection(hostname=args.host, devicename=args.device, port=int(args.portnum), multidrop=False, logger=tlogger)
 
-    ok = command_api.send_hex(conn=conn, filename=args.filename, modbus_address=int(args.address))
-    print('Resetting microcontroller.')
-    command_api.reset_microcontroller(conn, int(args.address), logger=logging)
+    ok = command_api.send_hex(conn=conn, filename=args.filename, modbus_address=int(args.address), force=args.force)
+    if ok:
+        print('Resetting microcontroller.')
+        command_api.reset_microcontroller(conn, int(args.address), logger=logging)
