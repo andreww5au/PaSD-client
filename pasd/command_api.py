@@ -507,9 +507,9 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False, nowrit
     params = get_hex_info(filename=filename, logger=logger)
     if not params:
         logger.warning("command_api.send_hex - No version information in hex file")
-        if not force:
-            logger.error("command_api.send_hex - aborting upload. Ese force=True to force firmware upload.")
-            return False
+#        if not force:
+#            logger.error("command_api.send_hex - aborting upload. Use force=True to force firmware upload.")
+#            return False
 
     # Get a list of tuples, where each tuple is a two-byte register value, eg (0,255)
     try:
