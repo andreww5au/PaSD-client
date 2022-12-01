@@ -29,11 +29,9 @@ FNDH on station %(station_id)s at address: %(modbus_address)s - last update %(ag
     CHIP ID: %(chipid)s
     Firmware revision: %(firmware_version)s
     Uptime: %(uptime)s seconds
-    R.Address: %(station_value)s
     48V: %(psu48v1_voltage)s V, %(psu48v2_voltage)s V
     48V Current: %(psu48v_current)s A 
     48V Temp: %(psu48v1_temp)s deg C, %(psu48v2_temp)s deg C
-    Extra Temps: %(sense01)s, %(sense02)s, %(sense03)s, %(sense04)s deg C
     Switch panel Temp: %(panel_temp)s deg C
     FNCB: %(fncb_temp)s deg C, %(fncb_humidity)s %% RH
     Status: %(statuscode)s (%(status)s)
@@ -49,7 +47,6 @@ SMARTBox at address: %(modbus_address)s on PDoC port %(pdoc_number)s - last upda
     CHIP ID: %(chipid)s
     Firmware revision: %(firmware_version)s
     Uptime: %(uptime)s seconds
-    R.Address: %(station_value)s
     48V In: %(incoming_voltage)4.2f V
     5V out: %(psu_voltage)4.2f V
     PSU Temp: %(psu_temp)4.2f deg C
@@ -294,7 +291,7 @@ def sb(portnums, action, sbnum):
                          incoming_voltage, psu_voltage, psu_temp, pcb_temp, outside_temp, status,
                          indicator_state, readtime, pdoc_number, service_led) = row
                         paramdict = {'station_id':STATION_ID,
-                                     'smartbox_number':smartbox_number,
+                                     'modbus_address':smartbox_number,
                                      'uptime':uptime,
                                      'age':time.time() - readtime,
                                      'mbrv':mbrv,
