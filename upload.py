@@ -105,6 +105,6 @@ if __name__ == '__main__':
                               modbus_address=int(args.address),
                               force=args.force,
                               nowrite=args.nowrite)
-    if ok:
+    if ok and not args.nowrite:
         print('Resetting microcontroller.')
         command_api.reset_microcontroller(conn, int(args.address), logger=logging)
