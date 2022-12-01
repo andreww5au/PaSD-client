@@ -18,6 +18,8 @@ import psycopg2
 STATION_ID = 1
 MAX_SMARTBOX = 2
 
+MAX_AGE = 45   # If the last update was more than this many seconds ago, assume the station code isn't running.
+
 CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
 
@@ -185,12 +187,12 @@ def fndh(portnums, action):
                                  'panel_temp':panel_temp,
                                  'fncb_temp':fncb_temp,
                                  'fncb_humidity':fncb_humidity}
-                    if age < 30:   # If recent enough:
+                    if age < MAX_AGE:   # If recent enough:
                         print(FNDH_STRING % paramdict)
                     else:
                         print("Last update %0.1f seconds ago, station code not running." % age)
                 else:  # portlist suppled
-                    if age < 30:
+                    if age < MAX_AGE:
                         query = """SELECT pdoc_number, extract(epoch from status_timestamp), smartbox_number, system_online, locally_forced_on, 
                                           locally_forced_off, power_state, power_sense, desire_enabled_online, desire_enabled_offline
                                    FROM pasd_fndh_port_status
@@ -319,12 +321,12 @@ def sb(portnums, action, sbnum):
                                  'readtime':readtime,
                                  'pdoc_number':pdoc_number,
                                  'service_led':service_led}
-                    if age < 30:
+                    if age < MAX_AGE:
                         print(SMARTBOX_STRING % paramdict)
                     else:
                         print("Last update %0.1f seconds ago, station code not running." % age)
                 else:  # portlist suppled
-                    if age < 30:
+                    if age < MAX_AGE:
                         query = """SELECT smartbox_number, port_number, extract(epoch from status_timestamp), system_online, 
                                           current_draw, locally_forced_on, locally_forced_off, breaker_tripped, power_state,
                                           desire_enabled_online, desire_enabled_offline
@@ -383,4 +385,3 @@ def sb(portnums, action, sbnum):
 if __name__ == '__main__':
     init()
     cli()
-
