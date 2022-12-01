@@ -535,16 +535,16 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False, nowrit
     pcbrv = valuelist[1][0] * 256 + valuelist[1][1]
     firmver = valuelist[12][0] * 256 + valuelist[12][1]
 
-    if mbrv != params.get('mbrv', None):   # Modbus API protocol revision is different
+    if mbrv != params.get('mbrv', mbrv):   # Modbus API protocol revision is different
         logger.warning("command_api.send_hex - Modbus API revision is different to to firmware on device.")
-        logger.warning("                       Existing=%d, New=%s" % (mbrv, params.get('mbrv', None)))
+        logger.warning("                       Existing=%d, New=%s" % (mbrv, params.get('mbrv', mbrv)))
         if not force:
             logger.error("command_api.send_hex - aborting upload. Use force=True to force firmware upload.")
             return False
 
-    if pcbrv != params.get('pcbrv', None):   # Hardware on board is different
+    if pcbrv != params.get('pcbrv', pcbrv):   # Hardware on board is different
         logger.warning("command_api.send_hex - Actual device hardware different to firmware target.")
-        logger.warning("                       Hardware=%d, Firmware target=%s" % (pcbrv, params.get('pcbrv', None)))
+        logger.warning("                       Hardware=%d, Firmware target=%s" % (pcbrv, params.get('pcbrv', pcbrv)))
         if not force:
             logger.error("command_api.send_hex - aborting upload. Use force=True to force firmware upload.")
             return False
