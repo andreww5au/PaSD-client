@@ -22,7 +22,7 @@ CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
 
 FNDH_STRING = """\
-FNDH on station %(station_id)s - last update %(age)s seconds ago:
+FNDH on station %(station_id)s - last update %(age)0.1f seconds ago:
     ModBUS register revision: %(mbrv)s
     PCB revision: %(pcbrv)s
     CPU ID: %(cpuid)s
@@ -40,7 +40,7 @@ FNDH on station %(station_id)s - last update %(age)s seconds ago:
 """
 
 SMARTBOX_STRING = """\
-SMARTBox at address: %(modbus_address)s on PDoC port %(pdoc_number)s - last update %(age)s seconds ago:
+SMARTBox at address: %(modbus_address)s on PDoC port %(pdoc_number)s - last update %(age)0.1f seconds ago:
     ModBUS register revision: %(mbrv)s
     PCB revision: %(pcbrv)s
     CPU ID: %(cpuid)s
@@ -149,79 +149,86 @@ def fndh(portnums, action):
     with DB:
         with DB.cursor() as curs:
             if action.upper() == 'STATUS':
+                query = """SELECT mbrv, pcbrv, cpuid, chipid, firmware_version, uptime, 
+                                  psu48v1_voltage, psu48v2_voltage, psu48v_current, status, indicator_state, 
+                                  readtime, service_led, psu48v1_temp, psu48v2_temp, panel_temp, fncb_temp,
+                                  fncb_humidity
+                           FROM pasd_fndh_state
+                           WHERE station_id = %s"""
+                curs.execute(query, (STATION_ID,))
+                rows = curs.fetchall()
+                if rows:
+                    (mbrv, pcbrv, cpuid, chipid, firmware_version, uptime,
+                     psu48v1_voltage, psu48v2_voltage, psu48v_current, status, indicator_state,
+                     readtime, service_led, psu48v1_temp, psu48v2_temp, panel_temp, fncb_temp,
+                     fncb_humidity) = rows[0]
+                    age = time.time() - readtime
                 if not portlist:
-                    query = """SELECT mbrv, pcbrv, cpuid, chipid, firmware_version, uptime, 
-                                      psu48v1_voltage, psu48v2_voltage, psu48v_current, status, indicator_state, 
-                                      readtime, service_led, psu48v1_temp, psu48v2_temp, panel_temp, fncb_temp,
-                                      fncb_humidity
-                               FROM pasd_fndh_state
-                               WHERE station_id = %s"""
-                    curs.execute(query, (STATION_ID,))
-                    rows = curs.fetchall()
-                    if rows:
-                        (mbrv, pcbrv, cpuid, chipid, firmware_version, uptime,
-                         psu48v1_voltage, psu48v2_voltage, psu48v_current, status, indicator_state,
-                         readtime, service_led, psu48v1_temp, psu48v2_temp, panel_temp, fncb_temp,
-                         fncb_humidity) = rows[0]
-                        paramdict = {'station_id':STATION_ID,
-                                     'uptime':uptime,
-                                     'age':time.time() - readtime,
-                                     'mbrv':mbrv,
-                                     'pcbrv':pcbrv,
-                                     'cpuid':cpuid,
-                                     'chipid':chipid,
-                                     'firmware_version':firmware_version,
-                                     'psu48v1_voltage':psu48v1_voltage,
-                                     'psu48v2_voltage':psu48v2_voltage,
-                                     'psu48v_current':psu48v_current,
-                                     'status':status,
-                                     'indicator_state':indicator_state,
-                                     'readtime':readtime,
-                                     'service_led':service_led,
-                                     'psu48v1_temp':psu48v1_temp,
-                                     'psu48v2_temp':psu48v2_temp,
-                                     'panel_temp':panel_temp,
-                                     'fncb_temp':fncb_temp,
-                                     'fncb_humidity':fncb_humidity}
+                    paramdict = {'station_id':STATION_ID,
+                                 'uptime':uptime,
+                                 'age':age,
+                                 'mbrv':mbrv,
+                                 'pcbrv':pcbrv,
+                                 'cpuid':cpuid,
+                                 'chipid':chipid,
+                                 'firmware_version':firmware_version,
+                                 'psu48v1_voltage':psu48v1_voltage,
+                                 'psu48v2_voltage':psu48v2_voltage,
+                                 'psu48v_current':psu48v_current,
+                                 'status':status,
+                                 'indicator_state':indicator_state,
+                                 'readtime':readtime,
+                                 'service_led':service_led,
+                                 'psu48v1_temp':psu48v1_temp,
+                                 'psu48v2_temp':psu48v2_temp,
+                                 'panel_temp':panel_temp,
+                                 'fncb_temp':fncb_temp,
+                                 'fncb_humidity':fncb_humidity}
+                    if age < 30:   # If recent enough:
                         print(FNDH_STRING % paramdict)
+                    else:
+                        print("Last update %0.1f seconds ago, station code not running." % age)
                 else:  # portlist suppled
-                    query = """SELECT pdoc_number, extract(epoch from status_timestamp), smartbox_number, system_online, locally_forced_on, 
-                                      locally_forced_off, power_state, power_sense, desire_enabled_online, desire_enabled_offline
-                               FROM pasd_fndh_port_status
-                               WHERE (station_id = %(station_id)s) AND (pdoc_number = ANY(%(port_number)s))
-                               ORDER BY pdoc_number"""
-                    curs.execute(query, {'station_id':STATION_ID, 'port_number':portlist})
-                    rows = curs.fetchall()
-                    for row in rows:
-                        (pdoc_number, status_timestamp, smartbox_number, system_online, locally_forced_on, locally_forced_off, power_state,
-                         power_sense, desire_enabled_online, desire_enabled_offline) = row
+                    if age < 30:
+                        query = """SELECT pdoc_number, extract(epoch from status_timestamp), smartbox_number, system_online, locally_forced_on, 
+                                          locally_forced_off, power_state, power_sense, desire_enabled_online, desire_enabled_offline
+                                   FROM pasd_fndh_port_status
+                                   WHERE (station_id = %(station_id)s) AND (pdoc_number = ANY(%(port_number)s))
+                                   ORDER BY pdoc_number"""
+                        curs.execute(query, {'station_id':STATION_ID, 'port_number':portlist})
+                        rows = curs.fetchall()
+                        for row in rows:
+                            (pdoc_number, status_timestamp, smartbox_number, system_online, locally_forced_on, locally_forced_off, power_state,
+                             power_sense, desire_enabled_online, desire_enabled_offline) = row
 
-                        if locally_forced_on:
-                            lfstring = 'Forced:ON'
-                        elif locally_forced_off:
-                            lfstring = 'Forced:OFF'
-                        else:
-                            lfstring = 'NotForced'
+                            if locally_forced_on:
+                                lfstring = 'Forced:ON'
+                            elif locally_forced_off:
+                                lfstring = 'Forced:OFF'
+                            else:
+                                lfstring = 'NotForced'
 
-                        if smartbox_number:
-                            sbstring = "SB%02d" % smartbox_number
-                        else:
-                            sbstring = "----"
+                            if smartbox_number:
+                                sbstring = "SB%02d" % smartbox_number
+                            else:
+                                sbstring = "----"
 
-                        enstring = '(DesireEnabled:%s)' % ','.join([{False:'', True:'Online', None:'?'}[desire_enabled_online],
-                                                                    {False:'', True:'Offline', None:'?'}[desire_enabled_offline]])
+                            enstring = '(DesireEnabled:%s)' % ','.join([{False:'', True:'Online', None:'?'}[desire_enabled_online],
+                                                                        {False:'', True:'Offline', None:'?'}[desire_enabled_offline]])
 
-                        sysstring = '(System:%s)' % ({False:'Offline', True:'Online', None:'??line?'}[system_online])
+                            sysstring = '(System:%s)' % ({False:'Offline', True:'Online', None:'??line?'}[system_online])
 
-                        status_items = ['Status(age %1.1f s):' % (time.time() - status_timestamp),
-                                        {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[power_state],
-                                        sysstring,
-                                        enstring,
-                                        lfstring,
-                                        {False:'PowerSense:OFF', True:'PowerSense:ON', None:'PowerSense:?'}[power_sense]
-                                        ]
-                        status_string = ' '.join(status_items)
-                        print("P%02d(%s): %s" % (pdoc_number, sbstring, status_string))
+                            status_items = ['Status(age %1.1f s):' % (time.time() - status_timestamp),
+                                            {False:'Power:OFF', True:'Power:ON', None:'Power:?'}[power_state],
+                                            sysstring,
+                                            enstring,
+                                            lfstring,
+                                            {False:'PowerSense:OFF', True:'PowerSense:ON', None:'PowerSense:?'}[power_sense]
+                                            ]
+                            status_string = ' '.join(status_items)
+                            print("P%02d(%s): %s" % (pdoc_number, sbstring, status_string))
+                    else:
+                        print("Last update %0.1f seconds ago, station code not running." % age)
 
             elif action.upper() in ['ON', 'OFF']:
                 if not portlist:
