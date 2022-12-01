@@ -487,7 +487,7 @@ def get_hex_info(filename, logger=logging):
     return result
 
 
-def send_hex(conn, filename, modbus_address, logger=logging, force=False):
+def send_hex(conn, filename, modbus_address, logger=logging, force=False, nowrite=False):
     """
     Takes the name of a file in Intel hex format, and sends it to the specified Modbus address, then commands the
     microcontroller to swap to the new ROM bank. The caller must issue a reset command using the reset_microcontroller()
@@ -501,6 +501,7 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False):
     :param modbus_address: Modbus address
     :param logger: A logging.logger object, or defaults to the logging module with basicConfig() called
     :param force: If True, force firmware upload even if version number does not match that reported by hardware.
+    :param nowrite: If True, don't actually upload the firmware, just do the pre-write checks.
     :return:
     """
     params = get_hex_info(filename=filename, logger=logger)
@@ -551,10 +552,15 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False):
     logger.info("command_api.send_hex - Existing firmware version %s, new firmware version %s" % (firmver,
                                                                                                   params.get('firmver', 'Unknown')))
 
-    logger.info('Writing %s to modbus address %d' % (filename, modbus_address))
     if IntelHex is None:
-        logger.critical('intelhex library no available, exiting.')
+        logger.critical('command_api.send_hex - IntelHex library no available, exiting.')
         return False
+
+    if nowrite:
+        logger.info('command_api.send_hex - Not writing firmware, nowrite specified.')
+        return True
+
+    logger.info('command_api.send_hex - Writing %s to modbus address %d' % (filename, modbus_address))
 
     # this is a pain.  In order to calculate CRC32 we need to give zlib.crc32() an array of bytes
     # The CRC is calculated for registers ADDRESS_LOW to COMMAND and these are stored in these
@@ -564,7 +570,7 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False):
     #######################################
 
     # start by erasing the EEPROM
-    print("Issuing erase command...")
+    print("command_api.send_hex - Issuing erase command...")
     registerBytes[244] = ERASE_COMMAND  # least sig byte of COMMAND register
     crc32 = zlib.crc32(registerBytes)
     for i in range(0, 246):  # clear for next calc
@@ -573,17 +579,18 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False):
     # write CRC separately to command
     conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=[crc32 & 0xffff, crc32 >> 16])
     conn.writeReg(modbus_address=modbus_address, regnum=10125, value=ERASE_COMMAND)  # , timeout=10.0)
-    logger.debug("Erase return code: " + str(conn.readReg(modbus_address=modbus_address, regnum=10126)[0][1]))  # least sig byte
+    logger.debug("command_api.send_hex - Erase return code: " + str(conn.readReg(modbus_address=modbus_address,
+                                                                                 regnum=10126)[0][1]))  # least sig byte
 
     # a rom hex file consists of segments which are start/end marker of addresses of bytes to write
     # PIC24 has 24-bit instructions but addressing is compatible with 16-bit data presumably so increments of
     # 2 for addressed instructions.
     #
     # So, every 4th byte is zero in the hex file
-    logger.info("Reading file %s" % filename)
+    logger.info("command_api.send_hex - Reading file %s" % filename)
     ih = IntelHex(filename)
 
-    logger.info("Segments found:")
+    logger.info("command_api.send_hex - Segments found:")
     logger.info(ih.segments())
 
     numWrites = 0  # number of write chunks.  This is used for verifying
@@ -592,7 +599,7 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False):
         start = segment[0]
         end = segment[1]
         if start < 0x1003000:  # this is the magic dual partition boot config that should never be changed
-            logger.info("Segment: " + str(start) + " - " + str(end))  # in bytes
+            logger.info("command_api.send_hex - Segment: " + str(start) + " - " + str(end))  # in bytes
             address = start
             addressWords = start >> 1  # addresses are in bytes = 4 bytes per instruction.  But as far as PIC24 addressing goes this has to be halved
             while address < end:
@@ -600,7 +607,7 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False):
                 if length > 320:  # 320 = 80 "4 byte" instructions which is 240 bytes packed into SEGMENT_DATA
                     length = 320
 
-                logger.info("Chunk: " + str(address) + " - " + str(length))
+                logger.debug("command_api.send_hex - Chunk: " + str(address) + " - " + str(length))
 
                 i = 0
                 j = 4  # there are 2 address registers below here
@@ -639,19 +646,20 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False):
 
                 if length < 320:
                     # partial write
-                    logger.info("writing partial chunk...")
+                    logger.debug("command_api.send_hex - writing partial chunk...")
                     conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=regValues)
                     conn.writeReg(modbus_address=modbus_address, regnum=10125, value=WRITE_SEGMENT_COMMAND)  # write command
                 else:
                     # full write, add on command
-                    print("writing chunk... " + str(len(regValues)))
+                    logger.debug("command_api.send_hex - writing chunk... " + str(len(regValues)))
                     #                    regValues.append(2)
                     conn.writeMultReg(modbus_address=modbus_address, regnum=10001, valuelist=regValues)
                     # ideally, should just append 2 to regValues above but for some reason transport.py hangs with 125 registers
                     # so split into 2 writes - 124 registers and the separate command.
                     conn.writeReg(modbus_address=modbus_address, regnum=10125, value=WRITE_SEGMENT_COMMAND)  # write command
 
-                logger.debug("write return code: " + str(conn.readReg(modbus_address=modbus_address, regnum=10126)))  # [0][1]))  # least sig byte
+                logger.debug("command_api.send_hex - write return code: " + str(conn.readReg(modbus_address=modbus_address,
+                                                                                             regnum=10126)))
 
                 # one more
                 numWrites = numWrites + 1
@@ -664,7 +672,7 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False):
                 address = address + 320
                 addressWords = addressWords + 160
 
-    logger.info(str(numWrites) + " chunks written.  Verifying...")
+    logger.info(str(numWrites) + "command_api.send_hex - chunks written.  Verifying...")
 
     # to verify, put numWrites as a 32-bit unsigned int into the first two SEGMENT_DATA registers
     registerBytes[4] = numWrites & 0xff
@@ -698,7 +706,7 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False):
 
     verifyResult = conn.readReg(modbus_address=modbus_address, regnum=10126)[0][1]
     if verifyResult == 0:
-        logger.info("verify ok.  Updating.")
+        logger.info("command_api.send_hex - verify ok.  Updating.")
 
         # the update command
         registerBytes[244] = UPDATE_COMMAND  # least sig byte of COMMAND register
@@ -711,14 +719,15 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False):
         conn.writeReg(modbus_address=modbus_address, regnum=10125, value=UPDATE_COMMAND)  # update
         updateResult = conn.readReg(modbus_address=modbus_address, regnum=10126)[0][1]
         if updateResult == 0:
-            logger.info("Update finished. Old firmware version %s, new firmware version %s" % (firmver,
-                                                                                               params.get('firmver',
-                                                                                                          'Unknown')))
-            logger.info("Call reset_microcontroller to boot into new firmware.")
+            logger.info("command_api.send_hex - Update finished.")
+            logger.info("    Old firmware version %s, new firmware version %s" % (firmver,
+                                                                                  params.get('firmver',
+                                                                                             'Unknown')))
+            logger.info("    Call reset_microcontroller to boot into new firmware.")
             return True
         else:
-            logger.info("Update FAILED, new firmware NOT swapped in!: " + str(updateResult))
+            logger.error("command_api.send_hex - Update FAILED, new firmware NOT swapped in!: " + str(updateResult))
             return False
     else:
-        logger.info("Verify FAILED, new firmware NOT written!: " + str(verifyResult))
+        logger.error("command_api.send_hex - Verify FAILED, new firmware NOT written!: " + str(verifyResult))
         return False

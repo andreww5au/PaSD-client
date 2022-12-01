@@ -34,7 +34,7 @@ UPDATE pasd_fndh_state
         psu48v2_voltage = %(psu48v2_voltage)s, psu48v_current = %(psu48v_current)s, 
         psu48v1_temp = %(psu48v1_temp)s, psu48v2_temp = %(psu48v2_temp)s, panel_temp = %(panel_temp)s, 
         fncb_temp = %(fncb_temp)s, fncb_humidity = %(fncb_humidity)s, status = %(status)s, indicator_state = %(indicator_state)s, 
-        readtime = %(readtime)s
+        readtime = %(readtime)s, service_led = %(service_led)s
     WHERE (station_id = %(station_id)s)
 """
 
@@ -51,7 +51,7 @@ UPDATE pasd_smartbox_state
     SET mbrv = %(mbrv)s, pcbrv = %(pcbrv)s, cpuid = %(cpuid)s, chipid = %(chipid)s, 
         firmware_version = %(firmware_version)s, uptime = %(uptime)s, incoming_voltage = %(incoming_voltage)s, 
         psu_voltage = %(psu_voltage)s, psu_temp = %(psu_temp)s, pcb_temp = %(pcb_temp)s, 
-        outside_temp = %(outside_temp)s, status = %(status)s,
+        outside_temp = %(outside_temp)s, status = %(status)s, service_led = %(service_led)s,
         indicator_state = %(indicator_state)s, readtime = %(readtime)s, pdoc_number = %(pdoc_number)s
     WHERE (station_id = %(station_id)s) AND (smartbox_number = %(modbus_address)s)
 """

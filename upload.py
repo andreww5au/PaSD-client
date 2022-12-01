@@ -37,7 +37,10 @@ if __name__ == '__main__':
                         help='TCP port number to use')
     parser.add_argument('--address', dest='address', default=0,
                         help='Modbus address')
-    parser.add_argument('--force', dest='force', default=False, action='store_true')
+    parser.add_argument('--force', dest='force', default=False, action='store_true',
+                        help='Ignore any filename/address/PCB-revision checks')
+    parser.add_argument('--nowrite', dest='nowrite', default=False, action='store_true',
+                        help="Don't actually upload the firmware, just do all the checks.")
     args = parser.parse_args()
 
     if (args.host is None) and (args.device is None):
@@ -97,7 +100,11 @@ if __name__ == '__main__':
     tlogger = logging.getLogger('T')
     conn = transport.Connection(hostname=args.host, devicename=args.device, port=int(args.portnum), multidrop=False, logger=tlogger)
 
-    ok = command_api.send_hex(conn=conn, filename=args.filename, modbus_address=int(args.address), force=args.force)
+    ok = command_api.send_hex(conn=conn,
+                              filename=args.filename,
+                              modbus_address=int(args.address),
+                              force=args.force,
+                              nowrite=args.nowrite)
     if ok:
         print('Resetting microcontroller.')
         command_api.reset_microcontroller(conn, int(args.address), logger=logging)

@@ -22,30 +22,42 @@ CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
 
 FNDH_STRING = """\
-FNDH at %(station_id)s, last contacted %(age)1.1f seconds ago:
+FNDH on station %(station_id)s at address: %(modbus_address)s - last update %(age)s seconds ago:
+    ModBUS register revision: %(mbrv)s
+    PCB revision: %(pcbrv)s
+    CPU ID: %(cpuid)s
+    CHIP ID: %(chipid)s
+    Firmware revision: %(firmware_version)s
     Uptime: %(uptime)s seconds
-    48V Out 1: %(psu48v1_voltage)s V
-    48V Out 2: %(psu48v2_voltage)s V
-    5V out: %(psu5v_voltage)s V
+    R.Address: %(station_value)s
+    48V: %(psu48v1_voltage)s V, %(psu48v2_voltage)s V
     48V Current: %(psu48v_current)s A 
-    48V Temp: %(psu48v_temp)s deg C
-    5V Temp: %(psu5v_temp)s deg C
-    PCB Temp: %(pcb_temp)s deg C
-    Outside Temp: %(outside_temp)s deg C
-    Status: %(status)s
-    Indicator: %(indicator_state)s
+    48V Temp: %(psu48v1_temp)s deg C, %(psu48v2_temp)s deg C
+    Extra Temps: %(sense01)s, %(sense02)s, %(sense03)s, %(sense04)s deg C
+    Switch panel Temp: %(panel_temp)s deg C
+    FNCB: %(fncb_temp)s deg C, %(fncb_humidity)s %% RH
+    Status: %(statuscode)s (%(status)s)
+    Service LED: %(service_led)s
+    Indicator: %(indicator_code)s (%(indicator_state)s)
 """
 
 SMARTBOX_STRING = """\
-SMARTBox at address: %(smartbox_number)s, last contacted %(age)1.1f seconds ago:
+SMARTBox at address: %(modbus_address)s on PDoC port %(pdoc_number)s - last update %(age)s seconds ago:
+    ModBUS register revision: %(mbrv)s
+    PCB revision: %(pcbrv)s
+    CPU ID: %(cpuid)s
+    CHIP ID: %(chipid)s
+    Firmware revision: %(firmware_version)s
     Uptime: %(uptime)s seconds
+    R.Address: %(station_value)s
     48V In: %(incoming_voltage)4.2f V
     5V out: %(psu_voltage)4.2f V
     PSU Temp: %(psu_temp)4.2f deg C
     PCB Temp: %(pcb_temp)4.2f deg C
     Outside Temp: %(outside_temp)4.2f deg C
-    Status: %(status)s
-    Indicator: %(indicator_state)s
+    Status: %(statuscode)s (%(status)s)
+    Service LED: %(service_led)s
+    Indicator: %(indicator_code)s (%(indicator_state)s)
 """
 
 DB = None   # Will be replaced by a psycopg2 database connection object on startup
@@ -141,28 +153,39 @@ def fndh(portnums, action):
         with DB.cursor() as curs:
             if action.upper() == 'STATUS':
                 if not portlist:
-                    query = """SELECT uptime, readtime, psu48v1_voltage, psu48v2_voltage, psu5v_voltage, psu48v_current, 
-                                      psu48v_temp, psu5v_temp, pcb_temp, outside_temp, status, indicator_state
+                    query = """SELECT mbrv, pcbrv, cpuid, chipid, firmware_version, uptime, 
+                                      psu48v1_voltage, psu48v2_voltage, psu48v_current, status, indicator_state, 
+                                      readtime, service_led, psu48v1_temp, psu48v2_temp, panel_temp, fncb_temp,
+                                      fncb_humidity
                                FROM pasd_fndh_state
                                WHERE station_id = %s"""
                     curs.execute(query, (STATION_ID,))
                     rows = curs.fetchall()
                     if rows:
-                        (uptime, readtime, psu48v1_voltage, psu48v2_voltage, psu5v_voltage, psu48v_current, psu48v_temp,
-                         psu5v_temp, pcb_temp, outside_temp, status, indicator_state) = rows[0]
+                        (mbrv, pcbrv, cpuid, chipid, firmware_version, uptime,
+                         psu48v1_voltage, psu48v2_voltage, psu48v_current, status, indicator_state,
+                         readtime, service_led, psu48v1_temp, psu48v2_temp, panel_temp, fncb_temp,
+                         fncb_humidity) = rows[0]
                         paramdict = {'station_id':STATION_ID,
                                      'uptime':uptime,
                                      'age':time.time() - readtime,
+                                     'mbrv':mbrv,
+                                     'pcbrv':pcbrv,
+                                     'cpuid':cpuid,
+                                     'chipid':chipid,
+                                     'firmware_version':firmware_version,
                                      'psu48v1_voltage':psu48v1_voltage,
                                      'psu48v2_voltage':psu48v2_voltage,
-                                     'psu5v_voltage':psu5v_voltage,
                                      'psu48v_current':psu48v_current,
-                                     'psu48v_temp':psu48v_temp,
-                                     'psu5v_temp':psu5v_temp,
-                                     'pcb_temp':pcb_temp,
-                                     'outside_temp':outside_temp,
                                      'status':status,
-                                     'indicator_state':indicator_state}
+                                     'indicator_state':indicator_state,
+                                     'readtime':readtime,
+                                     'service_led':service_led,
+                                     'psu48v1_temp':psu48v1_temp,
+                                     'psu48v2_temp':psu48v2_temp,
+                                     'panel_temp':panel_temp,
+                                     'fncb_temp':fncb_temp,
+                                     'fncb_humidity':fncb_humidity}
                         print(FNDH_STRING % paramdict)
                 else:  # portlist suppled
                     query = """SELECT pdoc_number, extract(epoch from status_timestamp), smartbox_number, system_online, locally_forced_on, 
@@ -258,27 +281,37 @@ def sb(portnums, action, sbnum):
         with DB.cursor() as curs:
             if action.upper() == 'STATUS':
                 if not portlist:
-                    query = """SELECT smartbox_number, uptime, incoming_voltage, psu_voltage, psu_temp, pcb_temp, 
-                                      outside_temp, status, indicator_state, readtime
+                    query = """SELECT smartbox_number, mbrv, pcbrv, cpuid, chipid, firmware_version, uptime, 
+                                      incoming_voltage, psu_voltage, psu_temp, pcb_temp, outside_temp, status, 
+                                      indicator_state, readtime, pdoc_number, service_led
                                FROM pasd_smartbox_state
                                WHERE (station_id = %(station_id)s) AND (smartbox_number = ANY(%(modbus_address)s))
                                ORDER BY smartbox_number"""
                     curs.execute(query, {'station_id':STATION_ID, 'modbus_address':sboxes})
                     rows = curs.fetchall()
                     for row in rows:
-                        (smartbox_number, uptime, incoming_voltage, psu_voltage, psu_temp, pcb_temp,
-                         outside_temp, status, indicator_state, readtime) = row
+                        (smartbox_number, mbrv, pcbrv, cpuid, chipid, firmware_version, uptime,
+                         incoming_voltage, psu_voltage, psu_temp, pcb_temp, outside_temp, status,
+                         indicator_state, readtime, pdoc_number, service_led) = row
                         paramdict = {'station_id':STATION_ID,
                                      'smartbox_number':smartbox_number,
                                      'uptime':uptime,
                                      'age':time.time() - readtime,
+                                     'mbrv':mbrv,
+                                     'pcbrv':pcbrv,
+                                     'cpuid':cpuid,
+                                     'chipid':chipid,
+                                     'firmware_version':firmware_version,
                                      'incoming_voltage':incoming_voltage,
                                      'psu_voltage':psu_voltage,
                                      'psu_temp':psu_temp,
                                      'pcb_temp':pcb_temp,
                                      'outside_temp':outside_temp,
                                      'status':status,
-                                     'indicator_state':indicator_state}
+                                     'indicator_state':indicator_state,
+                                     'readtime':readtime,
+                                     'pdoc_number':pdoc_number,
+                                     'service_led':service_led}
                         print(SMARTBOX_STRING % paramdict)
                 else:  # portlist suppled
                     query = """SELECT smartbox_number, port_number, extract(epoch from status_timestamp), system_online, 
