@@ -34,9 +34,9 @@ FNDH on station %(station_id)s - last update %(age)s seconds ago:
     48V Temp: %(psu48v1_temp)s deg C, %(psu48v2_temp)s deg C
     Switch panel Temp: %(panel_temp)s deg C
     FNCB: %(fncb_temp)s deg C, %(fncb_humidity)s %% RH
-    Status: %(statuscode)s (%(status)s)
+    Status: %(status)s
     Service LED: %(service_led)s
-    Indicator: %(indicator_code)s (%(indicator_state)s)
+    Indicator: %(indicator_state)s
 """
 
 SMARTBOX_STRING = """\
@@ -52,9 +52,9 @@ SMARTBox at address: %(modbus_address)s on PDoC port %(pdoc_number)s - last upda
     PSU Temp: %(psu_temp)4.2f deg C
     PCB Temp: %(pcb_temp)4.2f deg C
     Outside Temp: %(outside_temp)4.2f deg C
-    Status: %(statuscode)s (%(status)s)
+    Status: %(status)s
     Service LED: %(service_led)s
-    Indicator: %(indicator_code)s (%(indicator_state)s)
+    Indicator: %(indicator_state)s
 """
 
 DB = None   # Will be replaced by a psycopg2 database connection object on startup
