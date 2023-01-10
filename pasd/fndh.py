@@ -196,7 +196,8 @@ LED_CODES = {-1:'UKNOWN',
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
-FNDH_REGISTERS = {1: {'POLL':FNDH_POLL_REGS_1, 'CONF':FNDH_CONF_REGS_1}}
+FNDH_REGISTERS = {1: {'POLL':FNDH_POLL_REGS_1, 'CONF':FNDH_CONF_REGS_1},
+                  2: {'POLL':FNDH_POLL_REGS_1, 'CONF':FNDH_CONF_REGS_1}}  # Added to support a buggy firmware version
 
 THRESHOLD_FILENAME = 'pasd/fndh_thresholds.json'
 PORTCONFIG_FILENAME = 'pasd/fndh_ports.json'

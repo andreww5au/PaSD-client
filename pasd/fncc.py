@@ -61,7 +61,8 @@ STATUS_CODES = {-1:'STATUS_UNKNOWN',
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
-FNCC_REGISTERS = {1: {'POLL':FNCC_POLL_REGS_1, 'CONF':{}}}
+FNCC_REGISTERS = {1: {'POLL':FNCC_POLL_REGS_1, 'CONF':{}},
+                  3: {'POLL':FNCC_POLL_REGS_1, 'CONF':{}}}    # Added to support a buggy firmware version
 
 STATUS_STRING = """\
 FNDH at address: %(modbus_address)s:
