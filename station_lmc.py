@@ -25,10 +25,12 @@ LOGFILE = 'station_lmc.log'
 CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
 
-CARBON_HOST = 'icinga.mwa128t.org'
+DEFAULT_CARBON_HOST = ''
 DEFAULT_FNDH = '10.128.30.1'     # pasd-fndh.mwa128t.org
 
 DEFAULT_STATION_NUMBER = 1
+
+CARBON_HOST = ''   # Overwritten by value from config file on startup
 
 FNDH_STATE_QUERY = """
 UPDATE pasd_fndh_state
@@ -451,6 +453,7 @@ if __name__ == '__main__':
     CPfile = CP.read(CPPATH)
     if not CPfile:
         print("None of the specified configuration files found by mwaconfig.py: %s" % (CPPATH,))
+    CARBON_HOST = CP.get('default', 'carbon_host', fallback=DEFAULT_CARBON_HOST)
 
     parser = argparse.ArgumentParser(description='Run a PaSD station',
                                      epilog='Run this as "python -i %s" to drop into the Python prompt after starting up.' % sys.argv[0])
