@@ -3,7 +3,6 @@
 import argparse
 from configparser import ConfigParser as conparser
 import logging
-import socket
 import sys
 
 LOGFILE = 'communicate.log'

@@ -1,12 +1,17 @@
 #!/usr/bin/env python
 
 import argparse
+from configparser import ConfigParser as conparser
 import logging
 import os
 import socket
 import sys
 
 LOGFILE = 'upload.log'
+CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
+          './pasd.conf', './pasd-local.conf']
+
+DEFAULT_FNDH = '10.128.30.1'     # pasd-fndh.mwa128t.org
 
 fh = logging.FileHandler(filename=LOGFILE, mode='w')
 fh.setLevel(logging.DEBUG)  # All log messages go to the log file
@@ -27,6 +32,11 @@ else:
     DEFHOST = 'pasd-fndh.mwa128t.org'
 
 if __name__ == '__main__':
+    CP = conparser(defaults={})
+    CPfile = CP.read(CPPATH)
+    if not CPfile:
+        print("None of the specified configuration files found by mwaconfig.py: %s" % (CPPATH,))
+
     parser = argparse.ArgumentParser(description='Upload new firmware to an FNDH or smartbox')
     parser.add_argument('--filename', help='Intel HEX filename to upload')
     parser.add_argument('--host', dest='host', default=None,
@@ -44,7 +54,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if (args.host is None) and (args.device is None):
-        args.host = DEFHOST
+        args.host = CP.get('default', 'fndh_host', fallback=DEFAULT_FNDH)
 
     if os.path.basename(args.filename).upper().startswith('FNPC'):
         if (int(args.address) not in [31, 101]):
