@@ -25,6 +25,9 @@ LOGFILE = 'station_lmc.log'
 CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
 
+CARBON_HOST = 'icinga.mwa128t.org'
+DEFAULT_FNDH = '10.128.30.1'     # pasd-fndh.mwa128t.org
+
 DEFAULT_STATION_NUMBER = 1
 
 FNDH_STATE_QUERY = """
@@ -78,10 +81,12 @@ def send_carbon(data):
     :param data:  A list of (path, (timestamp, value)) objects, where path is like 'pasd.fieldtest.sb2.port7.current'
     :return: None
     """
+    if not CARBON_HOST:
+        return
     payload = pickle.dumps(data, protocol=2)  # dumps() returns a bytes object
     header = struct.pack("!L", len(payload))  # pack() returns a bytes object
     try:
-        sock = socket.create_connection(('icinga.mwa128t.org', 2004))
+        sock = socket.create_connection((CARBON_HOST, 2004))
         message = header + payload
         msize = len(message)
         sentbytes = 0
@@ -450,7 +455,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run a PaSD station',
                                      epilog='Run this as "python -i %s" to drop into the Python prompt after starting up.' % sys.argv[0])
     parser.add_argument('--host', dest='host', default=None,
-                        help='Hostname of an ethernet-serial gateway, eg 134.7.50.185')
+                        help='Hostname of an ethernet-serial gateway, eg 10.128.30.1')
     parser.add_argument('--device', dest='device', default=None,
                         help='Serial port device name, eg /dev/ttyS0 or COM6')
     parser.add_argument('--id', '--station_id', dest='station_id', default=DEFAULT_STATION_NUMBER,
@@ -458,8 +463,6 @@ if __name__ == '__main__':
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
     args = parser.parse_args()
-    if (args.host is None) and (args.device is None):
-        args.host = 'pasd-fndh'
 
     if args.debug:
         loglevel = logging.DEBUG
@@ -471,6 +474,9 @@ if __name__ == '__main__':
     dbhost = config['dbhost']
     dbpass = config['dbpass']
     dbname = config['dbname']
+
+    if (args.host is None) and (args.device is None):
+        args.host = config.get('fndh_host', DEFAULT_FNDH)
 
     db = psycopg2.connect(user=dbuser, password=dbpass, host=dbhost, database=dbname)
 
@@ -499,7 +505,7 @@ if __name__ == '__main__':
         slogger = logging.getLogger('ST')
         s = station.Station(conn=conn,
                             station_id=args.station_id,
-                            do_full_startup = True,
+                            do_full_startup=True,
                             antenna_map=get_antenna_map(db, args.station_id),
                             portconfig_fndh=fndhpc,
                             portconfig_smartboxes=sbpc,
