@@ -514,7 +514,7 @@ if __name__ == '__main__':
 
         print('Starting up entire station as "s" - FNDH on address 101, SMARTboxes on addresses 1-24.')
         s.full_startup()
-        s.poll_data()
+        # s.poll_data()
 
         result = main_loop(db, s)
         if result is False:

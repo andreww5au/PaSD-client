@@ -274,12 +274,14 @@ class Station(object):
 
             if uptime is None:
                 address_on_times[sadd] = 0
-                continue
+                if sadd in self.smartboxes:
+                    self.logger.error("Can't reach SMARTbox %d with poll_data(), removing it from station" % sadd)
+                    del self.smartboxes[sadd]
             else:
                 self.logger.info('Uptime of %d (%d) from SMARTbox at address %d' % (uptime, time.time() - uptime, sadd))
                 smb.configure()
                 smb.poll_data()
-                if sadd not in self.smartboxes:  # If this SMARTbox isn't in the antenna map, save it in the the smartbox dictionary
+                if sadd not in self.smartboxes:  # If this SMARTbox isn't in the antenna map, save it in the smartbox dictionary
                     self.smartboxes[sadd] = smb
 
             address_on_times[sadd] = time.time() - uptime
