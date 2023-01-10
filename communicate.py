@@ -1,18 +1,24 @@
 #!/usr/bin/env python
 
 import argparse
+from configparser import ConfigParser as conparser
 import logging
 import socket
 import sys
 
 LOGFILE = 'communicate.log'
+CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
+          './pasd.conf', './pasd-local.conf']
 
-if socket.gethostname().startswith('orthrus'):
-    DEFHOST = 'pasd-fndh2.mwa128t.org'
-else:
-    DEFHOST = 'pasd-fndh.mwa128t.org'
+DEFAULT_FNDH = '10.128.30.1'     # pasd-fndh.mwa128t.org
+
 
 if __name__ == '__main__':
+    CP = conparser(defaults={})
+    CPfile = CP.read(CPPATH)
+    if not CPfile:
+        print("None of the specified configuration files found by mwaconfig.py: %s" % (CPPATH,))
+
     parser = argparse.ArgumentParser(description='Communicate with a remote SMARTbox, FNDH, FNCC, an entire station, or the MCCS, by sending packets in "master" mode.',
                                      epilog='Run this as "python -i %s" to drop into the Python prompt after starting up.' % sys.argv[0])
     parser.add_argument('task', nargs='?', default='station', help='What to talk to - smartbox, fndh, station or mccs')
@@ -27,8 +33,9 @@ if __name__ == '__main__':
     parser.add_argument('--debug', dest='debug', default=False, action='store_true',
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
     args = parser.parse_args()
+
     if (args.host is None) and (args.device is None):
-        args.host = DEFHOST
+        args.host = CP.get('default', 'fndh_host', fallback=DEFAULT_FNDH)
 
     if args.debug:
         loglevel = logging.DEBUG

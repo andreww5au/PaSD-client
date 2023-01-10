@@ -469,14 +469,14 @@ if __name__ == '__main__':
     else:
         loglevel = logging.INFO
 
-    config = CP['station_%03d' % args.station_id]
-    dbuser = config['dbuser']
-    dbhost = config['dbhost']
-    dbpass = config['dbpass']
-    dbname = config['dbname']
+    station_config = CP['station_%03d' % args.station_id]
+    dbuser = station_config['dbuser']
+    dbhost = station_config['dbhost']
+    dbpass = station_config['dbpass']
+    dbname = station_config['dbname']
 
     if (args.host is None) and (args.device is None):
-        args.host = config.get('fndh_host', DEFAULT_FNDH)
+        args.host = CP.get('default', 'fndh_host', fallback=DEFAULT_FNDH)
 
     db = psycopg2.connect(user=dbuser, password=dbpass, host=dbhost, database=dbname)
 
