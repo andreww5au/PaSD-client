@@ -277,6 +277,7 @@ class Station(object):
                 if sadd in self.smartboxes:
                     self.logger.error("Can't reach SMARTbox %d with poll_data(), removing it from station" % sadd)
                     del self.smartboxes[sadd]
+                continue
             else:
                 self.logger.info('Uptime of %d (%d) from SMARTbox at address %d' % (uptime, time.time() - uptime, sadd))
                 smb.configure()
