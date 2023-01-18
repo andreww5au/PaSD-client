@@ -101,12 +101,13 @@ CREATE TABLE pasd_fndh_state (
     uptime integer,              -- Time in seconds since this SMARTbox was powered up
     psu48v1_voltage float,       -- Voltage measured on the output of the first 48VDC power supply (Volts)
     psu48v2_voltage float,       -- Voltage measured on the output of the second 48VDC power supply (Volts)
-    psu5v_voltage float,         -- Voltage measured on the output of the 5VDC power supply (Volts)
     psu48v_current float,        -- Total current on the 48VDC bus (Amps)
-    psu48v_temp float,           -- Common temperature for both 48VDC power supplies (deg C)
+    psu48v1_temp float,          -- Common temperature for the first 48VDC power supplies (deg C)
+    psu48v2_temp float,          -- Common temperature for the second 48VDC power supplies (deg C)
     psu5v_temp float,            -- Temperature of the 5VDC power supply (Volts)
-    pcb_temp float,              -- Temperature on the internal PCB (deg C)
-    outside_temp float,          -- Outside temperature (deg C)
+    panel_temp float,            -- Temperature on the switch-panel board (deg C)
+    fncb_temp float,             -- Temperature measured near the FNCC chip (deg C)
+    fncb_humidity float,         -- Humidity measured near the FNCC chip (%)
     status text,                 -- Status string, obtained from self.codes['status'] (eg 'OK')
     indicator_state text,        -- LED status flash/colour pattern name
     readtime integer,            -- Unix timestamp for the last successful polled data from this SMARTbox

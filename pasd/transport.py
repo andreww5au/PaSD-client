@@ -24,7 +24,7 @@ logging.basicConfig()
 
 
 PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
-TIMEOUT = 0.2   # Wait at most this long for a reply to a modbus message
+TIMEOUT = 0.3   # Wait at most this long for a reply to a modbus message
 COMMS_TIMEOUT = 0.001  # Low-level timeout for each call to socket.socket().recv or serial.Serial.write()
 
 PCLOG = None
@@ -326,8 +326,9 @@ class Connection(object):
                 if reply != reply_raw:
                     self.logger.debug('%d Nulls removed from %s' % (len(reply_raw) - len(reply), repr(reply)))
                 if (not mstring) and reply and not (reply.startswith(':')):   # Unexpected first character, ignore it and keep reading
-                    self.logger.debug('%d: %d bytes: ?"%s"' % (threading.get_ident(), len(reply),
-                                                     repr(reply)))
+                    self.logger.debug('%d: %d bytes: ?"%s"' % (threading.get_ident(),
+                                                               len(reply),
+                                                               repr(reply)))
                     time.sleep(0.001)
                     continue
                 mstring += reply
