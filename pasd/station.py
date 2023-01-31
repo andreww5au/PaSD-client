@@ -386,7 +386,7 @@ class Station(object):
                 smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
                 test_ok = smb.poll_data()
                 if test_ok:
-                    self.logger.info('Adding smartbox on address %d to the station')
+                    self.logger.info('Adding smartbox on address %d to the station' % sadd)
                     self.smartboxes[sadd] = smb   # If we heard a reply, add it to self.smartboxes, if not, ignore it
                     for p in self.fndh.ports.values():
                         if p.smartbox_address == sadd:  # Assume it's still on the same PDoC port
