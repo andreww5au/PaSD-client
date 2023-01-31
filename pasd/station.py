@@ -261,6 +261,7 @@ class Station(object):
         # Read the uptimes for all possible SMARTbox addresses, to work out when they were turned on
         address_on_times = {}   # Unix timestamp at which each SMARTbox booted, according to the uptime
         for sadd in range(1, MAX_SMARTBOX + 1):   # All possible SMARTbox addresses
+            self.fndh.poll_data()   # Poll the FNDH occasionally, so it doesn't time out and turn things off.
             if sadd in self.smartboxes:
                 smb = self.smartboxes[sadd]
             else:   # If this address isn't in the saved antenna map, create a temporary SMARTbox instance.
@@ -372,7 +373,7 @@ class Station(object):
         else:
             self.logger.error('Error calling poll_data() for FNDH')
             self.status = 'ERROR'
-            self.active = None
+            # self.active = None
 
         if not self.active:
             self.logger.info('Station not active, not polling smartboxes')
@@ -380,6 +381,7 @@ class Station(object):
 
         # Next, grab all the data from all possible SMARTboxes, to keep comms restricted to a short time window
         for sadd in range(1, MAX_SMARTBOX + 1):
+            self.fndh.poll_data()   # Poke the FNDH occasionally so it doesn't time out
             if sadd not in self.smartboxes:   # Check for a new SMARTbox with this address
                 smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
                 test_ok = smb.poll_data()
