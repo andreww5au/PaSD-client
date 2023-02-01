@@ -24,7 +24,7 @@ logging.basicConfig()
 
 
 PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
-TIMEOUT = 0.3   # Wait at most this long for a reply to a modbus message
+TIMEOUT = 1.3   # Wait at most this long for a reply to a modbus message
 COMMS_TIMEOUT = 0.001  # Low-level timeout for each call to socket.socket().recv or serial.Serial.write()
 
 PCLOG = None
