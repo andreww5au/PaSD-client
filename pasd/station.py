@@ -19,7 +19,7 @@ FNDH_ADDRESS = 101   # Modbus address of the FNDH controller
 
 # All possible SMARTbox addresses, plus one to make sure the code can handle a dead box
 # MAX_SMARTBOX = 26    # Don't try to talk to smartboxes above this address value
-MAX_SMARTBOX = 4    # Don't try to talk to smartboxes above this address value
+MAX_SMARTBOX = 2    # Don't try to talk to smartboxes above this address value
 
 PORT_TURNON_INTERVAL = 5.0   # How many seconds to wait between each PDoC port when powering up an FNDH
 
