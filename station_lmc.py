@@ -416,8 +416,8 @@ def main_loop(db, stn):
         # Query the database to see if the desired port config is different to the polled port config
         fndhpc, sbpc = get_all_port_configs(db, station_number=stn.station_id)
 
-        needs_write = False
         for pid in stn.fndh.ports.keys():
+            needs_write = False
             p = stn.fndh.ports[pid]
             desire_enabled_online, desire_enabled_offline = fndhpc[pid]
             if (p.desire_enabled_online != desire_enabled_online):
@@ -426,9 +426,11 @@ def main_loop(db, stn):
             if (p.desire_enabled_offline != desire_enabled_offline):
                 p.desire_enabled_offline = desire_enabled_offline
                 needs_write = True
-        if needs_write:
-            stn.fndh.write_portconfig()
-            time.sleep(1.0)   # Allow time for a smartbox to boot, if it's being turned on here.
+            if needs_write:
+                stn.fndh.write_portconfig()
+                time.sleep(0.25)
+
+        time.sleep(1.0)    # Allow time for a smartbox to boot, if was turned on above.
 
         for sid in stn.smartboxes.keys():
             needs_write = False
