@@ -36,7 +36,8 @@ def main_loop(stn, togglepdocs=False, togglefems=False):
     :param togglefems: If True, turn some ports on and off to generate RFI
     :return: False if there was a communications error, None if an exit was requested by setting stn.wants_exit True
     """
-    poweron = True
+    poweron = False
+    pid = 1
     while not stn.wants_exit:
         last_loop_start_time = time.time()
 
@@ -52,18 +53,21 @@ def main_loop(stn, togglepdocs=False, togglefems=False):
                 stn.smartboxes[sid].write_portconfig(write_breaker=True)
 
         if togglepdocs:
-            logging.info('Turning %s ports 2,4, ... ,26,28 on FNDH' % ({False: 'Off', True: 'On'}[poweron],))
+            logging.info('Turning %s port %d on FNDH' % ({False: 'Off', True: 'On'}[poweron], pid))
             sblist = []
-            for pid in range(2, 29, 2):
-                p = stn.fndh.ports[pid]
-                p.desire_enabled_online = poweron
-                p.desire_enabled_offline = poweron
-                if stn.fndh.ports[pid].smartbox_address:  # If a smartbox is connected to that port
-                    sblist.append(stn.fndh.ports[pid].smartbox_address)
+            p = stn.fndh.ports[pid]
+            p.desire_enabled_online = poweron
+            p.desire_enabled_offline = poweron
+            if stn.fndh.ports[pid].smartbox_address:  # If a smartbox is connected to that port
+                sblist.append(stn.fndh.ports[pid].smartbox_address)
             stn.fndh.write_portconfig()
 
-            if poweron and sblist:  # Just switched on some pdocs, so initialise any smartboxes connected to them
-                stn.poll_data()
+            if poweron:    # Just turned a port back on:
+                pid += 1
+                if pid > 28:
+                    pid = 1
+                if sblist:  # Just switched on a pdoc connected to a smartbox, so re-initialise it
+                    stn.poll_data()
 
         poweron = not poweron
 
