@@ -20,6 +20,16 @@ import traceback
 
 import psycopg2
 from psycopg2 import extras
+import psycopg2.extensions
+
+
+# By default, psycopg2 converts fixed precision PostgreSQL columns to Decimal type in Python, and these can't be
+# converted to JSON. This adaptor converts them to floats instead.
+DEC2FLOAT = psycopg2.extensions.new_type(psycopg2.extensions.DECIMAL.values,
+                                         'DEC2FLOAT',
+                                         lambda value, curs:float(value) if value is not None else None)
+psycopg2.extensions.register_type(DEC2FLOAT, None)
+
 
 LOGFILE = 'station_lmc.log'
 CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
