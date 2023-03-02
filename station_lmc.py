@@ -132,7 +132,7 @@ def initialise_db(db, stn):
             if curs.fetchone()[0] != 1:  # No rows match, or more than one row matches:
                 logging.info('Creating station %d in pasd_stations' % stn.station_id)
                 curs.execute('DELETE FROM pasd_stations WHERE (station_id = %s)', (stn.station_id,))
-                curs.execute('INSERT INTO pasd_stations (station_id, desired_active) VALUES (%s)', (stn.station_id, True))
+                curs.execute('INSERT INTO pasd_stations (station_id, desired_active) VALUES (%s, %s)', (stn.station_id, True))
 
             curs.execute('SELECT COUNT(*) FROM pasd_fndh_state WHERE (station_id = %s)', (stn.station_id,))
             if curs.fetchone()[0] != 1:   # No rows match, or more than one row matches:
