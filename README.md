@@ -10,14 +10,14 @@ an optical RF signal on an outgoing fibre.
 
 Each station will typically have 24 SMARTboxes in the field, and each SMARTbox has 12 antenna 
 ports, making a total of 288 available inputs for antennae. Since there are only 256 antennae 
-in a station, not all of the ports on each SMARTbox will necessarily be in use at any given 
+in a station, not all the ports on each SMARTbox will necessarily be in use at any given 
 time. The remainder are available as spares in case of faults.
 
 Each SMARTbox has an internal low-speed, low-power microcontroller to monitor temperatures, 
 currents and voltages, and to switch antennae on and off as required. Power comes from a 
 single &#39;Field Node Distribution Hub (FNDH) for the entire station. A low-speed (9600 bps) 
 low-RFI communications link to the SMARTbox microcontroller is carried over the 48VDC power 
-line. Each SMARTbox also has an infra-red port for local control and diagnostics, either in 
+line. Each SMARTbox might have an infra-red port for local control and diagnostics, either in 
 the lab for testing, or for a technician to use in the field.
 
 Each station has a Field Node Distribution Hub to provide power and communications for the 
@@ -31,22 +31,26 @@ can be installed, each providing a port to which a SMARTbox can be connected. Ag
 all of the slots will have PDoC cards installed at any given time, and not all PDoC cards 
 will be connected to a SMARTbox. The extra ports are provided for redundancy.
 
-A single fibre pair from the control building to the FNDH is connected to an ethernet-serial
-bridge (via a media converter), allowing the MCCS in the control building to send and 
-receive data over the network to a given FNDH (with a unique IP address). The serial data 
-from the ethernet-serial bridge is passed to the local microcontroller in the FNDH, and 
-shared with all of the SMARTboxes via a multi-drop serial bus. When the MCCS sends data, 
-every device on the shared bus (the FNDH microcontroller and all of the SMARTboxes in the 
-station) receives it.
+A single fibre pair from the control building to the FNDH is connected to an RFC 2217
+ethernet-serial bridge (via a media converter), allowing the MCCS in the control building
+to send and receive data over the network to a given FNDH (with a unique IP address).
+The serial data from the ethernet-serial bridge is passed to the local microcontroller
+in the FNDH, and shared with all the SMARTboxes via a multi-drop serial bus. When 
+the MCCS sends data, every device on the shared bus (the FNDH microcontroller and all
+the SMARTboxes in the station) receives it.
 
-The microcontroller in the FNDH monitors temperatures, voltages and currents in the FNDH, 
-and allows the 28 possible output ports to be switched on and off. It does _NOT_ 
-communicate with the SMARTboxes at all. Instead, the SMARTboxes are controlled by the 
-MCCS in the main building, talking to them directly via serial traffic over the shared 
-serial bus.
+The main microcontroller in the FNDH (known as the FNPC) monitors temperatures, voltages 
+and currents in the FNDH, and allows the 28 possible output ports to be switched on and 
+off. It does _NOT_ communicate with the SMARTboxes at all. Instead, the SMARTboxes are 
+controlled by the MCCS in the main building, talking to them directly via serial traffic 
+over the shared serial bus. The FNPC is always on modbus address 101.
+
+Another microcontroller in the FNDH is the communications gateway, passing traffic
+between the ethernet-serial bridge and the multidrop serial bus. This is known as the 
+FNCC, and can also be addressed directly at modbus address 100.
 
 Like the SMARTboxes, the FNDH has an infra-red port, to allow a technician to do 
-diagnostics in the field.
+diagnostics in the field. (Not implemented in hardware)
 
 # Communications API
 
@@ -57,18 +61,18 @@ As seen at the microcontroller in a SMARTbox or FNDH, the protocol is Modbus ASC
 media converter from fibre to 100baseT, and a commercial ethernet (100baseT) to serial 
 bridge, which accepts a TCP connection to port 5000 from any client (or UDP packets to 
 port 5000), and translates traffic on the serial port to/from the network. For the 
-final version, the media converter and ethernet-serial bridge could be merged into a 
-single custom-designed board.
+final version, the media converter and RFC 2217 ethernet-serial bridge could be merged 
+into a single custom-designed board.
 
 The local MCCS simply opens a TCP connection to the given IP address (depending on the 
 station number, set via DIP switches in the FNDH) and sends and receives bytes in the 
 Modbus ASCII packet format.
 
 The microcontroller in the FNDH forwards these packets directly to a multidrop serial 
-bus, to which all of the SMARTboxes are connected as Modbus slave devices, each with 
+bus, to which all the SMARTboxes are connected as Modbus slave devices, each with 
 a unique station address. The FNDH microcontroller also sits (logically, if not 
 physically) on the same multidrop serial bus, and acts as a Modbus slave device with a 
-fixed station address, allowing 48VDC power to the each of the 28 SMARTbox ports to be 
+fixed station address (101), allowing 48VDC power to each of the 28 SMARTbox ports to be 
 turned on and off.
 
 ## Low-level API
@@ -173,15 +177,18 @@ maximum of 125 registers can be written with a single function 0x10 call.**
 
 ## SMARTbox register map
 
-SMARTboxes have a pair of digital rotary switches on the fixed (non field-replaceable) 
-chassis to set the Modbus address, allowing a range from 00-00. Values from 1-24 will 
+SMARTboxes have jumper sockets on the fixed (non field-replaceable) chassis to set
+the Modbus address, allowing a range from 01-99 decimal. Values from 1-24 will 
 be used as Modbus addresses for the 24 physical SMARTboxes in a station, the rest of 
-the range is reserved for use in development and maintenance/testing. The SMARTbox 
-registers are divided into two blocks of contiguous addresses. The first block (starting 
-at register 1) contains all of the values that need to be polled at regular intervals 
-(mostly read-only registers). The second block (starting at register 1001) contains 
-configuration data written by the MCCS after power-up, and does not need to be read
-after that.
+the range is reserved for use in development and maintenance/testing. For example, 
+the firmware might be configured to go into various test modes for addresses in the 
+range 25-99. 
+
+The SMARTbox registers are divided into two blocks of contiguous addresses. The first
+block (starting at register 1) contains all the values that need to be polled at 
+regular intervals (mostly read-only registers). The second block (starting at 
+register 1001) contains configuration data written to the smartbox by the MCCS 
+after power-up, and does not need to be read back by the MCCS after that.
 
 ### Polled registers:
 
@@ -248,7 +255,7 @@ that byte of the register are ignored.
 The hardware has an additional few (currently around 7) analogue inputs available for
 monitoring sensor readings. To allow room for expansion, 12 registers (and a matching 
 set of 48 threshold registers) are allocated, as SYS_SENSE01 through SYS_SENSE12. Most
-of these will probably used to monitor temperatures at various points in the 
+of these will probably be used to monitor temperatures at various points in the 
 engineering prototypes.
 
 The port registers are:
@@ -409,7 +416,7 @@ voltage readings.
 
 ## FNDH Register map
 
-The FNDH always has a Modbus address of 31, and an IP address (for the ethernet-serial 
+The FNDH always has a Modbus address of 101, and an IP address (for the ethernet-serial 
 bridge) set by rotary DIP switches defining the station number. The FNDH registers are 
 divided into two blocks of contiguous addresses. The first block (starting at register 1) 
 contains all the values that need to be polled at regular intervals (mostly 
@@ -425,34 +432,34 @@ up the unique chip ID number (guaranteed to be different for every physical devi
 these 54 registers, 26 are &#39;system&#39; registers, and there is an additional 2-byte
 &#39;port state register&#39; for each of the 28 possible output PDoC ports in the FNDH.
 
-| **#** | **Name** | **Size** | **Description** |
-| --- | --- | --- | --- |
-| 1 | SYS\_MBRV | 1 | Modbus register map revision number. RO. |
-| 2 | SYS\_PCBREV | 1 | PCB Revision number. RO. |
+| **#** | **Name** | **Size** | **Description**                                            |
+| --- | --- | --- |------------------------------------------------------------|
+| 1 | SYS\_MBRV | 1 | Modbus register map revision number. RO.                   |
+| 2 | SYS\_PCBREV | 1 | PCB Revision number. RO.                                   |
 | 3 | SYS\_CPUID | 2 | Microcontroller device ID (two registers, four bytes). RO. |
-| 5 | SYS\_CHIPID | 8 | Chip unique device ID (8 registers, 16 bytes). RO. |
-| 13 | SYS\_FIRMVER | 1 | Firmware revision number. RO. |
-| 14 | SYS\_UPTIME | 2 | System uptime, in seconds (2 registers, four bytes). RO. |
-| 16 | SYS\_ADDRESS | 1 | Modbus station address. RO. |
-| 17 | SYS\_48V1\_V | 1 | 48VDC PSU 1 output voltage (Volts/100). R/W. |
-| 18 | SYS\_48V2\_V | 1 | 48VDC PSU 2 output voltage (Volts/100). R/W. |
-| 19 | SYS\_48V\_I | 1 | Total 48VDC output current (Volts/100). R/W. |
-| 20 | SYS\_48V1\_TEMP | 1 | 48VDC PSU 1 temperature (deg C / 100). R/W. |
-| 21 | SYS\_48V2\_TEMP | 1 | 48VDC PSU 2 temperature (deg C / 100). R/W. |
-| 22 | SYS\_PANELTEMP | 1 | Switch panel PCB temperature (deg C / 100). R/W. |
-| 23 | SYS\_FNCBTEMP | 1 | FNCB board temperature (deg C / 100). R/W. |
-| 24 | SYS\_HUMIDITY | 1 | FNCB board humidity (percent). R/W. |
-| 25 | SYS\_STATUS | 1 | System status (see text). R/W. |
-| 26 | SYS\_LIGHTS | 1 | LED status (see text). R/W. |
-| 27 | SYS\_SENSE01 | 1 | Extra temperature 1. R/W |
-| 28 | SYS\_SENSE02 | 1 | Extra temperature 2. R/W |
-| 29 | SYS\_SENSE03 | 1 | Extra temperature 3. R/W |
-| 30 | SYS\_SENSE04 | 1 | Extra temperature 4. R/W |
-| 31 | SYS\_SENSE05 | 1 | Extra temperature 5. R/W |
-| 32 | SYS\_SENSE06 | 1 | Extra temperature 6. R/W |
-| 33 | SYS\_SENSE07 | 1 | Extra temperature 7. R/W |
-| 34 | SYS\_SENSE08 | 1 | Extra temperature 8. R/W |
-| 35 | SYS\_SENSE09 | 1 | Extra temperature 9. R/W |
+| 5 | SYS\_CHIPID | 8 | Chip unique device ID (8 registers, 16 bytes). RO.         |
+| 13 | SYS\_FIRMVER | 1 | Firmware revision number. RO.                              |
+| 14 | SYS\_UPTIME | 2 | System uptime, in seconds (2 registers, four bytes). RO.   |
+| 16 | SYS\_ADDRESS | 1 | Modbus station address. RO.                                |
+| 17 | SYS\_48V1\_V | 1 | 48VDC PSU 1 output voltage (Volts/100). R/W.               |
+| 18 | SYS\_48V2\_V | 1 | 48VDC PSU 2 output voltage (Volts/100). R/W.               |
+| 19 | SYS\_48V\_I | 1 | Total 48VDC output current (Amps/100). R/W.                |
+| 20 | SYS\_48V1\_TEMP | 1 | 48VDC PSU 1 temperature (deg C / 100). R/W.                |
+| 21 | SYS\_48V2\_TEMP | 1 | 48VDC PSU 2 temperature (deg C / 100). R/W.                |
+| 22 | SYS\_PANELTEMP | 1 | Switch panel PCB temperature (deg C / 100). R/W.           |
+| 23 | SYS\_FNCBTEMP | 1 | FNCB board temperature (deg C / 100). R/W.                 |
+| 24 | SYS\_HUMIDITY | 1 | FNCB board humidity (percent). R/W.                        |
+| 25 | SYS\_STATUS | 1 | System status (see text). R/W.                             |
+| 26 | SYS\_LIGHTS | 1 | LED status (see text). R/W.                                |
+| 27 | SYS\_SENSE01 | 1 | Extra temperature 1. R/W                                   |
+| 28 | SYS\_SENSE02 | 1 | Extra temperature 2. R/W                                   |
+| 29 | SYS\_SENSE03 | 1 | Extra temperature 3. R/W                                   |
+| 30 | SYS\_SENSE04 | 1 | Extra temperature 4. R/W                                   |
+| 31 | SYS\_SENSE05 | 1 | Extra temperature 5. R/W                                   |
+| 32 | SYS\_SENSE06 | 1 | Extra temperature 6. R/W                                   |
+| 33 | SYS\_SENSE07 | 1 | Extra temperature 7. R/W                                   |
+| 34 | SYS\_SENSE08 | 1 | Extra temperature 8. R/W                                   |
+| 35 | SYS\_SENSE09 | 1 | Extra temperature 9. R/W                                   |
 
 
 The SYS\_STATUS is one of the two status registers that are read/write. When read, it 
@@ -601,27 +608,30 @@ value (but still below WARNING-high), then transition to OK.
 (or stays in) ALARM. If the current state is ALARM, and the new reading is _above_ this 
 value, but still below WARNING-low, then transition to the RECOVERY state.
 
-|  #  | Name | Size | Description |
-| --- | --- | --- | --- |
-| 1001 | SYS\_48V1\_V\_TH | 4 | 48VDC PSU 1 output voltage. AH, WH, WL, AL. |
-| 1005 | SYS\_48V2\_V\_TH | 4 | 48VDC PSU 2 output voltage. AH, WH, WL, AL. |
-| 1009 | SYS\_5V\_V\_TH | 4 | 5V DC PSU output voltage. AH, WH, WL, AL. |
-| 1013 | SYS\_48V\_I\_TH | 4 | Total 48V current. AH, WH, WL, AL. |
-| 1017 | SYS\_48V\_TEMP\_TH | 4 | Joint 48V power supply temperature. AH, WH, WL, AL. |
-| 1021 | SYS\_5V\_TEMP\_TH | 4 | 5V power supply temperature. AH, WH, WL, AL. |
-| 1025 | SYS\_PCBTEMP\_TH | 4 | PCB temperature. AH, WH, WL, AL. |
-| 1029 | SYS\_OUTTEMP\_TH | 4 | Outside air temperature. AH, WH, WL, AL. |
+|  #  | Name                | Size | Description                                   |
+| --- |---------------------| --- |-----------------------------------------------|
+| 1001 | SYS\_48V1\_V\_TH    | 4 | 48VDC PSU 1 output voltage. AH, WH, WL, AL.   |
+| 1005 | SYS\_48V2\_V\_TH    | 4 | 48VDC PSU 2 output voltage. AH, WH, WL, AL.   |
+| 1009 | SYS\_48V\_I\_TH     | 4 | Total 48V current. AH, WH, WL, AL.            |
+| 1013 | SYS\_48V1\_TEMP\_TH | 4 | 48V PSU 1 temperature. AH, WH, WL, AL.        |
+| 1017 | SYS\_48V2\_TEMP\_TH | 4 | 48V PSU 2 temperature. AH, WH, WL, AL.        |
+| 1021 | SYS\_PANELTEMP\_TH  | 4 | Switch panel PCB temperature. AH, WH, WL, AL. |
+| 1025 | SYS\_FNCBTEMP\_TH   | 4 | FNCB board temperature. AH, WH, WL, AL.       |
+| 1029 | SYS\_HUMIDITY\_TH   | 4 | FNCB board humidity. AH, WH, WL, AL.          |
 
 ## FNDH start-up – SMARTbox to PDoC mapping
 
 On FNDH start-up, the PDoC ports will all be turned off. The MCCS will turn them on, one by 
-one, at approximately 10 second intervals. It will then loop over all possibly SMARTbox 
+one, at approximately 5 second intervals. It will then loop over all possibly SMARTbox 
 addresses and read the &#39;uptime&#39; counter register from that address, and (if it 
 gets a reply) use that value to work out which PDoC port that SMARTbox is connected to. 
 That process must be repeated after any SMARTboxes are added to a station, or moved 
 to a different PDoC port.
 
 # Technician&#39;s &#39;Service Interface Device&#39;
+
+NOTE - this is not implemented in hardware on the FNDH, and may never be, but remains
+as an optional feature.
 
 Normally, the MCCS acts as the Modbus &#39;Master&#39; device, initiating communications 
 with the SMARTboxes and the FNDH. During servicing, another device can act as a Modbus 
@@ -688,7 +698,7 @@ or for the station.
 
 # MCCS registers
 
-When the MCCS is acting as a slave, it listens on Modbus address 63, and presents a set 
+When the MCCS is acting as a slave, it listens on Modbus address 199, and presents a set 
 of virtual registers to be read and written by a technician&#39;s Service Interface 
 Device (SID). These are:
 
@@ -805,6 +815,9 @@ FNDH, or a whole station.
 
 &nbsp;&nbsp;&nbsp; simulate.py – wrapper script to start simulating a SMARTbox, FNDH, 
 or a whole station.
+
+&nbsp;&nbsp;&nbsp; upload.py – Send new firmware, in Intel Hex format, to a
+microcontroller (FNCC, FNPC, or SMARTbox).
 
 # Appendix
 
