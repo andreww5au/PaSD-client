@@ -33,7 +33,7 @@ if __name__ == '__main__':
                         help='If given, drop to the DEBUG log level, otherwise use INFO')
     args = parser.parse_args()
 
-    if (args.host is None) and (args.device is None):
+    if (args.host is None) and (args.device is None) and CPfile:
         args.host = CP.get('default', 'fndh_host', fallback=DEFAULT_FNDH)
 
     if args.debug:

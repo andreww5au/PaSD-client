@@ -490,7 +490,7 @@ if __name__ == '__main__':
     dbpass = station_config['dbpass']
     dbname = station_config['dbname']
 
-    if (args.host is None) and (args.device is None):
+    if (args.host is None) and (args.device is None) and CPfile:
         args.host = CP.get('default', 'fndh_host', fallback=DEFAULT_FNDH)
 
     db = psycopg2.connect(user=dbuser, password=dbpass, host=dbhost, database=dbname)

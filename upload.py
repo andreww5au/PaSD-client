@@ -53,7 +53,7 @@ if __name__ == '__main__':
                         help="Don't actually upload the firmware, just do all the checks.")
     args = parser.parse_args()
 
-    if (args.host is None) and (args.device is None):
+    if (args.host is None) and (args.device is None) and CPfile:
         args.host = CP.get('default', 'fndh_host', fallback=DEFAULT_FNDH)
 
     if os.path.basename(args.filename).upper().startswith('FNPC'):
