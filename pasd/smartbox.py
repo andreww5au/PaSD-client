@@ -881,6 +881,15 @@ class SMARTbox(transport.ModbusDevice):
         for reg in reglist:
             self.conn.writeReg(self.modbus_address, reg, filt_constant)
 
+    def set_service_led(self, newstate):
+        """
+        Set the service LED on or off.
+
+        You can either pass a Boolean (on=True), or an integer, where 0=off, 1=On, 2=fast-flash, 3=medium-flash,
+        4=slow-flash, 5=very-slow-flash.
+        """
+        self.conn.writeReg(self.modbus_address, self.register_map['POLL']['SERVICE_LED'][0], int(newstate) * 256)
+
 
 """
 Use as 'communicate.py smartbox', or:

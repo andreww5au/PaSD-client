@@ -318,6 +318,41 @@ def get_all_port_configs(db, station_number=DEFAULT_STATION_NUMBER):
     return fndhpc, sbpc
 
 
+def get_all_service_leds(db, station_number=DEFAULT_STATION_NUMBER):
+    """
+    Query the database to get the service LED state, for the FNDH and all smartboxes.
+
+    Result is a tuple of a bool and a dictionary - the bool contains the FNDH service LED state, the dictionary has
+    smartbox address as key, and a bool for the service LED state in the database, for that box.
+
+    :param db: Database connection object
+    :param station_number: Station ID (1-9999)
+    :return: service LED states - tuple of (bool, dict
+    """
+    with db:   # Commit transaction when block exits
+        with db.cursor() as curs:
+            # Read FNDH service LED state for this station:
+            query = """SELECT service_led
+                       FROM pasd_fndh_state
+                       WHERE station_id=%s"""
+            curs.execute(query, (station_number,))
+
+            fndh_led = bool(curs.fetchone()[0])
+
+            # Read all smartbox port configs for this station:
+            query = """SELECT smartbox_number, service_led
+                       FROM pasd_smartbox_state
+                       WHERE station_id=%s"""
+            curs.execute(query, (station_number,))
+
+            sb_leds = {}
+            for row in curs:
+                smartbox_number, service_led = row
+                sb_leds[smartbox_number] = bool(service_led)
+
+    return fndh_led, sb_leds
+
+
 def update_station_state(db, stn):
     """
     Write the current station state (stn.active, stn.status, etc) to the 'stations' table in the database.
@@ -409,6 +444,17 @@ def main_loop(db, stn):
 
         logging.debug(data)
         send_carbon(data)
+
+        # Query the database to see if the desired service LED value is different to the actual state
+        fndh_led, sb_leds = get_all_service_leds(db=db, station_number=stn.station_id)
+        if fndh_led != stn.fndh.service_led:
+            stn.fndh.service_led = fndh_led
+            stn.fndh.set_service_led(fndh_led)   # Write the new service LED state
+        for sbnum, sb in stn.smartboxes.items():
+            if sbnum in sb_leds:
+                if sb_leds[sbnum] != sb.service_led:
+                    sb.service_led = sb_leds[sbnum]
+                    sb.set_service_led(sb_leds[sbnum])   # Write the new service LED state
 
         # Use the instance data to update the database sensor and port parameters
         update_db(db, stn=stn)

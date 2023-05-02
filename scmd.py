@@ -255,8 +255,19 @@ def fndh(portnums, action):
                            WHERE station_id = %s AND pdoc_number = ANY(%s)"""
                 curs.execute(query, (newstate, newstate, STATION_ID, portlist))
 
+            elif action.upper() in ['LEDON', 'LEDOFF']:
+                if portlist:
+                    print("Can't specify port list for service LED, exiting.")
+                    return -1
+
+                newstate = action.upper() == 'LEDON'
+                query = """UPDATE pasd_fndh_state 
+                           SET service_led = %s
+                           WHERE station_id = %s"""
+                curs.execute(query, (newstate, newstate, STATION_ID, portlist))
+
             else:
-                print('Action must be "on" or "off", not "%s"' % action)
+                print('Action must be "on", "off", "ledon", "ledoff", or "status", not "%s"' % action)
                 return -1
 
 
@@ -386,6 +397,18 @@ def sb(portnums, action, sbnum):
                                  smartbox_number = ANY(%s) AND
                                  port_number = ANY(%s)"""
                 curs.execute(query, (newstate, newstate, STATION_ID, sboxes, portlist))
+
+            elif action.upper() in ['LEDON', 'LEDOFF']:
+                if portlist:
+                    print("Can't specify port list for service LED, exiting.")
+                    return -1
+
+                newstate = action.upper() == 'LEDON'
+                query = """UPDATE pasd_smartbox_state 
+                           SET service_led = %s
+                           WHERE station_id = %s  AND 
+                                 smartbox_number = ANY(%s)"""
+                curs.execute(query, (newstate, newstate, STATION_ID, portlist))
 
             else:
                 print('Action must be "on" or "off", not "%s"' % action)
