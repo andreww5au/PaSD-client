@@ -888,7 +888,7 @@ class SMARTbox(transport.ModbusDevice):
         You can either pass a Boolean (on=True), or an integer, where 0=off, 1=On, 2=fast-flash, 3=medium-flash,
         4=slow-flash, 5=very-slow-flash.
         """
-        self.conn.writeReg(self.modbus_address, self.register_map['POLL']['SERVICE_LED'][0], int(newstate) * 256)
+        self.conn.writeReg(self.modbus_address, self.register_map['POLL']['SYS_LIGHTS'][0], int(newstate) * 256)
 
 
 """
