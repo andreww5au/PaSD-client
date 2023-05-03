@@ -95,8 +95,6 @@ FNDH_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
                         'P28_STATE': (63, 1, 'Port 28 state bitmap (r/w)', None),
 }
 
-# TODO - add PDoC port serial number block (28 * 4 registers) in here, to be read once on boot, not polled.
-
 # System threshold configuration registers (not polled)
 FNDH_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as well as under-value alarm and warning
                     'SYS_48V1_V_TH':(1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', conversion.scale_48v),

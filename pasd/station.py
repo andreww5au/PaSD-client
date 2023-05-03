@@ -345,7 +345,7 @@ class Station(object):
         the MCCS since power-up, then go through a full startup() procedure configure it, bring it online, and determine
         the mapping between PDoC ports and SMARTbox address,.
 
-        Then iterate over all possible SMARTbox addresses (1-30), asking each of them for all of the registers in the
+        Then iterate over all possible SMARTbox addresses (1-30), asking each of them for all the registers in the
         'POLL' set, to get the latest state and telemetry data. If any of the SMARTboxes are in the 'UNINITIALISED'
         state, configure them and bring them online. Add any 'unknown' SMARTboxes (not already in self.smartboxes) to
         the instance data.
@@ -361,7 +361,7 @@ class Station(object):
         if fndh_ok:  # We got the data from the FNDH without any communications errors
             if self.fndh.statuscode != fndh.STATUS_OK:
                 self.logger.warning('FNDH has status %d (%s)' % (self.fndh.statuscode, self.fndh.status))
-            if self.fndh.statuscode == fndh.STATUS_UNINITIALISED and self.active:   # FNDH is UNINITIALISED, but we're meant to be 'active'
+            if self.fndh.statuscode in [fndh.STATUS_UNINITIALISED, fndh.STATUS_POWERUP] and self.active:   # FNDH is UNINITIALISED or wants a full startup, and we're meant to be 'active'
                 if self.do_full_startup:
                     fndh_ok = self.full_startup()   # Turn off all the PDoC ports, then turn them back on with delays, to find the smartbox<->PDoC mapping
                 else:

@@ -37,7 +37,6 @@ FNDH at address: %(modbus_address)s:
 """
 
 
-
 def random_walk(current_value, mean, scale=1.0, return_bias=RETURN_BIAS):
     """
     Take the current and desired mean values of a simulated sensor value, and generate the next value,
