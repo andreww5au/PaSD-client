@@ -28,7 +28,7 @@ psycopg2.extensions.register_type(DEC2FLOAT, None)
 STATION_ID = 1
 MAX_SMARTBOX = 2
 
-MAX_AGE = 45   # If the last update was more than this many seconds ago, assume the station code isn't running.
+MAX_AGE = 120   # If the last update was more than this many seconds ago, assume the station code isn't running.
 
 CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
