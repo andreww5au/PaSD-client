@@ -74,8 +74,7 @@ SMARTBox at address: %(modbus_address)s on PDoC port %(pdoc_number)s - last upda
 """
 
 SBVERSTRING = """\
-SB number %(sbnum)d: CPU=%(cpuid)s, Chip=%(chipid)s, Uptime=%(uptime)s, Firmware=%(firmware_version)s
-"""
+SB number %(sbnum)d: CPU=%(cpuid)s, Chip=%(chipid)s, Uptime=%(uptime)s, Firmware=%(firmware_version)s"""
 
 DB = None   # Will be replaced by a psycopg2 database connection object on startup
 
@@ -457,7 +456,7 @@ def fwver():
             rows = curs.fetchall()
             for row in rows:
                 (smartbox_number, cpuid, chipid, firmware_version, uptime, readtime) = row
-                print(row)
+
                 if not readtime:
                     continue
                 age = time.time() - readtime
