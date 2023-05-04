@@ -594,7 +594,7 @@ class SMARTbox(transport.ModbusDevice):
                 bytelist = []
                 for byte_tuple in bytelist:
                     bytelist += list(byte_tuple)
-                self.chipid = list(bytes(bytelist).decode('utf8'))
+                self.chipid = ''.join([hex(v)[-2:].upper() for v in bytelist])
             elif regname == 'SYS_FIRMVER':
                 self.firmware_version = raw_int
             elif regname == 'SYS_UPTIME':
