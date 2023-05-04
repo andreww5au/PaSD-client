@@ -152,7 +152,7 @@ def fnpc(portnums, action):
     """
     Turn PDoC ports on or off on the FNPC
 
-    ACTION is what to do - one of 'on', 'off', or 'status'
+    ACTION is what to do - one of 'on', 'off', 'ledon', 'ledoff', or 'status'
 
     PORTNUMS is One or more items, each a port number or the word 'all'. Items are optionally preceded by a '-' to exclude them
 
@@ -290,7 +290,7 @@ def sb(portnums, action, sbnum):
 
     SBNUM is a single smartbox address (eg '1'), or 'all' to command all smartboxes
 
-    ACTION is what to do - one of 'on', 'off', or 'status'
+    ACTION is what to do - one of 'on', 'off', 'ledon', 'ledoff', or 'status'
 
     PORTNUMS is one or more items, each a port number or the word 'all'. Items are optionally preceded by a '-' to exclude them
 
