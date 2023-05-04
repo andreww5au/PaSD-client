@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 """
-PaSD command tool to turn ports on/off on an FNDH or smartbox, by updating the relevant tables in the
-database. The station_lmc.py code that runs continuously, communicating with the FNDH and smartboxes, then
+PaSD command tool to turn ports on/off on an FNPC or smartbox, by updating the relevant tables in the
+database. The station_lmc.py code that runs continuously, communicating with the FNPC and smartboxes, then
 issues the actual commands to the hardware.
 
-The PaSD command tool can also be used to read current FNDH/smartbox/port status data from the database.
+The PaSD command tool can also be used to read current FNPC/smartbox/port status data from the database.
 """
 
 from configparser import ConfigParser as conparser
@@ -33,8 +33,8 @@ MAX_AGE = 45   # If the last update was more than this many seconds ago, assume 
 CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
 
-FNDH_STRING = """\
-FNDH on station %(station_id)s - last update %(age)0.1f seconds ago:
+FNPC_STRING = """\
+FNPC on station %(station_id)s - last update %(age)0.1f seconds ago:
     ModBUS register revision: %(mbrv)s
     PCB revision: %(pcbrv)s
     CPU ID: %(cpuid)s
@@ -51,8 +51,8 @@ FNDH on station %(station_id)s - last update %(age)0.1f seconds ago:
     Indicator: %(indicator_state)s
 """
 
-FNDHVERSTRING = """\
-FNDH: CPU=%(cpuid)s, Chip=%(chipid)s, Uptime=%(uptime)s, Firmware=%(firmware_version)s
+FNPCVERSTRING = """\
+FNPC: CPU=%(cpuid)s, Chip=%(chipid)s, Uptime=%(uptime)s, Firmware=%(firmware_version)s
 """
 
 SMARTBOX_STRING = """\
@@ -143,14 +143,14 @@ def cli():
     pass
 
 
-@cli.command('fndh',
-             short_help="Command or query the FNDH or a PDoC port",
+@cli.command('fnpc',
+             short_help="Command or query the FNPC or a PDoC port",
              context_settings={"ignore_unknown_options": True})
 @click.argument('action', nargs=1)
 @click.argument('portnums', nargs=-1)
-def fndh(portnums, action):
+def fnpc(portnums, action):
     """
-    Turn PDoC ports on or off on the FNDH
+    Turn PDoC ports on or off on the FNPC
 
     ACTION is what to do - one of 'on', 'off', or 'status'
 
@@ -158,10 +158,10 @@ def fndh(portnums, action):
 
     \b
     E.g.
-    $ scmd fndh off 3 4 5         # turns off ports 3,4 and 5
-    $ scmd fndh on all -3 -5      # turns on all ports EXCEPT 3 and 5
-    $ scmd fndh status            # displays the FNDH status
-    $ scmd fndh status 1 2 3      # displays the status of ports 1, 2 and 3
+    $ scmd fnpc off 3 4 5         # turns off ports 3,4 and 5
+    $ scmd fnpc on all -3 -5      # turns on all ports EXCEPT 3 and 5
+    $ scmd fnpc status            # displays the FNPC status
+    $ scmd fnpc status 1 2 3      # displays the status of ports 1, 2 and 3
     """
     portlist = parse_values(valuelist=portnums, all_list=list(range(1, 29)))
 
@@ -205,7 +205,7 @@ def fndh(portnums, action):
                                  'fncb_temp':fncb_temp,
                                  'fncb_humidity':fncb_humidity}
                     if age < MAX_AGE:   # If recent enough:
-                        print(FNDH_STRING % paramdict)
+                        print(FNPC_STRING % paramdict)
                     else:
                         print("Last update %0.1f seconds ago, station code not running." % age)
                 else:  # portlist suppled
@@ -427,7 +427,7 @@ def sb(portnums, action, sbnum):
              context_settings={"ignore_unknown_options": True})
 def fwver():
     """
-    Print a summary of the firmware version on the FNDH and all connected smartboxes.
+    Print a summary of the firmware version on the FNPC and all connected smartboxes.
         \b
     E.g.
     $ scmd fwver
@@ -446,7 +446,7 @@ def fwver():
                          'chipid':chipid,
                          'firmware_version':firmware_version,}
             if age < MAX_AGE:
-                print(FNDHVERSTRING % paramdict)
+                print(FNPCVERSTRING % paramdict)
 
             query = """SELECT smartbox_number, cpuid, chipid, firmware_version, uptime, readtime
                        FROM pasd_smartbox_state
