@@ -415,7 +415,7 @@ def sb(portnums, action, sbnum):
                            SET service_led = %s
                            WHERE station_id = %s  AND 
                                  smartbox_number = ANY(%s)"""
-                curs.execute(query, (newstate, STATION_ID))
+                curs.execute(query, (newstate, STATION_ID, sboxes))
 
             else:
                 print('Action must be "on" or "off", not "%s"' % action)
