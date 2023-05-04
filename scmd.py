@@ -271,7 +271,7 @@ def fnpc(portnums, action):
                 query = """UPDATE pasd_fndh_state 
                            SET service_led = %s
                            WHERE station_id = %s"""
-                curs.execute(query, (newstate, newstate, STATION_ID, portlist))
+                curs.execute(query, (newstate, STATION_ID))
 
             else:
                 print('Action must be "on", "off", "ledon", "ledoff", or "status", not "%s"' % action)
@@ -415,7 +415,7 @@ def sb(portnums, action, sbnum):
                            SET service_led = %s
                            WHERE station_id = %s  AND 
                                  smartbox_number = ANY(%s)"""
-                curs.execute(query, (newstate, newstate, STATION_ID, portlist))
+                curs.execute(query, (newstate, STATION_ID))
 
             else:
                 print('Action must be "on" or "off", not "%s"' % action)
