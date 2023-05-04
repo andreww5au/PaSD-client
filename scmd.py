@@ -457,7 +457,7 @@ def fwver():
             rows = curs.fetchall()
             for row in rows:
                 (smartbox_number, cpuid, chipid, firmware_version, uptime, readtime) = row
-                if not age:
+                if not readtime:
                     continue
                 age = time.time() - readtime
                 paramdict = {'sbnum':smartbox_number,
