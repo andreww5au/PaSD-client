@@ -426,47 +426,45 @@ def sb(portnums, action, sbnum):
 @cli.command('fwver',
              short_help="Print a summary of all firmware versions in the station",
              context_settings={"ignore_unknown_options": True})
-def fwver(portnums, action, sbnum):
+def fwver():
     """
     Print a summary of the firmware version on the FNDH and all connected smartboxes.
         \b
     E.g.
     $ scmd fwver
     """
-    portlist = parse_values(valuelist=portnums, all_list=list(range(1, 13)))
 
     with DB:
         with DB.cursor() as curs:
-            if action.upper() == 'STATUS':
-                query = """SELECT cpuid, chipid, firmware_version, uptime, readtime
-                           FROM pasd_fndh_state
-                           WHERE (station_id = %(station_id)s)"""
-                curs.execute(query, {'station_id':STATION_ID})
-                (cpuid, chipid, firmware_version, uptime, readtime) = curs.fetchone()
+            query = """SELECT cpuid, chipid, firmware_version, uptime, readtime
+                       FROM pasd_fndh_state
+                       WHERE (station_id = %(station_id)s)"""
+            curs.execute(query, {'station_id':STATION_ID})
+            (cpuid, chipid, firmware_version, uptime, readtime) = curs.fetchone()
+            age = time.time() - readtime
+            paramdict = {'uptime':uptime,
+                         'cpuid':cpuid,
+                         'chipid':chipid,
+                         'firmware_version':firmware_version,}
+            if age < MAX_AGE:
+                print(FNDHVERSTRING % paramdict)
+
+            query = """SELECT smartbox_number, cpuid, chipid, firmware_version, uptime, readtime
+                       FROM pasd_smartbox_state
+                       WHERE (station_id = %(station_id)s)
+                       ORDER BY smartbox_number"""
+            curs.execute(query, {'station_id':STATION_ID})
+            rows = curs.fetchall()
+            for row in rows:
+                (smartbox_number, cpuid, chipid, firmware_version, uptime, readtime) = row
                 age = time.time() - readtime
-                paramdict = {'uptime':uptime,
+                paramdict = {'sbnum':smartbox_number,
+                             'uptime':uptime,
                              'cpuid':cpuid,
                              'chipid':chipid,
                              'firmware_version':firmware_version,}
                 if age < MAX_AGE:
-                    print(FNDHVERSTRING % paramdict)
-
-                query = """SELECT smartbox_number, cpuid, chipid, firmware_version, uptime, readtime
-                           FROM pasd_smartbox_state
-                           WHERE (station_id = %(station_id)s)
-                           ORDER BY smartbox_number"""
-                curs.execute(query, {'station_id':STATION_ID})
-                rows = curs.fetchall()
-                for row in rows:
-                    (smartbox_number, cpuid, chipid, firmware_version, uptime, readtime) = row
-                    age = time.time() - readtime
-                    paramdict = {'sbnum':smartbox_number,
-                                 'uptime':uptime,
-                                 'cpuid':cpuid,
-                                 'chipid':chipid,
-                                 'firmware_version':firmware_version,}
-                    if age < MAX_AGE:
-                        print(SBVERSTRING % paramdict)
+                    print(SBVERSTRING % paramdict)
 
 
 if __name__ == '__main__':
