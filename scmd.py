@@ -327,7 +327,10 @@ def sb(portnums, action, sbnum):
                     (smartbox_number, mbrv, pcbrv, cpuid, chipid, firmware_version, uptime,
                      incoming_voltage, psu_voltage, psu_temp, pcb_temp, outside_temp, status,
                      indicator_state, readtime, pdoc_number, service_led) = row
-                    age = time.time() - readtime
+                    try:
+                        age = time.time() - readtime
+                    except TypeError:
+                        age = 9e99
 
                 if not portlist:
                     paramdict = {'station_id':STATION_ID,
