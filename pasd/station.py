@@ -250,7 +250,7 @@ class Station(object):
         for portnum in range(1, 29):
             last_loop_time = time.time()
             self.fndh.ports[portnum].desire_enabled_online = True
-            self.logger.info('Turning on PDoC port %d' % portnum)
+            self.logger.info('Turning on PDoC port %d at time %f' % (portnum, time.time()))
             ok = self.fndh.write_portconfig(write_state=True, write_to=True)
             port_on_times[portnum] = int(time.time())
             if not ok:
