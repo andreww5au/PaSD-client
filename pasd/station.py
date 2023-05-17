@@ -257,7 +257,7 @@ class Station(object):
                 self.logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
                 self.status = 'ERROR'
                 return False
-            time.sleep(time.time() + PORT_TURNON_INTERVAL - last_loop_time)
+            time.sleep(last_loop_time - time.time() + PORT_TURNON_INTERVAL)
 
         # Read the uptimes for all possible SMARTbox addresses, to work out when they were turned on
         address_on_times = {}   # Unix timestamp at which each SMARTbox booted, according to the uptime
