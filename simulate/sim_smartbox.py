@@ -29,7 +29,7 @@ Simulated SMARTBox at address: %(modbus_address)s:
     5V out: %(psu_voltage)4.2f V (%(psu_voltage_state)s)
     PSU Temp: %(psu_temp)4.2f deg C (%(psu_temp_state)s)
     PCB Temp: %(pcb_temp)4.2f deg C (%(pcb_temp_state)s)
-    Outside Temp: %(outside_temp)4.2f deg C (%(outside_temp_state)s)
+    Ambient Temp: %(ambient_temp)4.2f deg C (%(ambient_temp_state)s)
     Status: %(statuscode)s (%(status)s)
     Service LED: %(service_led)s
     Indicator: %(indicator_code)s (%(indicator_state)s)
@@ -78,7 +78,7 @@ class SimSMARTbox(smartbox.SMARTbox):
         self.psu_voltage = 5.1     # Measured output voltage for the internal (nominal) 5V power supply
         self.psu_temp = 28.0    # Temperature of the internal 5V power supply (deg C)
         self.pcb_temp = 27.0    # Temperature on the internal PCB (deg C)
-        self.outside_temp = 24.0    # Outside temperature (deg C)
+        self.ambient_temp = 24.0    # Ambient temperature (deg C)
         self.statuscode = smartbox.STATUS_UNINITIALISED    # Status value, one of the smartbox.STATUS_* globals, and used as a key for smartbox.STATUS_CODES (eg 0 meaning 'OK')
         self.status = 'UNINITIALISED'       # Status string, obtained from smartbox.STATUS_CODES global (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
@@ -107,7 +107,7 @@ class SimSMARTbox(smartbox.SMARTbox):
         tmpdict['psu_voltage_state'] = self.sensor_states['SYS_PSU_V_TH']
         tmpdict['psu_temp_state'] = self.sensor_states['SYS_PSUTEMP_TH']
         tmpdict['pcb_temp_state'] = self.sensor_states['SYS_PCBTEMP_TH']
-        tmpdict['outside_temp_state'] = self.sensor_states['SYS_OUTTEMP_TH']
+        tmpdict['ambient_temp_state'] = self.sensor_states['SYS_AMBTEMP_TH']
         return STATUS_STRING % (tmpdict) + "\nPorts:\n" + ("\n".join([str(self.ports[pnum]) for pnum in range(1, 13)]))
 
     def poll_data(self):
@@ -201,8 +201,8 @@ class SimSMARTbox(smartbox.SMARTbox):
                     slave_registers[regnum] = scalefunc(self.psu_temp, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_PCBTEMP':
                     slave_registers[regnum] = scalefunc(self.pcb_temp, reverse=True, pcb_version=self.pcbrv)
-                elif regname == 'SYS_OUTTEMP':
-                    slave_registers[regnum] = scalefunc(self.outside_temp, reverse=True, pcb_version=self.pcbrv)
+                elif regname == 'SYS_AMBTEMP':
+                    slave_registers[regnum] = scalefunc(self.ambient_temp, reverse=True, pcb_version=self.pcbrv)
                 elif regname == 'SYS_STATUS':
                     slave_registers[regnum] = self.statuscode
                 elif regname == 'SYS_LIGHTS':
@@ -397,7 +397,7 @@ class SimSMARTbox(smartbox.SMARTbox):
             self.psu_voltage = random_walk(self.psu_voltage, mean=5.1, scale=0.05)
             self.psu_temp = random_walk(self.psu_temp, mean=28.3, scale=0.5)
             self.pcb_temp = random_walk(self.pcb_temp, mean=27.0, scale=0.5)
-            self.outside_temp = random_walk(self.outside_temp, mean=24.0, scale=0.5)
+            self.ambient_temp = random_walk(self.ambient_temp, mean=24.0, scale=0.5)
 
             if self.initialised:     # Don't bother thresholding sensor values until the thresholds have been set
                 # For each threshold register, get the current value and threshold/s from the right local instance attribute
@@ -418,8 +418,8 @@ class SimSMARTbox(smartbox.SMARTbox):
                             curvalue = self.psu_temp
                         elif regname == 'SYS_PCBTEMP_TH':
                             curvalue = self.pcb_temp
-                        elif regname == 'SYS_OUTTEMP_TH':
-                            curvalue = self.outside_temp
+                        elif regname == 'SYS_AMBTEMP_TH':
+                            curvalue = self.ambient_temp
                         elif regname.startswith('SYS_SENSE'):
                             curvalue = self.sensor_temps[int(regname[9:11])]
                         else:
