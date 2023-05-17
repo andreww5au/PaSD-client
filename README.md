@@ -199,34 +199,34 @@ device). Of the 59 registers, 35 are &#39;system&#39; registers, and there an
 additional two 2-byte &#39;port registers&#39; for each of the 12 FEM ports in the 
 SMARTbox.
 
-| **#** | **Name** | **Size** | **Description** |
-| --- | --- | --- | --- |
-| 1 | SYS\_MBRV | 1 | Modbus register map revision number. RO. |
-| 2 | SYS\_PCBREV | 1 | PCB Revision number. RO. |
-| 3 | SYS\_CPUID | 2 | Microcontroller device ID (two registers, four bytes). RO. |
-| 5 | SYS\_CHIPID | 8 | Chip unique device ID (8 registers, 16 bytes). RO. |
-| 13 | SYS\_FIRMVER | 1 | Firmware revision number. RO. |
-| 14 | SYS\_UPTIME | 2 | System uptime, in seconds (2 registers, four bytes). RO. |
-| 16 | SYS\_ADDRESS | 1 | Modbus station address. RO. |
-| 17 | SYS\_48V\_V | 1 | Incoming 48VDC voltage (Volts/100). RO. |
-| 18 | SYS\_PSU\_V | 1 | PSU output voltage (Volts/100). RO. |
-| 19 | SYS\_PSUTEMP | 1 | PSU temperature (deg C / 100). R/W. |
-| 20 | SYS\_PCBTEMP | 1 | PCB temperature (deg C / 100). R/W. |
-| 21 | SYS\_OUTTEMP | 1 | Outside temperature (deg C / 100). R/W. |
-| 22 | SYS\_STATUS | 1 | System status (see text). R/W. |
-| 23 | SYS\_LIGHTS | 1 | LED status (see text). R/W. |
-| 24 | SYS\_SENSE01 | 1 | Sensor 1 - usage TBD. R/W. |
-| 25 | SYS\_SENSE02 | 1 | Sensor 2 - usage TBD. R/W. |
-| 26 | SYS\_SENSE03 | 1 | Sensor 3 - usage TBD. R/W. |
-| 27 | SYS\_SENSE04 | 1 | Sensor 4 - usage TBD. R/W. |
-| 28 | SYS\_SENSE05 | 1 | Sensor 5 - usage TBD. R/W. |
-| 29 | SYS\_SENSE06 | 1 | Sensor 6 - usage TBD. R/W. |
-| 30 | SYS\_SENSE07 | 1 | Sensor 7 - usage TBD. R/W. |
-| 31 | SYS\_SENSE08 | 1 | Sensor 8 - usage TBD. R/W. |
-| 32 | SYS\_SENSE09 | 1 | Sensor 9 - usage TBD. R/W. |
-| 33 | SYS\_SENSE10 | 1 | Sensor 10 - usage TBD. R/W. |
-| 34 | SYS\_SENSE11 | 1 | Sensor 11 - usage TBD. R/W. |
-| 35 | SYS\_SENSE12 | 1 | Sensor 12 - usage TBD. R/W. |
+| **#** | **Name**     | **Size** | **Description**                                            |
+| --- |--------------| --- |------------------------------------------------------------|
+| 1 | SYS\_MBRV    | 1 | Modbus register map revision number. RO.                   |
+| 2 | SYS\_PCBREV  | 1 | PCB Revision number. RO.                                   |
+| 3 | SYS\_CPUID   | 2 | Microcontroller device ID (two registers, four bytes). RO. |
+| 5 | SYS\_CHIPID  | 8 | Chip unique device ID (8 registers, 16 bytes). RO.         |
+| 13 | SYS\_FIRMVER | 1 | Firmware revision number. RO.                              |
+| 14 | SYS\_UPTIME  | 2 | System uptime, in seconds (2 registers, four bytes). RO.   |
+| 16 | SYS\_ADDRESS | 1 | Modbus station address. RO.                                |
+| 17 | SYS\_48V\_V  | 1 | Incoming 48VDC voltage (Volts/100). RO.                    |
+| 18 | SYS\_PSU\_V  | 1 | PSU output voltage (Volts/100). RO.                        |
+| 19 | SYS\_PSUTEMP | 1 | PSU temperature (deg C / 100). R/W.                        |
+| 20 | SYS\_PCBTEMP | 1 | Not implemented.                                           |
+| 21 | SYS\_AMBTEMP | 1 | Ambient (FEM enclosure) temperature (deg C / 100). R/W.    |
+| 22 | SYS\_STATUS  | 1 | System status (see text). R/W.                             |
+| 23 | SYS\_LIGHTS  | 1 | LED status (see text). R/W.                                |
+| 24 | SYS\_SENSE01 | 1 | Sensor 1 - usage TBD. R/W.                                 |
+| 25 | SYS\_SENSE02 | 1 | Sensor 2 - usage TBD. R/W.                                 |
+| 26 | SYS\_SENSE03 | 1 | Sensor 3 - usage TBD. R/W.                                 |
+| 27 | SYS\_SENSE04 | 1 | Sensor 4 - usage TBD. R/W.                                 |
+| 28 | SYS\_SENSE05 | 1 | Sensor 5 - usage TBD. R/W.                                 |
+| 29 | SYS\_SENSE06 | 1 | Sensor 6 - usage TBD. R/W.                                 |
+| 30 | SYS\_SENSE07 | 1 | Sensor 7 - usage TBD. R/W.                                 |
+| 31 | SYS\_SENSE08 | 1 | Sensor 8 - usage TBD. R/W.                                 |
+| 32 | SYS\_SENSE09 | 1 | Sensor 9 - usage TBD. R/W.                                 |
+| 33 | SYS\_SENSE10 | 1 | Sensor 10 - usage TBD. R/W.                                |
+| 34 | SYS\_SENSE11 | 1 | Sensor 11 - usage TBD. R/W.                                |
+| 35 | SYS\_SENSE12 | 1 | Sensor 12 - usage TBD. R/W.                                |
 
 The SYS\_STATUS is one of the two status registers that are read/write. When read, it 
 contains the current status code – 0=OK, 1=WARNING, 2=ALARM, 3=RECOVERY, 4=UNINITIALISED. 
@@ -304,7 +304,7 @@ The second (least significant) byte contains:
 
 The fields are:
 
-ENABLE: (read-only) Contains 1 if the system-wide health and settings allow this port
+ENABLE: (read-only) Contains 1 if the system-wide health and settings allow ports
 to be active. All ports in a device will share the same ENABLE value.  It is included
 in every port&#39;s state register to simplify reading only a subset of ports in a 
 single request.
@@ -326,13 +326,12 @@ the current value of the desired state bits in the microcontroller is left uncha
 DSOFF-H and DSOFF-L: (read/write). As for DSON-H and DSON-L, only this field defines 
 whether the port should be turned on when the overall system state is &#39;offline.
 
-TO-H and TO-L: (read/write). These define a two-bit field that defines whether this 
-port should be forced to turn ON or OFF, overriding the DSON and DSOFF fields. The 
-MCCS should never set this field, it should only be used by a technician in the field. 
-Writing a 10 to this field forces the port to turn OFF, writing a 11 to this field 
-forces the port to turn ON, and writing a 01 to this field turns off the override, 
-so the DSON and DSOFF field values are used to determine the power state. Writing 
-00 to this field leaves the current field contents in the microcontroller unchanged.
+TO-H and TO-L: (read only). These define a two-bit field that defines whether this 
+port has been forced to turn ON or OFF, overriding the DSON and DSOFF fields. The 
+MCCS can't set this field, it is set by the firmware in response to button presses. 
+A 10 in this field means that the port has been forced OFF, a 11 to this field 
+means the port has been forced ON, and a 01 means that there is no override, 
+so the DSON and DSOFF field values are used to determine the power state. 
 
 BREAKER: (read/write). Contains a 1 if the over-current sense circuit breaker for 
 this port has tripped. Writing a 1 to this field will reset the breaker if it has 
@@ -379,36 +378,36 @@ WARNING-high), then transition to OK.
 stays in) ALARM. If the current state is ALARM, and the new reading is _above_ this value, 
 but still below WARNING-low, then transition to the RECOVERY state.
 
-| 1001 | SYS\_48V\_V\_TH | 4 | Incoming 48VDC voltage (Volts/100). AH, WH, WL, AL. |
-| --- | --- | --- | --- |
-| 1005 | SYS\_PSU\_V\_TH | 4 | PSU output voltage (Volts/100). AH, WH, WL, AL. |
-| 1009 | SYS\_PSUTEMP\_TH | 4 | PSU temperature (deg C / 100). AH, WH, WL, AL. |
-| 1013 | SYS\_PCBTEMP\_TH | 4 | PCB temperature (deg C / 100). AH, WH, WL, AL. |
-| 1017 | SYS\_OUTTEMP\_TH | 4 | Outside temperature (deg C / 100). AH, WH, WL, AL. |
-| 1021 | SYS\_SENSE01\_TH | 4 | Sensor 1 - usage TBD. AH, WH, WL, AL. |
-| 1025 | SYS\_SENSE02\_TH | 4 | Sensor 2 - usage TBD. AH, WH, WL, AL. |
-| 1029 | SYS\_SENSE03\_TH | 4 | Sensor 3 - usage TBD. AH, WH, WL, AL. |
-| 1033 | SYS\_SENSE04\_TH | 4 | Sensor 4 - usage TBD. AH, WH, WL, AL. |
-| 1037 | SYS\_SENSE05\_TH | 4 | Sensor 5 - usage TBD. AH, WH, WL, AL. |
-| 1041 | SYS\_SENSE06\_TH | 4 | Sensor 6 - usage TBD. AH, WH, WL, AL. |
-| 1045 | SYS\_SENSE07\_TH | 4 | Sensor 7 - usage TBD. AH, WH, WL, AL. |
-| 1049 | SYS\_SENSE08\_TH | 4 | Sensor 8 - usage TBD. AH, WH, WL, AL. |
-| 1053 | SYS\_SENSE09\_TH | 4 | Sensor 9 - usage TBD. AH, WH, WL, AL. |
-| 1057 | SYS\_SENSE10\_TH | 4 | Sensor 10 - usage TBD. AH, WH, WL, AL. |
-| 1061 | SYS\_SENSE11\_TH | 4 | Sensor 11 - usage TBD. AH, WH, WL, AL. |
-| 1065 | SYS\_SENSE12\_TH | 4 | Sensor 12 - usage TBD. AH, WH, WL, AL. |
-| 1069 | P01\_CURRENT\_TH | 1 | Port 01 current trip threshold (mA). |
-| 1070 | P02\_CURRENT\_TH | 1 | Port 02 current trip threshold (mA). |
-| 1071 | P03\_CURRENT\_TH | 1 | Port 03 current trip threshold (mA). |
-| 1072 | P04\_CURRENT\_TH | 1 | Port 04 current trip threshold (mA). |
-| 1073 | P05\_CURRENT\_TH | 1 | Port 05 current trip threshold (mA). |
-| 1074 | P06\_CURRENT\_TH | 1 | Port 06 current trip threshold (mA). |
-| 1075 | P07\_CURRENT\_TH | 1 | Port 07 current trip threshold (mA). |
-| 1076 | P08\_CURRENT\_TH | 1 | Port 08 current trip threshold (mA). |
-| 1077 | P09\_CURRENT\_TH | 1 | Port 09 current trip threshold (mA). |
-| 1078 | P10\_CURRENT\_TH | 1 | Port 10 current trip threshold (mA). |
-| 1079 | P11\_CURRENT\_TH | 1 | Port 11 current trip threshold (mA). |
-| 1080 | P12\_CURRENT\_TH | 1 | Port 12 current trip threshold (mA). |
+| 1001 | SYS\_48V\_V\_TH  | 4 | Incoming 48VDC voltage (Volts/100). AH, WH, WL, AL. |
+| --- |------------------| --- |-----------------------------------------------------|
+| 1005 | SYS\_PSU\_V\_TH  | 4 | PSU output voltage (Volts/100). AH, WH, WL, AL.     |
+| 1009 | SYS\_PSUTEMP\_TH | 4 | PSU temperature (deg C / 100). AH, WH, WL, AL.      |
+| 1013 | SYS\_PCBTEMP\_TH | 4 | PCB temperature (deg C / 100). AH, WH, WL, AL.      |
+| 1017 | SYS\_AMBTEMP\_TH | 4 | Ambient temperature (deg C / 100). AH, WH, WL, AL.  |
+| 1021 | SYS\_SENSE01\_TH | 4 | Sensor 1 - usage TBD. AH, WH, WL, AL.               |
+| 1025 | SYS\_SENSE02\_TH | 4 | Sensor 2 - usage TBD. AH, WH, WL, AL.               |
+| 1029 | SYS\_SENSE03\_TH | 4 | Sensor 3 - usage TBD. AH, WH, WL, AL.               |
+| 1033 | SYS\_SENSE04\_TH | 4 | Sensor 4 - usage TBD. AH, WH, WL, AL.               |
+| 1037 | SYS\_SENSE05\_TH | 4 | Sensor 5 - usage TBD. AH, WH, WL, AL.               |
+| 1041 | SYS\_SENSE06\_TH | 4 | Sensor 6 - usage TBD. AH, WH, WL, AL.               |
+| 1045 | SYS\_SENSE07\_TH | 4 | Sensor 7 - usage TBD. AH, WH, WL, AL.               |
+| 1049 | SYS\_SENSE08\_TH | 4 | Sensor 8 - usage TBD. AH, WH, WL, AL.               |
+| 1053 | SYS\_SENSE09\_TH | 4 | Sensor 9 - usage TBD. AH, WH, WL, AL.               |
+| 1057 | SYS\_SENSE10\_TH | 4 | Sensor 10 - usage TBD. AH, WH, WL, AL.              |
+| 1061 | SYS\_SENSE11\_TH | 4 | Sensor 11 - usage TBD. AH, WH, WL, AL.              |
+| 1065 | SYS\_SENSE12\_TH | 4 | Sensor 12 - usage TBD. AH, WH, WL, AL.              |
+| 1069 | P01\_CURRENT\_TH | 1 | Port 01 current trip threshold (mA).                |
+| 1070 | P02\_CURRENT\_TH | 1 | Port 02 current trip threshold (mA).                |
+| 1071 | P03\_CURRENT\_TH | 1 | Port 03 current trip threshold (mA).                |
+| 1072 | P04\_CURRENT\_TH | 1 | Port 04 current trip threshold (mA).                |
+| 1073 | P05\_CURRENT\_TH | 1 | Port 05 current trip threshold (mA).                |
+| 1074 | P06\_CURRENT\_TH | 1 | Port 06 current trip threshold (mA).                |
+| 1075 | P07\_CURRENT\_TH | 1 | Port 07 current trip threshold (mA).                |
+| 1076 | P08\_CURRENT\_TH | 1 | Port 08 current trip threshold (mA).                |
+| 1077 | P09\_CURRENT\_TH | 1 | Port 09 current trip threshold (mA).                |
+| 1078 | P10\_CURRENT\_TH | 1 | Port 10 current trip threshold (mA).                |
+| 1079 | P11\_CURRENT\_TH | 1 | Port 11 current trip threshold (mA).                |
+| 1080 | P12\_CURRENT\_TH | 1 | Port 12 current trip threshold (mA).                |
 
 The P\&lt;NN\&gt;\_CURRENT\_TH are the thresholds at which the microcontroller will turn off 
 an FEM because the current is too high. The values represent the difference between two 
@@ -432,34 +431,34 @@ up the unique chip ID number (guaranteed to be different for every physical devi
 these 54 registers, 26 are &#39;system&#39; registers, and there is an additional 2-byte
 &#39;port state register&#39; for each of the 28 possible output PDoC ports in the FNDH.
 
-| **#** | **Name** | **Size** | **Description**                                            |
-| --- | --- | --- |------------------------------------------------------------|
-| 1 | SYS\_MBRV | 1 | Modbus register map revision number. RO.                   |
-| 2 | SYS\_PCBREV | 1 | PCB Revision number. RO.                                   |
-| 3 | SYS\_CPUID | 2 | Microcontroller device ID (two registers, four bytes). RO. |
-| 5 | SYS\_CHIPID | 8 | Chip unique device ID (8 registers, 16 bytes). RO.         |
-| 13 | SYS\_FIRMVER | 1 | Firmware revision number. RO.                              |
-| 14 | SYS\_UPTIME | 2 | System uptime, in seconds (2 registers, four bytes). RO.   |
-| 16 | SYS\_ADDRESS | 1 | Modbus station address. RO.                                |
-| 17 | SYS\_48V1\_V | 1 | 48VDC PSU 1 output voltage (Volts/100). R/W.               |
-| 18 | SYS\_48V2\_V | 1 | 48VDC PSU 2 output voltage (Volts/100). R/W.               |
-| 19 | SYS\_48V\_I | 1 | Total 48VDC output current (Amps/100). R/W.                |
-| 20 | SYS\_48V1\_TEMP | 1 | 48VDC PSU 1 temperature (deg C / 100). R/W.                |
-| 21 | SYS\_48V2\_TEMP | 1 | 48VDC PSU 2 temperature (deg C / 100). R/W.                |
-| 22 | SYS\_PANELTEMP | 1 | Switch panel PCB temperature (deg C / 100). R/W.           |
-| 23 | SYS\_FNCBTEMP | 1 | FNCB board temperature (deg C / 100). R/W.                 |
-| 24 | SYS\_HUMIDITY | 1 | FNCB board humidity (percent). R/W.                        |
-| 25 | SYS\_STATUS | 1 | System status (see text). R/W.                             |
-| 26 | SYS\_LIGHTS | 1 | LED status (see text). R/W.                                |
-| 27 | SYS\_SENSE01 | 1 | Extra temperature 1. R/W                                   |
-| 28 | SYS\_SENSE02 | 1 | Extra temperature 2. R/W                                   |
-| 29 | SYS\_SENSE03 | 1 | Extra temperature 3. R/W                                   |
-| 30 | SYS\_SENSE04 | 1 | Extra temperature 4. R/W                                   |
-| 31 | SYS\_SENSE05 | 1 | Extra temperature 5. R/W                                   |
-| 32 | SYS\_SENSE06 | 1 | Extra temperature 6. R/W                                   |
-| 33 | SYS\_SENSE07 | 1 | Extra temperature 7. R/W                                   |
-| 34 | SYS\_SENSE08 | 1 | Extra temperature 8. R/W                                   |
-| 35 | SYS\_SENSE09 | 1 | Extra temperature 9. R/W                                   |
+| **#** | **Name** | **Size** | **Description**                                                          |
+| --- | --- | --- |--------------------------------------------------------------------------|
+| 1 | SYS\_MBRV | 1 | Modbus register map revision number. RO.                                 |
+| 2 | SYS\_PCBREV | 1 | PCB Revision number. RO.                                                 |
+| 3 | SYS\_CPUID | 2 | Microcontroller device ID (two registers, four bytes). RO.               |
+| 5 | SYS\_CHIPID | 8 | Chip unique device ID (8 registers, 16 bytes). RO.                       |
+| 13 | SYS\_FIRMVER | 1 | Firmware revision number. RO.                                            |
+| 14 | SYS\_UPTIME | 2 | System uptime, in seconds (2 registers, four bytes). RO.                 |
+| 16 | SYS\_ADDRESS | 1 | Modbus station address. RO.                                              |
+| 17 | SYS\_48V1\_V | 1 | 48VDC PSU output voltage 1 (Volts/100). R/W.                             |
+| 18 | SYS\_48V2\_V | 1 | 48VDC PSU output voltage 2 (Volts/100). R/W. Not implemented in hardware |
+| 19 | SYS\_48V\_I | 1 | Total 48VDC output current (Amps/100). R/W.                              |
+| 20 | SYS\_48V1\_TEMP | 1 | 48VDC PSU temperature 1 (deg C / 100). R/W.                              |
+| 21 | SYS\_48V2\_TEMP | 1 | 48VDC PSU temperature 2 (deg C / 100). R/W.                              |
+| 22 | SYS\_PANELTEMP | 1 | Switch panel PCB temperature (deg C / 100). R/W.                         |
+| 23 | SYS\_FNCBTEMP | 1 | FNCB board temperature (deg C / 100). R/W.                               |
+| 24 | SYS\_HUMIDITY | 1 | FNCB board humidity (percent). R/W.                                      |
+| 25 | SYS\_STATUS | 1 | System status (see text). R/W.                                           |
+| 26 | SYS\_LIGHTS | 1 | LED status (see text). R/W.                                              |
+| 27 | SYS\_SENSE01 | 1 | Extra temperature 1. R/W                                                 |
+| 28 | SYS\_SENSE02 | 1 | Extra temperature 2. R/W                                                 |
+| 29 | SYS\_SENSE03 | 1 | Extra temperature 3. R/W                                                 |
+| 30 | SYS\_SENSE04 | 1 | Extra temperature 4. R/W                                                 |
+| 31 | SYS\_SENSE05 | 1 | Extra temperature 5. R/W                                                 |
+| 32 | SYS\_SENSE06 | 1 | Extra temperature 6. R/W                                                 |
+| 33 | SYS\_SENSE07 | 1 | Extra temperature 7. R/W                                                 |
+| 34 | SYS\_SENSE08 | 1 | Extra temperature 8. R/W                                                 |
+| 35 | SYS\_SENSE09 | 1 | Extra temperature 9. R/W                                                 |
 
 
 The SYS\_STATUS is one of the two status registers that are read/write. When read, it 
@@ -554,15 +553,14 @@ unchanged.
 DSOFF-H and DSOFF-L: (read/write). As for DSON-H and DSON-L, only this field defines whether 
 the port should be turned on when the overall system state is &#39;offline.
 
-TO-H and TO-L: (read/write). These define a two-bit field that defines whether this port 
-should be forced to turn ON or OFF, overriding the DSON and DSOFF fields. The MCCS should 
-never set this field, it should only be used by a technician in the field. Writing a 10 to 
-this field forces the port to turn OFF, writing a 11 to this field forces the port to 
-turn ON, and writing a 01 to this field turns off the override, so the DSON and DSOFF 
-field values are used to determine the power state. Writing 00 to this field leaves 
-the current field contents in the microcontroller unchanged.
+TO-H and TO-L: (read only). These define a two-bit field that defines whether this 
+port has been forced to turn ON or OFF, overriding the DSON and DSOFF fields. The 
+MCCS can't set this field, it is set by the firmware in response to button presses. 
+A 10 in this field means that the port has been forced OFF, a 11 to this field 
+means the port has been forced ON, and a 01 means that there is no override, 
+so the DSON and DSOFF field values are used to determine the power state. 
 
-PWRSENSE: (read/write). Contains a 1 if there is an active 48V supply on the output to 
+PWRSENSE: (read only). Contains a 1 if there is an active 48V supply on the output to 
 that port. It will be 0 if the port is turned off (POWER=0), or if the under/over 
 current circuit has tripped, disabling 48V for that port. If the current limit has 
 tripped, the port must be turned off and on again using the 
@@ -613,8 +611,8 @@ value, but still below WARNING-low, then transition to the RECOVERY state.
 | 1001 | SYS\_48V1\_V\_TH    | 4 | 48VDC PSU 1 output voltage. AH, WH, WL, AL.   |
 | 1005 | SYS\_48V2\_V\_TH    | 4 | 48VDC PSU 2 output voltage. AH, WH, WL, AL.   |
 | 1009 | SYS\_48V\_I\_TH     | 4 | Total 48V current. AH, WH, WL, AL.            |
-| 1013 | SYS\_48V1\_TEMP\_TH | 4 | 48V PSU 1 temperature. AH, WH, WL, AL.        |
-| 1017 | SYS\_48V2\_TEMP\_TH | 4 | 48V PSU 2 temperature. AH, WH, WL, AL.        |
+| 1013 | SYS\_48V1\_TEMP\_TH | 4 | 48V PSU temperature 1. AH, WH, WL, AL.        |
+| 1017 | SYS\_48V2\_TEMP\_TH | 4 | 48V PSU temperature 2. AH, WH, WL, AL.        |
 | 1021 | SYS\_PANELTEMP\_TH  | 4 | Switch panel PCB temperature. AH, WH, WL, AL. |
 | 1025 | SYS\_FNCBTEMP\_TH   | 4 | FNCB board temperature. AH, WH, WL, AL.       |
 | 1029 | SYS\_HUMIDITY\_TH   | 4 | FNCB board humidity. AH, WH, WL, AL.          |

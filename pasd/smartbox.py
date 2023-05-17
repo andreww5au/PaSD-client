@@ -44,8 +44,8 @@ SMARTBOX_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed,
                         'SYS_48V_V':     (17, 1, 'Incoming 48VDC voltage', conversion.scale_48v),
                         'SYS_PSU_V':     (18, 1, 'PSU output voltage', conversion.scale_5v),
                         'SYS_PSUTEMP': (19, 1, 'PSU Temperature', conversion.scale_temp),
-                        'SYS_PCBTEMP': (20, 1, 'PCB Temperature', conversion.scale_temp),
-                        'SYS_OUTTEMP': (21, 1, 'Outside Temperature', conversion.scale_temp),
+                        'SYS_PCBTEMP': (20, 1, 'PCB Temperature - not implemented', conversion.scale_temp),
+                        'SYS_AMBTEMP': (21, 1, 'Ambient Temperature inside FEM enclosure', conversion.scale_temp),
                         'SYS_STATUS':  (22, 1, 'System status code', None),
                         'SYS_LIGHTS':  (23, 1, 'LED state codes', None),
 
@@ -96,7 +96,7 @@ SMARTBOX_CONF_REGS_1 = {  # thresholds with over-value alarm and warning, as wel
                         'SYS_PSU_V_TH': (1005, 4, 'PSU output voltage AH, WH, WL, AL', conversion.scale_5v),
                         'SYS_PSUTEMP_TH': (1009, 4, 'PSU temperature AH, WH, WL, AL', conversion.scale_temp),
                         'SYS_PCBTEMP_TH': (1013, 4, 'PCB temperature AH, WH, WL, AL', conversion.scale_temp),
-                        'SYS_OUTTEMP_TH': (1017, 4, 'Outside temperature AH, WH, WL, AL', conversion.scale_temp),
+                        'SYS_AMBTEMP_TH': (1017, 4, 'Ambient temperature AH, WH, WL, AL', conversion.scale_temp),
                         'SYS_SENSE01_TH': (1021, 4, 'Sensor 1 AH, WH, WL, AL', conversion.scale_temp),
                         'SYS_SENSE02_TH': (1025, 4, 'Sensor 2 AH, WH, WL, AL', conversion.scale_temp),
                         'SYS_SENSE03_TH': (1029, 4, 'Sensor 3 AH, WH, WL, AL', conversion.scale_temp),
@@ -609,7 +609,7 @@ class SMARTbox(transport.ModbusDevice):
                 self.psu_temp = scaled_float
             elif regname == 'SYS_PCBTEMP':
                 self.pcb_temp = scaled_float
-            elif regname == 'SYS_OUTTEMP':
+            elif regname == 'SYS_AMBTEMP':
                 self.outside_temp = scaled_float
             elif regname == 'SYS_STATUS':
                 self.statuscode = raw_int

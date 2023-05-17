@@ -46,8 +46,8 @@ FNDH_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
                         'SYS_48V1_V': (17, 1, '48VDC PSU 1 output voltage', conversion.scale_48v),          # AN12
                         'SYS_48V2_V': (18, 1, '48VDC PSU 2 output voltage', conversion.scale_48v),          # AN13
                         'SYS_48V_I':   (19, 1, 'Total 48VDC output current', conversion.scale_48vcurrent),  # AN11
-                        'SYS_48V1_TEMP': (20, 1, '48VDC PSU 1 temperature', conversion.scale_temp),         # AN14
-                        'SYS_48V2_TEMP': (21, 1, '48VDC PSU 1 temperature', conversion.scale_temp),         # AN15
+                        'SYS_48V1_TEMP': (20, 1, '48VDC PSU temperature 1', conversion.scale_temp),         # AN14
+                        'SYS_48V2_TEMP': (21, 1, '48VDC PSU temperature 2', conversion.scale_temp),         # AN15
                         'SYS_PANELTEMP': (22, 1, 'Switch panel PCB temperature', conversion.scale_temp),    # AN08
                         'SYS_FNCBTEMP': (23, 1, 'FNCB board temperature', conversion.scale_temp),           # AN09
                         'SYS_HUMIDITY': (24, 1, 'FNCB board humidity', conversion.scale_humidity),          # AN10
@@ -326,10 +326,10 @@ class FNDH(transport.ModbusDevice):
     uptime: Time in seconds since this FNDH was powered up
     station_value: Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
     psu48v1_voltage: Voltage measured on the output of the first 48VDC power supply (Volts)
-    psu48v2_voltage: Voltage measured on the output of the second 48VDC power supply (Volts)
+    psu48v2_voltage: Voltage measured on the output of the second 48VDC power supply (Volts) - not implemented in hardware
     psu48v_current: Total current on the 48VDC bus (Amps)
-    psu48v1_temp: Common temperature for the first 48VDC power supply (deg C)
-    psu48v2_temp: Common temperature for the second 48VDC power supply (deg C)
+    psu48v1_temp: Temperature 1 for the 48VDC power supply box (deg C)
+    psu48v2_temp: Temperature 2 for the 48VDC power supply box (deg C)
     panel_temp: Switch panel temperature (deg C)
     fncb_temp: FNCB board temperature (deg C)
     fncb_humidity: FNCB board humidity (%)
