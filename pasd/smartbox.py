@@ -456,7 +456,7 @@ class SMARTbox(transport.ModbusDevice):
     register_map: A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
     sensor_temps: A dictionary with sensor number (1-12) as key, and temperature as value
     cpuid: CPU identifier (integer)
-    chipid: Unique ID number (16 bytes), different for every physical SMARTbox
+    chipid: Unique ID number (16 bytes as ASCII hex), different for every physical SMARTbox
     firmware_version: Firmware revision mumber for this physical SMARTbox
     uptime: Time in seconds since this SMARTbox was powered up
     station_value: Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
@@ -496,7 +496,7 @@ class SMARTbox(transport.ModbusDevice):
         self.register_map = {}  # A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
         self.sensor_temps = {}  # Dictionary with sensor number (1-12) as key, and (probably) temperature as value
         self.cpuid = ''    # CPU identifier (integer)
-        self.chipid = []   # Unique ID number (16 bytes), different for every physical SMARTbox
+        self.chipid = ''   # Unique ID number (16 bytes as ASCII hex), different for every physical SMARTbox
         self.firmware_version = 0  # Firmware revision mumber for this physical SMARTbox
         self.uptime = 0            # Time in seconds since this SMARTbox was powered up
         self.station_value = 0     # Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address

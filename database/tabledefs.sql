@@ -66,7 +66,7 @@ CREATE TABLE pasd_smartbox_state (
     mbrv integer,                -- Modbus register-map revision number for this physical SMARTbox
     pcbrv integer,               -- PCB revision number for this physical SMARTbox
     cpuid text,                  -- CPU identifier (integer)
-    chipid integer[],            -- Unique ID number (16 bytes), different for every physical SMARTbox
+    chipid text,                 -- Unique ID number (16 bytes as ASCII hex), different for every physical SMARTbox
     firmware_version integer,    -- Firmware revision mumber for this physical SMARTbox
     uptime integer,              -- Time in seconds since this SMARTbox was powered up
     incoming_voltage float,      -- Measured voltage for the (nominal) 48VDC input power (Volts)
@@ -96,7 +96,7 @@ CREATE TABLE pasd_fndh_state (
     mbrv integer,                -- Modbus register-map revision number for this physical SMARTbox
     pcbrv integer,               -- PCB revision number for this physical SMARTbox
     cpuid text,                  -- CPU identifier (integer)
-    chipid integer[],            -- Unique ID number (16 bytes), different for every physical SMARTbox
+    chipid text,                 -- Unique ID number (16 bytes as ASCII hex), different for every physical SMARTbox
     firmware_version integer,    -- Firmware revision mumber for this physical SMARTbox
     uptime integer,              -- Time in seconds since this SMARTbox was powered up
     psu48v1_voltage float,       -- Voltage measured on the output of the first 48VDC power supply (Volts)
