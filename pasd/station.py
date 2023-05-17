@@ -21,7 +21,7 @@ FNDH_ADDRESS = 101   # Modbus address of the FNDH controller
 # MAX_SMARTBOX = 26    # Don't try to talk to smartboxes above this address value
 MAX_SMARTBOX = 24    # Don't try to talk to smartboxes above this address value
 
-PORT_TURNON_INTERVAL = 5.0   # How many seconds to wait between each PDoC port when powering up an FNDH
+PORT_TURNON_INTERVAL = 6.0   # How many seconds to wait between each PDoC port when powering up an FNDH
 
 # Initial mapping between SMARTbox/port and antenna number
 # Here as a dict to show the concept, in reality this would be in a database.
