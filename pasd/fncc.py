@@ -37,6 +37,7 @@ FNCC_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
                         'SYS_FIRMVER': (13, 1, 'Firmware version', None),
                         'SYS_UPTIME':  (14, 2, 'Uptime in seconds', None),
                         'SYS_ADDRESS': (16, 1, 'MODBUS station ID', None),
+                        'FIELD_NODE_NUMBER': (17, 1, 'Field node number', None),
 
 }
 
