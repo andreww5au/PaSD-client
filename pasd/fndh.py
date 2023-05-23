@@ -321,7 +321,7 @@ class FNDH(transport.ModbusDevice):
     pcbrv: PCB revision number for this physical FNDH
     register_map: A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
     cpuid: CPU identifier (integer)
-    chipid: Unique ID number (16 bytes), different for every physical FNDH
+    chipid: Unique ID number (16 bytes stored as ASCII hex), different for every physical FNDH
     firmware_version: Firmware revision mumber for this physical FNDH
     uptime: Time in seconds since this FNDH was powered up
     station_value: Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
@@ -363,7 +363,7 @@ class FNDH(transport.ModbusDevice):
         self.pcbrv = None  # PCB revision number for this physical FNDH
         self.register_map = {}  # A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
         self.cpuid = ''  # CPU identifier (integer)
-        self.chipid = []  # Unique ID number (16 bytes), different for every physical FNDH
+        self.chipid = ''  # Unique ID number (16 bytes as ASCII hex), different for every physical FNDH
         self.firmware_version = 0  # Firmware revision mumber for this physical FNDH
         self.uptime = 0  # Time in seconds since this FNDH was powered up
         self.station_value = 0  # Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address

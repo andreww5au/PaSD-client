@@ -217,7 +217,7 @@ SMARTBox at address: %(modbus_address)s as of %(status_age)d ago:
     5V out: %(psu_voltage)4.2f V
     PSU Temp: %(psu_temp)4.2f deg C
     PCB Temp: %(pcb_temp)4.2f deg C
-    Outside Temp: %(outside_temp)4.2f deg C
+    Ambient Temp: %(ambient_temp)4.2f deg C
     Status: %(statuscode)s (%(status)s)
     Service LED: %(service_led)s
     Indicator: %(indicator_code)s (%(indicator_state)s)
@@ -456,7 +456,7 @@ class SMARTbox(transport.ModbusDevice):
     register_map: A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
     sensor_temps: A dictionary with sensor number (1-12) as key, and temperature as value
     cpuid: CPU identifier (integer)
-    chipid: Unique ID number (16 bytes), different for every physical SMARTbox
+    chipid: Unique ID number (16 bytes as ASCII hex), different for every physical SMARTbox
     firmware_version: Firmware revision mumber for this physical SMARTbox
     uptime: Time in seconds since this SMARTbox was powered up
     station_value: Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
@@ -464,7 +464,7 @@ class SMARTbox(transport.ModbusDevice):
     psu_voltage: Measured output voltage for the internal (nominal) 5V power supply
     psu_temp: Temperature of the internal 5V power supply (deg C)
     pcb_temp: Temperature on the internal PCB (deg C)
-    outside_temp: Outside temperature (deg C)
+    ambient_temp: Ambient temperature inside FEM enclosure (deg C)
     statuscode: Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
     status: Status string, obtained from STATUS_CODES global (eg 'OK')
     service_led: True if the blue service indicator LED is switched ON.
@@ -496,7 +496,7 @@ class SMARTbox(transport.ModbusDevice):
         self.register_map = {}  # A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
         self.sensor_temps = {}  # Dictionary with sensor number (1-12) as key, and (probably) temperature as value
         self.cpuid = ''    # CPU identifier (integer)
-        self.chipid = []   # Unique ID number (16 bytes), different for every physical SMARTbox
+        self.chipid = ''   # Unique ID number (16 bytes as ASCII hex), different for every physical SMARTbox
         self.firmware_version = 0  # Firmware revision mumber for this physical SMARTbox
         self.uptime = 0            # Time in seconds since this SMARTbox was powered up
         self.station_value = 0     # Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
@@ -504,7 +504,7 @@ class SMARTbox(transport.ModbusDevice):
         self.psu_voltage = 0.0     # Measured output voltage for the internal (nominal) 5V power supply
         self.psu_temp = 0.0    # Temperature of the internal 5V power supply (deg C)
         self.pcb_temp = 0.0    # Temperature on the internal PCB (deg C)
-        self.outside_temp = 0.0    # Outside temperature (deg C)
+        self.ambient_temp = 0.0    # Ambient temperature inside FEM enclosure (deg C)
         self.statuscode = STATUS_UNKNOWN    # Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
         self.status = 'UNKNOWN'       # Status string, obtained from STATUS_CODES global (eg 'OK')
         self.service_led = False    # True if the blue service indicator LED is switched ON.
@@ -610,7 +610,7 @@ class SMARTbox(transport.ModbusDevice):
             elif regname == 'SYS_PCBTEMP':
                 self.pcb_temp = scaled_float
             elif regname == 'SYS_AMBTEMP':
-                self.outside_temp = scaled_float
+                self.ambient_temp = scaled_float
             elif regname == 'SYS_STATUS':
                 self.statuscode = raw_int
                 self.status = STATUS_CODES[self.statuscode]

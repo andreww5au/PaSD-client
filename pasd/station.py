@@ -21,7 +21,7 @@ FNDH_ADDRESS = 101   # Modbus address of the FNDH controller
 # MAX_SMARTBOX = 26    # Don't try to talk to smartboxes above this address value
 MAX_SMARTBOX = 24    # Don't try to talk to smartboxes above this address value
 
-PORT_TURNON_INTERVAL = 5.0   # How many seconds to wait between each PDoC port when powering up an FNDH
+PORT_TURNON_INTERVAL = 6.0   # How many seconds to wait between each PDoC port when powering up an FNDH
 
 # Initial mapping between SMARTbox/port and antenna number
 # Here as a dict to show the concept, in reality this would be in a database.
@@ -248,15 +248,16 @@ class Station(object):
         # Turn on all the ports, one by one, with a 10 second interval between each port
         port_on_times = {}   # Unix timestamp at which each port number was turned on
         for portnum in range(1, 29):
-            time.sleep(PORT_TURNON_INTERVAL)
+            last_loop_time = time.time()
             self.fndh.ports[portnum].desire_enabled_online = True
-            self.logger.info('Turning on PDoC port %d' % portnum)
+            self.logger.info('Turning on PDoC port %d at time %f' % (portnum, time.time()))
             ok = self.fndh.write_portconfig(write_state=True, write_to=True)
             port_on_times[portnum] = int(time.time())
             if not ok:
                 self.logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
                 self.status = 'ERROR'
                 return False
+            time.sleep(last_loop_time - time.time() + PORT_TURNON_INTERVAL)
 
         # Read the uptimes for all possible SMARTbox addresses, to work out when they were turned on
         address_on_times = {}   # Unix timestamp at which each SMARTbox booted, according to the uptime

@@ -354,7 +354,7 @@ class Connection(object):
         else:
             self.logger.debug('No data received by send_as_master() after %f: %s' % (time.time() - stime, mstring))
 
-        self.logger.debug("Recvd: %s/%s" % (mstring, str(replist)))
+        self.logger.debug("Recvd: %s/%s" % (mstring.rstrip(), str(replist)))
         if crcgood:
             return datalist
         else:

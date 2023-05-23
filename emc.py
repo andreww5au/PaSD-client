@@ -108,7 +108,7 @@ def main_loop(stn, togglepdocs=False, togglefems=False):
             fdict['pasd.fieldtest.sb%02d.psu_voltage' % sbnum] = sb.psu_voltage
             fdict['pasd.fieldtest.sb%02d.psu_temp' % sbnum] = sb.psu_temp
             fdict['pasd.fieldtest.sb%02d.pcb_temp' % sbnum] = sb.pcb_temp
-            fdict['pasd.fieldtest.sb%02d.outside_temp' % sbnum] = sb.outside_temp
+            fdict['pasd.fieldtest.sb%02d.ambient_temp' % sbnum] = sb.ambient_temp
             fdict['pasd.fieldtest.sb%02d.statuscode' % sbnum] = sb.statuscode
             fdict['pasd.fieldtest.sb%02d.indicator_code' % sbnum] = sb.indicator_code
             stime = sb.readtime

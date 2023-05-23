@@ -28,7 +28,7 @@ psycopg2.extensions.register_type(DEC2FLOAT, None)
 STATION_ID = 1
 MAX_SMARTBOX = 2
 
-MAX_AGE = 120   # If the last update was more than this many seconds ago, assume the station code isn't running.
+MAX_AGE = 600   # If the last update was more than this many seconds ago, assume the station code isn't running.
 
 CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
@@ -67,7 +67,7 @@ SMARTBox at address: %(modbus_address)s on PDoC port %(pdoc_number)s - last upda
     5V out: %(psu_voltage)4.2f V
     PSU Temp: %(psu_temp)4.2f deg C
     PCB Temp: %(pcb_temp)4.2f deg C
-    Outside Temp: %(outside_temp)4.2f deg C
+    Ambient Temp: %(ambient_temp)4.2f deg C
     Status: %(status)s
     Service LED: %(service_led)s
     Indicator: %(indicator_state)s
@@ -316,7 +316,7 @@ def sb(portnums, action, sbnum):
         with DB.cursor() as curs:
             if action.upper() == 'STATUS':
                 query = """SELECT smartbox_number, mbrv, pcbrv, cpuid, chipid, firmware_version, uptime, 
-                                  incoming_voltage, psu_voltage, psu_temp, pcb_temp, outside_temp, status, 
+                                  incoming_voltage, psu_voltage, psu_temp, pcb_temp, ambient_temp, status, 
                                   indicator_state, readtime, pdoc_number, service_led
                            FROM pasd_smartbox_state
                            WHERE (station_id = %(station_id)s) AND (smartbox_number = ANY(%(modbus_address)s))
@@ -325,7 +325,7 @@ def sb(portnums, action, sbnum):
                 rows = curs.fetchall()
                 for row in rows:
                     (smartbox_number, mbrv, pcbrv, cpuid, chipid, firmware_version, uptime,
-                     incoming_voltage, psu_voltage, psu_temp, pcb_temp, outside_temp, status,
+                     incoming_voltage, psu_voltage, psu_temp, pcb_temp, ambient_temp, status,
                      indicator_state, readtime, pdoc_number, service_led) = row
                     try:
                         age = time.time() - readtime
@@ -346,7 +346,7 @@ def sb(portnums, action, sbnum):
                                  'psu_voltage':psu_voltage,
                                  'psu_temp':psu_temp,
                                  'pcb_temp':pcb_temp,
-                                 'outside_temp':outside_temp,
+                                 'ambient_temp':ambient_temp,
                                  'status':status,
                                  'indicator_state':indicator_state,
                                  'readtime':readtime,

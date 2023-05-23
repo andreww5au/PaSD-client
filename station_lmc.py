@@ -66,7 +66,7 @@ UPDATE pasd_smartbox_state
     SET mbrv = %(mbrv)s, pcbrv = %(pcbrv)s, cpuid = %(cpuid)s, chipid = %(chipid)s, 
         firmware_version = %(firmware_version)s, uptime = %(uptime)s, incoming_voltage = %(incoming_voltage)s, 
         psu_voltage = %(psu_voltage)s, psu_temp = %(psu_temp)s, pcb_temp = %(pcb_temp)s, 
-        outside_temp = %(outside_temp)s, status = %(status)s, service_led = %(service_led)s,
+        ambient_temp = %(ambient_temp)s, status = %(status)s, service_led = %(service_led)s,
         indicator_state = %(indicator_state)s, readtime = %(readtime)s, pdoc_number = %(pdoc_number)s
     WHERE (station_id = %(station_id)s) AND (smartbox_number = %(modbus_address)s)
 """
@@ -429,7 +429,7 @@ def main_loop(db, stn):
             fdict['pasd.fieldtest.sb%02d.psu_voltage' % sbnum] = sb.psu_voltage
             fdict['pasd.fieldtest.sb%02d.psu_temp' % sbnum] = sb.psu_temp
             fdict['pasd.fieldtest.sb%02d.pcb_temp' % sbnum] = sb.pcb_temp
-            fdict['pasd.fieldtest.sb%02d.outside_temp' % sbnum] = sb.outside_temp
+            fdict['pasd.fieldtest.sb%02d.ambient_temp' % sbnum] = sb.ambient_temp
             fdict['pasd.fieldtest.sb%02d.statuscode' % sbnum] = sb.statuscode
             fdict['pasd.fieldtest.sb%02d.indicator_code' % sbnum] = sb.indicator_code
             stime = sb.readtime
