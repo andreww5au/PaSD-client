@@ -607,7 +607,7 @@ class SMARTbox(transport.ModbusDevice):
                 self.cpuid = hex(raw_int)
             elif regname == 'SYS_CHIPID':
                 bytelist = []
-                for byte_tuple in bytelist:
+                for byte_tuple in raw_value:
                     bytelist += list(byte_tuple)
                 self.chipid = ''.join([hex(v)[-2:].upper() for v in bytelist])
             elif regname == 'SYS_FIRMVER':
