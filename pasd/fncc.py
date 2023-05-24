@@ -174,7 +174,7 @@ class FNCC(transport.ModbusDevice):
                 bytelist = []
                 for byte_tuple in raw_value:
                     bytelist += list(byte_tuple)
-                self.chipid = ''.join([hex(v)[-2:].upper() for v in bytelist])
+                self.chipid = ''.join([('%02X' % v) for v in bytelist])
             elif regname == 'SYS_FIRMVER':
                 self.firmware_version = raw_int
             elif regname == 'SYS_UPTIME':
