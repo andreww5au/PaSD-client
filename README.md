@@ -118,8 +118,9 @@ _Note that the &#39;Regnum&#39; values in the packet are the actual register num
 minus 1, so we send decimal &#39;10&#39; in the packet (0x0A) to read register 11._
 
 In reply, the microcontroller would send a packet containing its own station ID, a 
-0x03, the number of registers read (in 1 byte), the desired register contents (MSB 
-first), and ending with a checksum LRC.
+0x03, the number of bytes in the register data being returned (equal to two
+times the number of registers), the desired register contents (MSB first), 
+and ending with a checksum LRC.
 
 If there was an error, the microcontroller would reply with a packet that looks like:
 
@@ -251,6 +252,41 @@ codes (TBD) – for example, 0 might be off, 1 might represent flashing bright r
 for 0.2 seconds every 1 second, etc. The state of the tri-colour LED, and the value 
 of that byte of the register, are controlled by the microcontroller, and writes to 
 that byte of the register are ignored.
+
+The colour LED codes (the read-only byte) are:
+
+ 0:'OFF',
+ 10:'GREEN',       # always ON - used for 'OK and OFFLINE'
+ 11:'GREENSLOW',   # 1.25 Hz strobe  - used for 'OK and ONLINE'
+ 12:'GREENFAST',   # 2.5 Hz strobe
+ 13:'GREENVFAST',     # 5 Hz strobe
+ 14:'GREENDOTDASH',   # SOS in Morse code
+
+ 20:'YELLOW',       # always ON  - used for 'WARNING and OFFLINE'
+ 21:'YELLOWSLOW',   # 1.25 Hz strobe  - used for 'WARNING and ONLINE'
+ 22:'YELLOWFAST',   # 2.5 Hz strobe  - used for 'UNINITIALISED'
+ 23:'YELLOWVFAST',     # 5 Hz strobe
+ 24:'YELLOWDOTDASH',   # SOS in Morse code
+
+ 30:'RED',       # always ON
+ 31:'REDSLOW',   # 1.25 Hz strobe
+ 32:'REDFAST',   # 2.5 Hz strobe
+ 33:'REDVFAST',     # 5 Hz strobe
+ 34:'REDDOTDASH',   # SOS in Morse code
+
+ 40:'YELLOWRED',     # Alternating yellow and red at 1.25 Hz
+ 41:'YELLOWREDSLOW',   # red 0.5sec, 0.3 sec off, yellow 0.5 sec, 0.3 sec off pattern
+
+ 50:'GREENRED'     # Alternating green and red at 1.25 Hz - used for 'POWERDOWN'
+
+The service LED codes (read/write, and only changed by MCCS) are:
+
+ 0:'SERVICE_OFF',
+ 1:'SERVICE_ON',
+ 2:'SERVICE_VFAST',   # 5 Hz strobe
+ 3:'SERVICE_FAST',   # 2.5 Hz strobe
+ 4:'SERVICE_SLOW',   #1.25 Hz strobe
+ 5:'SERVICE_VSLOW'   # 0.625 Hz strobe
 
 The hardware has an additional few (currently around 7) analogue inputs available for
 monitoring sensor readings. To allow room for expansion, 12 registers (and a matching 

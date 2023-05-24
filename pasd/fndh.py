@@ -169,28 +169,44 @@ LED_GREENRED = 50       # Waiting for restart from MCCS after long button press
 
 LED_CODES = {-1:'UKNOWN',
              0:'OFF',
-             10:'GREEN',
-             11:'GREENSLOW',
-             12:'GREENFAST',
-             13:'GREENVFAST',
-             14:'GREENDOTDASH',
+             10:'GREEN',       # always ON - used for 'OK and OFFLINE'
+             11:'GREENSLOW',   # 1.25 Hz strobe  - used for 'OK and ONLINE'
+             12:'GREENFAST',   # 2.5 Hz strobe
+             13:'GREENVFAST',     # 5 Hz strobe
+             14:'GREENDOTDASH',   # SOS in Morse code
 
-             20:'YELLOW',
-             21:'YELLOWSLOW',
-             22:'YELLOWFAST',
-             23:'YELLOWVFAST',
-             24:'YELLOWDOTDASH',
+             20:'YELLOW',       # always ON  - used for 'WARNING and OFFLINE'
+             21:'YELLOWSLOW',   # 1.25 Hz strobe  - used for 'WARNING and ONLINE'
+             22:'YELLOWFAST',   # 2.5 Hz strobe  - used for 'UNINITIALISED'
+             23:'YELLOWVFAST',     # 5 Hz strobe
+             24:'YELLOWDOTDASH',   # SOS in Morse code
 
-             30:'RED',
-             31:'REDSLOW',
-             32:'REDFAST',
-             33:'REDVFAST',
-             34:'REDDOTDASH',
+             30:'RED',       # always ON
+             31:'REDSLOW',   # 1.25 Hz strobe
+             32:'REDFAST',   # 2.5 Hz strobe
+             33:'REDVFAST',     # 5 Hz strobe
+             34:'REDDOTDASH',   # SOS in Morse code
 
-             40:'YELLOWRED',
-             41:'YELLOWREDSLOW',
+             40:'YELLOWRED',     # Alternating yellow and red at 1.25 Hz
+             41:'YELLOWREDSLOW',   # red 0.5sec, 0.3 sec off, yellow 0.5 sec, 0.3 sec off pattern
 
-             50:'GREENRED'}
+             50:'GREENRED'}     # Alternating green and red at 1.25 Hz - used for 'POWERDOWN'
+
+SERVICE_OFF = 0
+SERVICE_ON = 1
+SERVICE_VFAST = 2   # 5 Hz strobe
+SERVICE_FAST = 3   # 2.5 Hz strobe
+SERVICE_SLOW = 4   # 1.25 Hz
+SERVICE_VSLOW = 5   # 0.625 Hz
+
+SERVICE_LED_CODES = {-1:'SERVICE_UKNOWN',
+                     0:'SERVICE_OFF',
+                     1:'SERVICE_ON',
+                     2:'SERVICE_VFAST',
+                     3:'SERVICE_FAST',
+                     4:'SERVICE_SLOW',
+                     5:'SERVICE_VSLOW'
+                     }
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
