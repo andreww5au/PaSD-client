@@ -271,7 +271,9 @@ class Station(object):
                 smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
 
             uptime = None
+            read_time = None
             try:
+                read_time = time.time()
                 uptime = smb.read_uptime()
             except:
                 pass
@@ -283,13 +285,13 @@ class Station(object):
                     del self.smartboxes[sadd]
                 continue
             else:
-                self.logger.info('Uptime of %d (%d) from SMARTbox at address %d' % (uptime, time.time() - uptime, sadd))
+                self.logger.info('Uptime of %d (%d) from SMARTbox at address %d' % (uptime, read_time - uptime, sadd))
                 smb.configure()
                 smb.poll_data()
                 if sadd not in self.smartboxes:  # If this SMARTbox isn't in the antenna map, save it in the smartbox dictionary
                     self.smartboxes[sadd] = smb
 
-            address_on_times[sadd] = time.time() - uptime
+            address_on_times[sadd] = read_time - uptime
 
         self.logger.debug('ON times: %s' % port_on_times)
         self.logger.debug('ADDRESS times: %s' % address_on_times)
