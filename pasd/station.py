@@ -231,13 +231,23 @@ class Station(object):
         self.logger.info('Full station startup:')
         self.active = None   # Failure in the middle of this process means the state is unknown
         self.status = 'STARTUP'
-        ok = self.fndh.poll_data()
+        ok = False
+        try:
+            ok = self.fndh.poll_data()
+        except IOError:
+            pass
+
         if not ok:
             self.logger.error('No reply from FNDH - aborting station startup.')
             self.status = 'ERROR'
             return False
 
-        ok = self.fndh.configure_all_off(portconfig=self.portconfig_fndh)   # Transition the FNDH to online, but with all PDoC ports turned off
+        ok = False
+        try:
+            ok = self.fndh.configure_all_off(portconfig=self.portconfig_fndh)   # Transition the FNDH to online, but with all PDoC ports turned off
+        except:
+            pass
+
         if not ok:
             self.logger.error('Could not configure FNDH - aborting station startup.')
             self.status = 'ERROR'
@@ -277,7 +287,7 @@ class Station(object):
             try:
                 read_time = time.time()
                 uptime = smb.read_uptime()
-            except:
+            except IOError:
                 pass
 
             if uptime is None:

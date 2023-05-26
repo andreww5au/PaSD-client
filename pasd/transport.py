@@ -602,6 +602,9 @@ class Connection(object):
                         self.logger.error("Exception 0x8303: Register count <1 or >123. Aborting.")
                     elif excode == 4:
                         self.logger.error("Exception 0x8304: Read error on one or more registers. Aborting.")
+                    elif excode == 11:
+                        self.logger.error("Exception 0x830b: Gateway detected a missing response from client. Aborting.")
+                        raise IOError    # It's a communications failure, not a protocol error
                     else:
                         self.logger.error("Exception %s: Unknown exception. Aborting." % (hex(excode + 0x83 * 256),))
                     raise ValueError
@@ -685,6 +688,9 @@ class Connection(object):
                         self.logger.error("Exception 0x8603: Register value out of range")
                     elif excode == 4:
                         self.logger.error("Exception 0x8604: Write error on one or more registers")
+                    elif excode == 11:
+                        self.logger.error("Exception 0x860b: Gateway detected a missing response from client. Aborting.")
+                        raise IOError    # It's a communications failure, not a protocol error
                     else:
                         self.logger.error("Exception %s: Unknown exception" % (hex(excode + 0x86 * 256),))
                     raise ValueError
@@ -767,6 +773,9 @@ class Connection(object):
                         self.logger.error("Exception 0x9003: Register count <1 or >123, or bytecount<>rlen*2")
                     elif excode == 4:
                         self.logger.error("Exception 0x9004: Write error on one or more registers")
+                    elif excode == 11:
+                        self.logger.error("Exception 0x900b: Gateway detected a missing response from client. Aborting.")
+                        raise IOError    # It's a communications failure, not a protocol error
                     else:
                         self.logger.error("Exception %s: Unknown exception" % (hex(excode + 0x90 * 256),))
                     raise ValueError
