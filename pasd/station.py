@@ -245,6 +245,8 @@ class Station(object):
         else:
             self.logger.info('All FNDH ports turned off')
 
+        time.sleep(2)   # Allow all smartboxes time to power off fully before starting
+
         # Turn on all the ports, one by one, with a 10 second interval between each port
         port_on_times = {}   # Unix timestamp at which each port number was turned on
         for portnum in range(1, 29):
