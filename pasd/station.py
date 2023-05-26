@@ -248,11 +248,13 @@ class Station(object):
         # Turn on all the ports, one by one, with a 10 second interval between each port
         port_on_times = {}   # Unix timestamp at which each port number was turned on
         for portnum in range(1, 29):
-            last_loop_time = time.time()
             self.fndh.ports[portnum].desire_enabled_online = True
-            self.logger.info('Turning on PDoC port %d at time %f' % (portnum, time.time()))
+            last_loop_time = time.time()
             ok = self.fndh.write_portconfig(write_state=True, write_to=True)
-            port_on_times[portnum] = int(time.time())
+            port_on_times[portnum] = time.time()
+            self.logger.info('Turned on PDoC port %d at time %f, taking %f seconds' % (portnum,
+                                                                                       port_on_times[portnum],
+                                                                                       port_on_times[portnum] - last_loop_time))
             if not ok:
                 self.logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
                 self.status = 'ERROR'
