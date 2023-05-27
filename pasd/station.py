@@ -22,6 +22,8 @@ FNDH_ADDRESS = 101   # Modbus address of the FNDH controller
 MAX_SMARTBOX = 24    # Don't try to talk to smartboxes above this address value
 
 PORT_TURNON_INTERVAL = 2.0   # How many seconds to wait between each PDoC port when powering up an FNDH
+SMARTBOX_ON_DELAY = 1
+
 
 # Initial mapping between SMARTbox/port and antenna number
 # Here as a dict to show the concept, in reality this would be in a database.
@@ -304,7 +306,7 @@ class Station(object):
                 if sadd not in self.smartboxes:  # If this SMARTbox isn't in the antenna map, save it in the smartbox dictionary
                     self.smartboxes[sadd] = smb
 
-            address_on_times[sadd] = read_time - uptime
+            address_on_times[sadd] = read_time - uptime - SMARTBOX_ON_DELAY    # Include a short turn-on time for the controller
 
         self.logger.debug('ON times: %s' % port_on_times)
         self.logger.debug('ADDRESS times: %s' % address_on_times)
