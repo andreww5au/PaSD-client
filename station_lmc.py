@@ -398,7 +398,8 @@ def main_loop(db, stn):
         if not stn.active:
             return False
 
-        logging.info(stn.fndh)
+        logging.debug(stn.fndh)
+        logging.info('Read FNDH at %d, uptime=%d' % (stn.fndh.readtime, stn.fndh.uptime))
         data = []    # A list of (path, (timestamp, value)) objects, where path is like 'pasd.fieldtest.sb02.port07.current'
         fdict = {}
         fdict['pasd.fieldtest.fndh.psu48v1_voltage'] = stn.fndh.psu48v1_voltage
@@ -424,7 +425,8 @@ def main_loop(db, stn):
         for sbnum, sb in stn.smartboxes.items():
             fdict = {}
             # sb.poll_data()   # Done in the station poll_data() call
-            logging.info(sb)
+            logging.debug(sb)
+            logging.info('Read SMARTbox %s at %d, uptime=%d' % (sb.modbus_address, sb.readtime, sb.uptime))
             fdict['pasd.fieldtest.sb%02d.incoming_voltage' % sbnum] = sb.incoming_voltage
             fdict['pasd.fieldtest.sb%02d.psu_voltage' % sbnum] = sb.psu_voltage
             fdict['pasd.fieldtest.sb%02d.psu_temp' % sbnum] = sb.psu_temp
