@@ -262,7 +262,7 @@ class Station(object):
         for portnum in range(1, 29):
             self.fndh.ports[portnum].desire_enabled_online = True
             # Record the time BEFORE turning on the port, because retries will probably be due to reply errors, not transmit
-            last_loop_time = time.time()  y
+            last_loop_time = time.time()
             ok = self.fndh.write_portconfig(write_state=True, write_to=True)
             port_on_times[portnum] = time.time()
             self.logger.info('Turned on PDoC port %d at time %f, taking %f seconds' % (portnum,
