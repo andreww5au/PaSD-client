@@ -27,6 +27,8 @@ PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each pack
 TIMEOUT = 1.3   # Wait at most this long for a reply to a modbus message
 COMMS_TIMEOUT = 0.001  # Low-level timeout for each call to socket.socket().recv or serial.Serial.write()
 
+VALID_BYTES = {ord(x) for x in '0123456789ABCDEF:\r\n'}
+
 PCLOG = None
 # PCLOG = open('./physical.log', 'w')
 
@@ -321,7 +323,10 @@ class Connection(object):
                   ((time.time() - stime < TIMEOUT) and not mstring) ) and
                 (not mstring.endswith('\r\n')) ):
             try:
-                reply_raw = self._read(until=b'\r\n', nbytes=1000).decode('ascii')
+                # Strip off any characters that are not valid Modbus/ASCII - they will be line errors from PDoC turn-on transients
+                reply_bytes = bytes([c for c in self._read(until=b'\r\n', nbytes=1000) if c in VALID_BYTES])
+                # Convert the bytes object to a string, now that we know everything left is Modbus/ASCII
+                reply_raw = reply_bytes.decode('ascii')
                 reply = ''.join([x for x in reply_raw if x != chr(0)])
                 if reply != reply_raw:
                     self.logger.debug('%d Nulls removed from %s' % (len(reply_raw) - len(reply), repr(reply)))

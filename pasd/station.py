@@ -261,7 +261,8 @@ class Station(object):
         port_on_times = {}   # Unix timestamp at which each port number was turned on
         for portnum in range(1, 29):
             self.fndh.ports[portnum].desire_enabled_online = True
-            last_loop_time = time.time()
+            # Record the time BEFORE turning on the port, because retries will probably be due to reply errors, not transmit
+            last_loop_time = time.time()  y
             ok = self.fndh.write_portconfig(write_state=True, write_to=True)
             port_on_times[portnum] = time.time()
             self.logger.info('Turned on PDoC port %d at time %f, taking %f seconds' % (portnum,
@@ -285,8 +286,8 @@ class Station(object):
             uptime = None
             read_time = None
             try:
-                read_time = time.time()
                 uptime = smb.read_uptime()
+                read_time = time.time()  # Record the time after the read_uptime call, so it's more accurate if it required retries
             except IOError:
                 pass
 
