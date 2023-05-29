@@ -21,7 +21,9 @@ FNDH_ADDRESS = 101   # Modbus address of the FNDH controller
 # MAX_SMARTBOX = 26    # Don't try to talk to smartboxes above this address value
 MAX_SMARTBOX = 24    # Don't try to talk to smartboxes above this address value
 
-PORT_TURNON_INTERVAL = 6.0   # How many seconds to wait between each PDoC port when powering up an FNDH
+PORT_TURNON_INTERVAL = 5.0   # How many seconds to wait between each PDoC port when powering up an FNDH
+SMARTBOX_ON_DELAY = 0.0
+
 
 # Initial mapping between SMARTbox/port and antenna number
 # Here as a dict to show the concept, in reality this would be in a database.
@@ -231,13 +233,23 @@ class Station(object):
         self.logger.info('Full station startup:')
         self.active = None   # Failure in the middle of this process means the state is unknown
         self.status = 'STARTUP'
-        ok = self.fndh.poll_data()
+        ok = False
+        try:
+            ok = self.fndh.poll_data()
+        except IOError:
+            pass
+
         if not ok:
             self.logger.error('No reply from FNDH - aborting station startup.')
             self.status = 'ERROR'
             return False
 
-        ok = self.fndh.configure_all_off(portconfig=self.portconfig_fndh)   # Transition the FNDH to online, but with all PDoC ports turned off
+        ok = False
+        try:
+            ok = self.fndh.configure_all_off(portconfig=self.portconfig_fndh)   # Transition the FNDH to online, but with all PDoC ports turned off
+        except:
+            pass
+
         if not ok:
             self.logger.error('Could not configure FNDH - aborting station startup.')
             self.status = 'ERROR'
@@ -245,14 +257,19 @@ class Station(object):
         else:
             self.logger.info('All FNDH ports turned off')
 
+        time.sleep(2)   # Allow all smartboxes time to power off fully before starting
+
         # Turn on all the ports, one by one, with a 10 second interval between each port
         port_on_times = {}   # Unix timestamp at which each port number was turned on
         for portnum in range(1, 29):
-            last_loop_time = time.time()
             self.fndh.ports[portnum].desire_enabled_online = True
-            self.logger.info('Turning on PDoC port %d at time %f' % (portnum, time.time()))
+            # Record the time BEFORE turning on the port, because retries will probably be due to reply errors, not transmit
+            last_loop_time = time.time()
             ok = self.fndh.write_portconfig(write_state=True, write_to=True)
-            port_on_times[portnum] = int(time.time())
+            port_on_times[portnum] = time.time()
+            self.logger.info('Turned on PDoC port %d at time %f, taking %f seconds' % (portnum,
+                                                                                       port_on_times[portnum],
+                                                                                       port_on_times[portnum] - last_loop_time))
             if not ok:
                 self.logger.error('Could not write port configuration to the FNDH when turning on port %d.' % portnum)
                 self.status = 'ERROR'
@@ -269,9 +286,11 @@ class Station(object):
                 smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
 
             uptime = None
+            read_time = None
             try:
                 uptime = smb.read_uptime()
-            except:
+                read_time = time.time()  # Record the time after the read_uptime call, so it's more accurate if it required retries
+            except IOError:
                 pass
 
             if uptime is None:
@@ -281,13 +300,13 @@ class Station(object):
                     del self.smartboxes[sadd]
                 continue
             else:
-                self.logger.info('Uptime of %d (%d) from SMARTbox at address %d' % (uptime, time.time() - uptime, sadd))
+                self.logger.info('Uptime of %d (%d) from SMARTbox at address %d' % (uptime, read_time - uptime, sadd))
                 smb.configure()
                 smb.poll_data()
                 if sadd not in self.smartboxes:  # If this SMARTbox isn't in the antenna map, save it in the smartbox dictionary
                     self.smartboxes[sadd] = smb
 
-            address_on_times[sadd] = time.time() - uptime
+            address_on_times[sadd] = read_time - uptime - SMARTBOX_ON_DELAY    # Include a short turn-on time for the controller
 
         self.logger.debug('ON times: %s' % port_on_times)
         self.logger.debug('ADDRESS times: %s' % address_on_times)
