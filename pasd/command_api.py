@@ -487,6 +487,61 @@ def get_hex_info(filename, logger=logging):
     return result
 
 
+def get_monitoring_flags(conn, modbus_address, logger=logging):
+    """
+    Gets the monitoring flags for the device at the specified Modbus address. Returns a tuple of two 32-bit integers,
+    each containing o bitmap of flags, one for each register that can trigger a transition to the WARNING or ALARM
+    states. For each register, the corresponding bit is '1' if the value of that register has, in the past, triggered
+    a WARNING state (first integer in the tuple), or an ALARM state (second integer in the tuple).
+
+    The flag bits are latched until (any) value is written to the warning or alarm registers - reading the registers
+    with this call does not change the register contents.
+
+    :param conn: A pasd.transport.Connection() object
+    :param modbus_address: Modbus address
+    :param logger: An optional logging.Logger instance
+    :return: A tuple of (warning_flags, alarm_flags)
+    """
+    data = conn.readReg(modbus_address=modbus_address, regnum=10130, numreg=4)
+    # data is a list of registers, each a tuple of (MSB, LSB) - most significant byte first
+    # But warnings_LSW is the first register (tuple), and warnings_MSW is the second register (tuple) - most significant
+    #     word first.
+    warnings = data[0][1] + data[0][0] * 256 + data[1][1] * 65536 + data[1][0] * 16777216
+    alarms = data[2][1] + data[2][0] * 256 + data[3][1] * 65536 + data[3][0] * 16777216
+
+    return (warnings, alarms)
+
+
+def convert_flags_to_registers(flag_integer, flag_bits):
+    """
+    Converts the 32-bit integer representing the latched warning or error state into a list of register names, using
+    the provided dictionary - key is bit number (0-31), and value is the register name.
+
+    :param flag_integer: A 32-bit integer returned by get_monitoring_flags() above
+    :param flag_bits: A dictionary with bit number (0-31) as key, and register name as value
+    :return: A list of register names
+    """
+    reglist = []
+    for i in range(32):
+        if flag_integer & (1 << i):
+            reglist.append(flag_bits[i])
+    return reglist
+
+
+def reset_monitoring_flags(conn, modbus_address, logger=logging):
+    """
+    Resets the monitoring flags for the device at the specified Modbus address, by writing to both the
+    warning and alarm flag registers
+
+    :param conn: A pasd.transport.Connection() object
+    :param modbus_address: Modbus address
+    :param logger: An optional logging.Logger instance
+    :return: A tuple of (warning_flags, alarm_flags)
+    """
+    conn.writeMultReg(modbus_address=modbus_address, regnum=10130, data=[0, 0, 0, 0])
+    return
+
+
 def send_hex(conn, filename, modbus_address, logger=logging, force=False, nowrite=False):
     """
     Takes the name of a file in Intel hex format, and sends it to the specified Modbus address, then commands the

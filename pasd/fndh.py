@@ -209,6 +209,25 @@ SERVICE_LED_CODES = {-1:'SERVICE_UKNOWN',
                      }
 
 
+FLAG_BITS = {0:'SYS_48V1_V',
+             1:'SYS_48V2_V',
+             2:'SYS_48V_I',
+             3:'SYS_48V1_TEMP',
+             4:'SYS_48V2_TEMP',
+             5:'SYS_PANELTEMP',
+             6:'SYS_FNCBTEMP',
+             7:'SYS_HUMIDITY',
+             8:'SYS_SENSE01',
+             9:'SYS_SENSE02',
+             10:'SYS_SENSE03',
+             11:'SYS_SENSE04',
+             12:'SYS_SENSE05',  # Not implemented
+             13:'SYS_SENSE06',  # Not implemented
+             14:'SYS_SENSE07',  # Not implemented
+             15:'SYS_SENSE08',  # Not implemented
+             16:'SYS_SENSE09',  # Not implemented
+             }
+
 # Dicts with register version number as key, and a dict of registers (defined above) as value
 FNDH_REGISTERS = {1: {'POLL':FNDH_POLL_REGS_1, 'CONF':FNDH_CONF_REGS_1},
                   2: {'POLL':FNDH_POLL_REGS_1, 'CONF':FNDH_CONF_REGS_1}}  # Added to support a buggy firmware version
@@ -511,6 +530,18 @@ class FNDH(transport.ModbusDevice):
             elif (len(regname) >= 8) and ((regname[0] + regname[-6:]) == 'P_STATE'):
                 pnum = int(regname[1:-6])
                 self.ports[pnum].set_status_data(status_bitmap=raw_int, read_timestamp=read_timestamp)
+
+        warnings, alarms = command_api.get_monitoring_flags(self.conn, self.modbus_address, logger=self.logger)
+        if warnings != 0:
+            self.logger.warning('Warnings latched for FNPC: %s' % command_api.convert_flags_to_registers(warnings,
+                                                                                                          FLAG_BITS))
+
+        if alarms != 0:
+            self.logger.warning('Alarms latched for FNPC: %s' % command_api.convert_flags_to_registers(alarms,
+                                                                                                       FLAG_BITS))
+
+        if warnings != 0 or alarms != 0:
+            command_api.reset_monitoring_flags(self.conn, self.modbus_address, logger=self.logger)
 
         self.readtime = read_timestamp
         return True

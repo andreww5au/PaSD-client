@@ -213,6 +213,25 @@ SERVICE_LED_CODES = {-1:'SERVICE_UKNOWN',
                      5:'SERVICE_VSLOW'
                      }
 
+FLAG_BITS = {0:'SYS_48V_V',
+             1:'SYS_PSU_V',
+             2:'SYS_PSU_TEMP',
+             3:'SYS_PCBTEMP',
+             4:'SYS_AMBTEMP',
+             5:'SYS_SENSE01',
+             6:'SYS_SENSE02',
+             7:'SYS_SENSE03',
+             8:'SYS_SENSE04',
+             9:'SYS_SENSE05',
+             10:'SYS_SENSE06',
+             11:'SYS_SENSE07',  # Not implemented
+             12:'SYS_SENSE08',  # Not implemented
+             13:'SYS_SENSE09',  # Not implemented
+             14:'SYS_SENSE10',  # Not implemented
+             15:'SYS_SENSE11',  # Not implemented
+             16:'SYS_SENSE12',  # Not implemented
+             }
+
 # Dicts with register version number as key, and a dict of registers (defined above) as value
 SMARTBOX_REGISTERS = {1: {'POLL':SMARTBOX_POLL_REGS_1, 'CONF':SMARTBOX_CONF_REGS_1}}
 
@@ -642,6 +661,20 @@ class SMARTbox(transport.ModbusDevice):
             elif (len(regname) >= 10) and ((regname[0] + regname[-8:]) == 'P_CURRENT'):
                 pnum = int(regname[1:-8])
                 self.ports[pnum].set_current(current_raw=raw_int, current=scaled_float, read_timestamp=read_timestamp)
+
+        warnings, alarms = command_api.get_monitoring_flags(self.conn, self.modbus_address, logger=self.logger)
+        if warnings != 0:
+            self.logger.warning('Warnings latched for SMARTbox %d: %s' % (self.modbus_address,
+                                                                          command_api.convert_flags_to_registers(warnings,
+                                                                                                                 FLAG_BITS)))
+
+        if alarms != 0:
+            self.logger.warning('Alarms latched for SMARTbox %d: %s' % (self.modbus_address,
+                                                                        command_api.convert_flags_to_registers(alarms,
+                                                                                                               FLAG_BITS)))
+
+        if warnings != 0 or alarms != 0:
+            command_api.reset_monitoring_flags(self.conn, self.modbus_address, logger=self.logger)
 
         self.readtime = read_timestamp
         return True
