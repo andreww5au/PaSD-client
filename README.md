@@ -109,10 +109,10 @@ For example, to read 8 (two-byte) registers, starting with register 11, from the
 SMARTbox with a station address of 1, the packet contents (between the &#39;:&#39; 
 and the CR/LF pair) would be:
 
-| 0x01 | 0x03 | 0x00 | 0x0A | 0x00 | 0x08 | 0xF4 |
-| --- | --- | --- | --- | --- | --- | --- |
+| 0x01 | 0x03 | 0x00 | 0x0A | 0x00 | 0x08 | 0xEA |
+| --- | --- | --- | --- | --- | --- |------|
 
-That packet would be &#39;:010300000008F4\r\n&#39;
+That packet would be &#39;:010300000008EA\r\n&#39;
 
 _Note that the &#39;Regnum&#39; values in the packet are the actual register number 
 minus 1, so we send decimal &#39;10&#39; in the packet (0x0A) to read register 11._
