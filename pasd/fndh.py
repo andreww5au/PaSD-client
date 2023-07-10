@@ -534,7 +534,7 @@ class FNDH(transport.ModbusDevice):
         warnings, alarms = command_api.get_monitoring_flags(self.conn, self.modbus_address, logger=self.logger)
         if warnings != 0:
             self.logger.warning('Warnings latched for FNPC: %s' % command_api.convert_flags_to_registers(warnings,
-                                                                                                          FLAG_BITS))
+                                                                                                         FLAG_BITS))
 
         if alarms != 0:
             self.logger.warning('Alarms latched for FNPC: %s' % command_api.convert_flags_to_registers(alarms,
@@ -542,6 +542,11 @@ class FNDH(transport.ModbusDevice):
 
         if warnings != 0 or alarms != 0:
             command_api.reset_monitoring_flags(self.conn, self.modbus_address, logger=self.logger)
+            self.logger.info('Reset monitoring flags for FNPC')
+
+        if self.statuscode == STATUS_RECOVERY:
+            self.conn.writeReg(self.modbus_address, self.register_map['POLL']['SYS_STATUS'][0], 0)
+            self.logger.info('Cleared RECOVERY state for FNPC')
 
         self.readtime = read_timestamp
         return True

@@ -41,6 +41,7 @@ FNCC_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
 
 }
 
+# TODO - fix this, these don't apply to the FNCC - and need to add config register 1001 for smartbox comms disable
 
 # Translation between the integer in the SYS_STATUS register (.statuscode), and .status string
 # Note that the -1 (UNKNOWN) is for internal use only, if we haven't polled the hardware yet - we can't ever
