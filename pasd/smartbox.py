@@ -675,6 +675,11 @@ class SMARTbox(transport.ModbusDevice):
 
         if warnings != 0 or alarms != 0:
             command_api.reset_monitoring_flags(self.conn, self.modbus_address, logger=self.logger)
+            self.logger.info('Reset monitoring flags for SMARTbox %d' % self.modbus_address)
+
+        if self.statuscode == STATUS_RECOVERY:
+            self.conn.writeReg(self.modbus_address, self.register_map['POLL']['SYS_STATUS'][0], 0)
+            self.logger.info('Cleared RECOVERY state for SMARTbox %d' % self.modbus_address)
 
         self.readtime = read_timestamp
         return True

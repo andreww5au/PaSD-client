@@ -37,34 +37,29 @@ FNCC_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
                         'SYS_FIRMVER': (13, 1, 'Firmware version', None),
                         'SYS_UPTIME':  (14, 2, 'Uptime in seconds', None),
                         'SYS_ADDRESS': (16, 1, 'MODBUS station ID', None),
-                        'FIELD_NODE_NUMBER': (17, 1, 'Field node number', None),
-
+                        'SYS_STATUS': (17, 1, 'FNCC status', None),
 }
 
-# TODO - fix this, these don't apply to the FNCC - and need to add config register 1001 for smartbox comms disable
+FNCC_CONF_REGS_1 = {'COMMS_LOCK': (18, 1, 'SMARTbox shared bus comms lock', None)}
+
+# TODO - add code to support SYS_STATUS and COMMS_LOCK
 
 # Translation between the integer in the SYS_STATUS register (.statuscode), and .status string
 # Note that the -1 (UNKNOWN) is for internal use only, if we haven't polled the hardware yet - we can't ever
 # receive a -1 from the actual hardware.
 STATUS_UNKNOWN = -1       # No contact with hardware yet, we don't know the status code
 STATUS_OK = 0             # Initialised, system health OK
-STATUS_WARNING = 1        # Initialised, and at least on sensor in WARNING, but none in ALARM or RECOVERY
-STATUS_ALARM = 2          # Initialised, and at least one sensor in ALARM
-STATUS_RECOVERY = 3       # Initialised, and at least one sensor in RECOVERY, but none in ALARM
-STATUS_UNINITIALISED = 4  # NOT initialised, regardless of sensor states
-STATUS_POWERUP = 5        # Local tech wants the MCCS to turn off all ports, then go through full powerup sequence (long press)
+STATUS_RESET = 1          # ?
+STATUS_ERROR = 2          # Modbus communications error detected
 STATUS_CODES = {-1:'STATUS_UNKNOWN',
                 0:'STATUS_OK',
-                1:'STATUS_WARNING',
-                2:'STATUS_ALARM',
-                3:'STATUS_RECOVERY',
-                4:'STATUS_UNINITIALISED',
-                5:'STATUS_POWERUP'}
+                1:'STATUS_RESET',
+                2:'STATUS_ERROR'}
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
-FNCC_REGISTERS = {1: {'POLL':FNCC_POLL_REGS_1, 'CONF':{}},
-                  3: {'POLL':FNCC_POLL_REGS_1, 'CONF':{}}}    # Added to support a buggy firmware version
+FNCC_REGISTERS = {1: {'POLL':FNCC_POLL_REGS_1, 'CONF':FNCC_CONF_REGS_1},
+                  3: {'POLL':FNCC_POLL_REGS_1, 'CONF':FNCC_CONF_REGS_1}}    # Added to support a buggy firmware version
 
 STATUS_STRING = """\
 FNDH at address: %(modbus_address)s:
