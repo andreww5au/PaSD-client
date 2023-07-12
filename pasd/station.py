@@ -401,7 +401,6 @@ class Station(object):
 
         # Next, grab all the data from all possible SMARTboxes, to keep comms restricted to a short time window
         for sadd in range(1, MAX_SMARTBOX + 1):
-            self.fndh.poll_data()   # Poke the FNDH occasionally so it doesn't time out
             if sadd not in self.smartboxes:   # Check for a new SMARTbox with this address
                 smb = self.smartbox_class(conn=self.conn, modbus_address=sadd)
                 test_ok = smb.poll_data()
