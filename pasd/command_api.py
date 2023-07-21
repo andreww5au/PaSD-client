@@ -60,7 +60,7 @@ of program data as the entire 125 registers are sent in one write instruction.
 RESULT: 10126
 
 The result register has to be separately read as it doesn't map onto MODBUS codes.  It contains
-the result of the last command executed.
+the result code from the last command executed.
 
 Result codes are:
     0 = OK
@@ -68,6 +68,9 @@ Result codes are:
     2 = CRC_ERROR
     3 = UNKNOWN_COMMAND
 
+RESULT_DATA: 10127
+
+Contains data from the last command (as opposed to RESULT, which contains a result code)
 
 ------------------------------------------------------------
 CPU load and warnings:
@@ -130,21 +133,13 @@ def filter_constant(freq=10.0):
     dt = 0.001  # input: time step in seconds: 0.001 = 1ms
 
     alpha = dt / ((1 / (2 * math.pi * freq)) + dt)
-    # print("Alpha: " + str(alpha))
     mantissaBits = 11  # 11 bits mantissa in current format
     base = math.log(alpha) / math.log(2)
-    # print("Base: " + str(base))
     rightShift = -int(base)
     lowerRange = 2 ** (-rightShift)
-    # print("Lower range: " + str(lowerRange))
     upperRange = 2 ** (-rightShift - 1)
-    # print("Upper range: " + str(upperRange))
     mantissaStep = (lowerRange - upperRange) / (2 ** (mantissaBits - 1))
-    # print("Mantissa step: " + str(mantissaStep))
     mantissa = int((alpha - upperRange) / mantissaStep)
-    # print("Right shift: " + str(rightShift))
-    # print("Mantissa: " + str(mantissa))
-    # print("Filter hex code: " + hex(mantissa + rightShift * (2 ** 11)))
     return mantissa + rightShift * (2 ** 11)
 
 

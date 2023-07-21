@@ -38,6 +38,7 @@ FNCC_POLL_REGS_1 = {  # These initial registers will be assumed to be fixed, bet
                         'SYS_UPTIME':  (14, 2, 'Uptime in seconds', None),
                         'SYS_ADDRESS': (16, 1, 'MODBUS station ID', None),
                         'SYS_STATUS': (17, 1, 'FNCC status', None),
+                        'FIELD_NODE_NUMBER': (18, 1, 'Value set on FNDH 4-digit numeric switch', None)
 }
 
 FNCC_CONF_REGS_1 = {'COMMS_LOCK': (18, 1, 'SMARTbox shared bus comms lock', None)}
@@ -53,8 +54,11 @@ STATUS_RESET = 1          # ?
 STATUS_ERROR = 2          # Modbus communications error detected
 STATUS_CODES = {-1:'STATUS_UNKNOWN',
                 0:'STATUS_OK',
-                1:'STATUS_RESET',
-                2:'STATUS_ERROR'}
+                1:'STATUS_RESET',               # Wiznet module being reset
+                2:'STATE_MODBUS_FRAME_ERROR',   # UART 3 framing error
+                3:'STATE_MODBUS_STUCK',         # Timer circuit on FNCB tripped by any SMART Box shared receive line held low too long
+                4:'STATE_MODBUS_FRAME_ERROR_STUCK'   # Both error 2 and 3 have occurred
+                }
 
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
