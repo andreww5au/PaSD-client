@@ -419,7 +419,7 @@ class Station(object):
                     del self.smartboxes[sadd]
 
         # If any of the SMARTboxes have had a long button-press (indicating that a local technician wants that SMARTbox
-        # to be powered down), then it will set it's status code and indicator LED code to the 'WANTS_POWERDOWN' value.
+        # to be powered down), then it will set its status code and indicator LED code to the 'WANTS_POWERDOWN' value.
         # Check all the SMARTboxes for that LED code, and if set, force the matching PDoC port on the FNDH into the
         # 'locally_forced_off' state.
         # Note that this can only be reversed by having the technician press the service button on the FNDH, to clear

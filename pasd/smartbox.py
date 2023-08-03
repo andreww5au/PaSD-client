@@ -277,6 +277,8 @@ class PortStatus(object):
         desire_enabled_offline:Does the MCCS want this port enabled when the device is offline (Boolean)
         locally_forced_on: Has this port been locally forced ON by a technician overide (Boolean)
         locally_forced_off: Has this port been locally forced OFF by a technician overide (Boolean)
+        needs_status_write: Set to True if the technician has cleared TO override bits with the button,
+                            but the firmware needs 0 written to the SYS_STATUS register to acknowledge.
         breaker_tripped: Has the over-current breaker tripped on this port (Boolean)
         power_state: Is this port switched ON (Boolean)
         antenna_number: Physical station antenna number. Only set externally, at the station level. (1-256)
@@ -311,8 +313,10 @@ class PortStatus(object):
         self.system_online = False   # Has the SMARTbox decided that it's heard from the MCCS recently enough to go online
         self.desire_enabled_online = False   # Does the MCCS want this port enabled when the device is online
         self.desire_enabled_offline = False   # Does the MCCS want this port enabled when the device is offline
-        self.locally_forced_on = False     # Has this port been locally forced ON by a technician overide
-        self.locally_forced_off = False    # Has this port been locally forced OFF by a technician overide
+        self.locally_forced_on = False     # Has this port been locally forced ON by a technician override
+        self.locally_forced_off = False    # Has this port been locally forced OFF by a technician override
+        self.needs_status_write = False     # Set to True if the technician has cleared TO override bits with the button,
+                                            # but the firmware needs 0 written to the SYS_STATUS register to acknowledge.
         self.breaker_tripped = False    # Has the over-current breaker tripped on this port
         self.power_state = False    # Is this port switched ON
         self.raw_bitmap = ''        # Raw status bitmap from the port state register
@@ -409,6 +413,7 @@ class PortStatus(object):
             self.desire_enabled_offline = None
 
         # Technician override - R/W, write 00 if no change to current value
+        self.needs_status_write = False
         if (bitstring[6:8] == '10'):
             self.locally_forced_on = False
             self.locally_forced_off = True
@@ -418,9 +423,10 @@ class PortStatus(object):
         elif (bitstring[6:8] == '01'):
             self.locally_forced_on = False
             self.locally_forced_off = False
+            self.needs_status_write = True
         else:
-            self.locally_forced_on = None
-            self.locally_forced_off = None
+            self.locally_forced_on = False
+            self.locally_forced_off = False
 
         # Circuit breaker trip - R/W, write 1 to reset the breaker
         self.breaker_tripped = (bitstring[8] == '1')
@@ -680,6 +686,18 @@ class SMARTbox(transport.ModbusDevice):
         if self.statuscode == STATUS_RECOVERY:
             self.conn.writeReg(self.modbus_address, self.register_map['POLL']['SYS_STATUS'][0], 0)
             self.logger.info('Cleared RECOVERY state for SMARTbox %d' % self.modbus_address)
+
+        # If the technician has cleared the 'technician override' bits on any port, using a short-press on the button,
+        # the firmware will keep the port disabled until 0 is written by MCCS to the SYS_STATUS register.
+        needs_TO_bit_clear = False
+        for p in self.ports.values():
+            if p.needs_status_write:
+                needs_TO_bit_clear = True
+                break
+
+        if needs_TO_bit_clear:
+            self.conn.writeReg(self.modbus_address, self.register_map['POLL']['SYS_STATUS'][0], 0)
+            self.logger.info('Cleared TO override latch state for SMARTbox %d' % self.modbus_address)
 
         self.readtime = read_timestamp
         return True
