@@ -366,8 +366,10 @@ TO-H and TO-L: (read only). These define a two-bit field that defines whether th
 port has been forced to turn ON or OFF, overriding the DSON and DSOFF fields. The 
 MCCS can't set this field, it is set by the firmware in response to button presses. 
 A 10 in this field means that the port has been forced OFF, a 11 to this field 
-means the port has been forced ON, and a 01 means that there is no override, 
-so the DSON and DSOFF field values are used to determine the power state. 
+means the port has been forced ON, and a 01 means that there was an override,
+but that MCCS needs to write 0 to the SYS_STATUS register to allow the override
+to be cleared. If both bits are 00, then there is no override, so the DSON and
+DSOFF field values are used to determine the power state. 
 
 BREAKER: (read/write). Contains a 1 if the over-current sense circuit breaker for 
 this port has tripped. Writing a 1 to this field will reset the breaker if it has 
@@ -589,12 +591,16 @@ unchanged.
 DSOFF-H and DSOFF-L: (read/write). As for DSON-H and DSON-L, only this field defines whether 
 the port should be turned on when the overall system state is &#39;offline.
 
-TO-H and TO-L: (read only). These define a two-bit field that defines whether this 
-port has been forced to turn ON or OFF, overriding the DSON and DSOFF fields. The 
-MCCS can't set this field, it is set by the firmware in response to button presses. 
+TO-H and TO-L: (read/write). These define a two-bit field that defines whether this 
+port has been forced to turn ON or OFF, overriding the DSON and DSOFF fields. 
 A 10 in this field means that the port has been forced OFF, a 11 to this field 
-means the port has been forced ON, and a 01 means that there is no override, 
-so the DSON and DSOFF field values are used to determine the power state. 
+means the port has been forced ON, and a 01 means that there was an override,
+but that MCCS needs to write 0 to the SYS_STATUS register to allow the override
+to be cleared. If both bits are 00, then there is no override, so the DSON and
+DSOFF field values are used to determine the power state. The MCCS usually doesn't
+set this field, it is set by the firmware in response to button presses, but if a
+smartbox has had a long-press on its button, then MCCS should write a 10 to this
+field on the corresponding FNDH port to turn that smartbox off.
 
 PWRSENSE: (read only). Contains a 1 if there is an active 48V supply on the output to 
 that port. It will be 0 if the port is turned off (POWER=0), or if the under/over 
