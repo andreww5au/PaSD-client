@@ -465,7 +465,7 @@ class PortStatus(object):
         else:
             bitstring += '1' + b[self.desire_enabled_offline]
 
-        if (self.locally_forced_on is None) or (self.locally_forced_off is None) or (not write_to):
+        if not write_to:
             bitstring += '00'
         elif self.locally_forced_off:
             bitstring += '10'
