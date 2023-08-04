@@ -560,7 +560,7 @@ class FNDH(transport.ModbusDevice):
 
         if needs_TO_bit_clear:
             self.conn.writeReg(self.modbus_address, self.register_map['POLL']['SYS_STATUS'][0], 0)
-            self.logger.info('Cleared TO override latch state for SMARTbox %d' % self.modbus_address)
+            self.logger.info('Cleared TO override latch state for FNDH')
 
         self.readtime = read_timestamp
         return True
@@ -603,7 +603,7 @@ class FNDH(transport.ModbusDevice):
 
     def write_portconfig(self, write_state=True, write_to=False, write_breaker=False):
         """
-        Write the current instance data for all of the ports to the FNDH.
+        Write the current instance data for all the ports to the FNDH.
 
         If 'write_state' is True, then the 'desired_state_online' and 'desired_state_offline' will have bitfields
         corresponding to the current instance data, otherwise they will contain '00' (meaning 'do not overwrite').
@@ -632,6 +632,8 @@ class FNDH(transport.ModbusDevice):
         except:
             self.logger.exception('Exception in transport.writeMultReg() in write_portconfig:')
             return False
+
+        time.sleep(0.025)   # Wait for any comms glitches caused by PDoC power transitions
 
         if res:
             return True

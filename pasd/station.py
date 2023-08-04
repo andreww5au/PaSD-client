@@ -237,7 +237,11 @@ class Station(object):
         try:
             ok = self.fndh.poll_data()
         except IOError:
-            pass
+            time.sleep(0.1)
+            try:
+                ok = self.fndh.poll_data()
+            except IOError:
+                pass
 
         if not ok:
             self.logger.error('No reply from FNDH - aborting station startup.')
@@ -247,8 +251,12 @@ class Station(object):
         ok = False
         try:
             ok = self.fndh.configure_all_off(portconfig=self.portconfig_fndh)   # Transition the FNDH to online, but with all PDoC ports turned off
-        except:
-            pass
+        except IOError:
+            time.sleep(0.1)
+            try:
+                ok = self.fndh.configure_all_off(portconfig=self.portconfig_fndh)   # Transition the FNDH to online, but with all PDoC ports turned off
+            except IOError:
+                pass
 
         if not ok:
             self.logger.error('Could not configure FNDH - aborting station startup.')
