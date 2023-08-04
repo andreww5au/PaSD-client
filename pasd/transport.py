@@ -23,7 +23,6 @@ import serial
 logging.basicConfig()
 
 
-PACKET_WINDOW_TIME = 0.01   # Time in seconds to wait before and after each packet, to satisfy modbus 28 bit silence requirement
 TIMEOUT = 1.3   # Wait at most this long for a reply to a modbus message
 COMMS_TIMEOUT = 0.001  # Low-level timeout for each call to socket.socket().recv or serial.Serial.write()
 
@@ -727,20 +726,20 @@ class Connection(object):
         :param regnum: Register number to read
         :param valuelist: A list of register values to write. To write to multiple consecutive registers, pass a list with
                           more than 1 value. Each value can be a single integer (passed as a 16-bit value, MSB first), or
-                          a tuple of (MSB, LSB), where MSB and LSB are integers (each 0-255).
+                          a tuple or list of (MSB, LSB), where MSB and LSB are integers (each 0-255).
         :return: True for success, False if there is an unexpected value in the reply, or None for any other error
         """
         data = []
         for value in valuelist:
             if type(value) == int:
-                data += NtoBytes(value, 2)
-            elif (type(value) == list) and (len(value) == 2):
-                data += value
+                data += NtoBytes(value, 2)   # Convert a 16-bit integer to a list of two bytes, and append it
+            elif ((type(value) == list) or (type(value) == tuple)) and (len(value) == 2):
+                data += list(value)   # Append a list of two bytes as individual values (and convert to a list if given a tuple)
             else:
                 self.logger.error('Unexpected register value: %s' % value)
                 return None
 
-        rlen = len(data) // 2
+        rlen = len(data) // 2   # data is now a list of individual 8-bit bytes, but rlen is the number of registers
         packet = [modbus_address, 0x10] + NtoBytes(regnum - 1, 2) + NtoBytes(rlen, 2) + NtoBytes(rlen * 2, 1) + data
 
         stime = time.time()
