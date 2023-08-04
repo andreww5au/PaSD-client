@@ -533,7 +533,7 @@ def reset_monitoring_flags(conn, modbus_address, logger=logging):
     :param logger: An optional logging.Logger instance
     :return: A tuple of (warning_flags, alarm_flags)
     """
-    conn.writeMultReg(modbus_address=modbus_address, regnum=10130, data=[0, 0, 0, 0])
+    conn.writeMultReg(modbus_address=modbus_address, regnum=10130, valuelist=[0, 0, 0, 0])
     return
 
 
