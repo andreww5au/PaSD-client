@@ -441,6 +441,7 @@ class Station(object):
                         send_portstate = True
                 else:   # We know the mapping, switch off just the right port for this smartbox
                     self.fndh.ports[smb.pdoc_number].locally_forced_off = True
+                    send_portstate = True
             elif smb.statuscode == smartbox.STATUS_UNINITIALISED:  # UNINITIALISED
                 ok = smb.configure(portconfig=self.portconfig_smartboxes.get(smb.modbus_address, None))  # In a real setting, pass in static configuration data from config file or database
                 if ok:
