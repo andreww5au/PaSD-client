@@ -50,11 +50,14 @@ FNCC_CONF_REGS_1 = {'COMMS_LOCK': (18, 1, 'SMARTbox shared bus comms lock', None
 # receive a -1 from the actual hardware.
 STATUS_UNKNOWN = -1       # No contact with hardware yet, we don't know the status code
 STATUS_OK = 0             # Initialised, system health OK
-STATUS_RESET = 1          # ?
-STATUS_ERROR = 2          # Modbus communications error detected
-STATUS_CODES = {-1:'STATUS_UNKNOWN',
-                0:'STATUS_OK',
-                1:'STATUS_RESET',               # Wiznet module being reset
+STATUS_RESET = 1          # Wiznet module being reset (MCCS should never be able to read this value)
+STATE_MODBUS_FRAME_ERROR = 2    # UART 3 framing error
+STATE_MODBUS_STUCK = 3          # Timer circuit on FNCB tripped by any SMART Box shared receive line held low too long
+STATE_MODBUS_FRAME_ERROR_STUCK = 4   # Both error 2 and 3 have occurred
+
+STATUS_CODES = {-1:'STATUS_UNKNOWN',       # No contact with hardware yet, we don't know the status code
+                0:'STATUS_OK',             # Initialised, system health OK
+                1:'STATUS_RESET',          # Wiznet module being reset (MCCS should never be able to read this value)
                 2:'STATE_MODBUS_FRAME_ERROR',   # UART 3 framing error
                 3:'STATE_MODBUS_STUCK',         # Timer circuit on FNCB tripped by any SMART Box shared receive line held low too long
                 4:'STATE_MODBUS_FRAME_ERROR_STUCK'   # Both error 2 and 3 have occurred
