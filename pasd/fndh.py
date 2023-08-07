@@ -628,9 +628,6 @@ class FNDH(transport.ModbusDevice):
             vlist[(portnum - 1)] = self.ports[portnum].status_to_integer(write_state=write_state,
                                                                          write_to=write_to,
                                                                          write_breaker=write_breaker)
-            if write_to:
-                self.logger.info('Port %d has config register written as %s' % (portnum, vlist[(portnum - 1)]))
-
         try:
             res = self.conn.writeMultReg(modbus_address=self.modbus_address, regnum=startreg, valuelist=vlist)
         except:
