@@ -226,6 +226,21 @@ FLAG_BITS = {0:'SYS_48V1_V',
              14:'SYS_SENSE07',  # Not implemented
              15:'SYS_SENSE08',  # Not implemented
              16:'SYS_SENSE09',  # Not implemented
+             17:'UNKNOWN17',  # Not implemented
+             18:'UNKNOWN18',  # Not implemented
+             19:'UNKNOWN19',  # Not implemented
+             20:'UNKNOWN20',  # Not implemented
+             21:'UNKNOWN21',  # Not implemented
+             22:'UNKNOWN22',  # Not implemented
+             23:'UNKNOWN23',  # Not implemented
+             24:'UNKNOWN24',  # Not implemented
+             25:'UNKNOWN25',  # Not implemented
+             26:'UNKNOWN26',  # Not implemented
+             27:'UNKNOWN27',  # Not implemented
+             28:'UNKNOWN28',  # Not implemented
+             29:'UNKNOWN29',  # Not implemented
+             30:'UNKNOWN30',  # Not implemented
+             31:'UNKNOWN31',  # Not implemented
              }
 
 # Dicts with register version number as key, and a dict of registers (defined above) as value
