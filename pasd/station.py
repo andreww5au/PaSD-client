@@ -438,7 +438,7 @@ class Station(object):
                 if not self.do_full_startup:     # No port mapping, switch off all ports
                     for p in self.fndh.ports.values():
                         p.locally_forced_off = True
-                        send_portstate = True
+                    send_portstate = True
                 else:   # We know the mapping, switch off just the right port for this smartbox
                     self.fndh.ports[smb.pdoc_number].locally_forced_off = True
                     send_portstate = True

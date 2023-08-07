@@ -393,7 +393,12 @@ def main_loop(db, stn):
         last_loop_start_time = time.time()
 
         # Query the field hardware to get all the current sensor and port parameters and update the instance data
-        stn.poll_data()  # If station is not active, only FNDH data can be polled
+        try:
+            stn.poll_data()  # If station is not active, only FNDH data can be polled
+        except IOError:
+            logging.error('IOError in station.poll_data(), sleeping for 1 second: %s' % (traceback.format_exc()))
+            time.sleep(1)
+            continue
 
         if not stn.active:
             return False
@@ -451,12 +456,20 @@ def main_loop(db, stn):
         fndh_led, sb_leds = get_all_service_leds(db=db, station_number=stn.station_id)
         if fndh_led != stn.fndh.service_led:
             stn.fndh.service_led = fndh_led
-            stn.fndh.set_service_led(fndh_led)   # Write the new service LED state
+            try:
+                stn.fndh.set_service_led(fndh_led)   # Write the new service LED state
+            except IOError:
+                logging.error('IOError in station.fndh.set_service_led(), sleeping for 1 second: %s' % (traceback.format_exc()))
+                time.sleep(1)
         for sbnum, sb in stn.smartboxes.items():
             if sbnum in sb_leds:
                 if sb_leds[sbnum] != sb.service_led:
                     sb.service_led = sb_leds[sbnum]
-                    sb.set_service_led(sb_leds[sbnum])   # Write the new service LED state
+                    try:
+                        sb.set_service_led(sb_leds[sbnum])   # Write the new service LED state
+                    except IOError:
+                        logging.error('IOError in station.sb.set_service_led() for SB %d, sleeping for 1 second: %s' % (sbnum, traceback.format_exc()))
+                        time.sleep(1)
 
         # Use the instance data to update the database sensor and port parameters
         update_db(db, stn=stn)
@@ -475,7 +488,11 @@ def main_loop(db, stn):
                 p.desire_enabled_offline = desire_enabled_offline
                 needs_write = True
             if needs_write:
-                stn.fndh.write_portconfig()
+                try:
+                    stn.fndh.write_portconfig()
+                except IOError:
+                    logging.error('IOError in station.fndh.write_portconfig(), sleeping for 1 second: %s' % (traceback.format_exc()))
+                    time.sleep(1)
                 time.sleep(0.25)
 
         time.sleep(1.0)    # Allow time for a smartbox to boot, if was turned on above.
@@ -492,18 +509,30 @@ def main_loop(db, stn):
                     p.desire_enabled_offline = desire_enabled_offline
                     needs_write = True
             if needs_write:
-                stn.smartboxes[sid].write_portconfig(write_breaker=True)
+                try:
+                    stn.smartboxes[sid].write_portconfig(write_breaker=True)
+                except IOError:
+                    logging.error('IOError in station.sb.write_portconfig() for SB %d, sleeping for 1 second: %s' % (sid, traceback.format_exc()))
+                    time.sleep(1)
 
         desired_active = update_station_state(db, stn=stn)
 
         if ( (desired_active and
              (not stn.active) and
              ((time.time() - LAST_STARTUP_ATTEMPT_TIME) > STARTUP_RETRY_INTERVAL)) ):
-            stn.startup()
+            try:
+                stn.startup()
+            except IOError:
+                logging.error('IOError in station.startup(), sleeping for 1 second: %s' % (traceback.format_exc()))
+                time.sleep(1)
         elif ( (not desired_active) and
                stn.active and
                ((time.time() - LAST_SHUTDOWN_ATTEMPT_TIME) > SHUTDOWN_RETRY_INTERVAL) ):
-            stn.shutdown()
+            try:
+                stn.shutdown()
+            except IOError:
+                logging.error('IOError in station.shutdown(), sleeping for 1 second: %s' % (traceback.format_exc()))
+                time.sleep(1)
 
         time.sleep(max(0.0, 15 - (time.time() - last_loop_start_time)))
 

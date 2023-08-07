@@ -548,7 +548,8 @@ class FNDH(transport.ModbusDevice):
 
         if self.statuscode == STATUS_RECOVERY:
             self.conn.writeReg(self.modbus_address, self.register_map['POLL']['SYS_STATUS'][0], 0)
-            self.logger.info('Cleared RECOVERY state for FNPC')
+            self.logger.info('Cleared RECOVERY state for FNPC, sleeping for 3 seconds to give SMART boxes time to boot')
+            time.sleep(3)
 
         # If the technician has cleared the 'technician override' bits on any port, using a short-press on the button,
         # the firmware will keep the port disabled until 0 is written by MCCS to the SYS_STATUS register.
@@ -560,7 +561,8 @@ class FNDH(transport.ModbusDevice):
 
         if needs_TO_bit_clear:
             self.conn.writeReg(self.modbus_address, self.register_map['POLL']['SYS_STATUS'][0], 0)
-            self.logger.info('Cleared TO override latch state for FNDH')
+            self.logger.info('Cleared TO override latch state for FNDH, sleeping for 3 seconds to give SMART box time to boot')
+            time.sleep(3)
 
         self.readtime = read_timestamp
         return True
