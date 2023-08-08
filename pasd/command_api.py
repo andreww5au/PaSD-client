@@ -722,7 +722,7 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False, nowrit
                 address = address + 320
                 addressWords = addressWords + 160
 
-    logger.info(str(numWrites) + "command_api.send_hex - %d chunks written.  Verifying..." % numWrites)
+    logger.info("command_api.send_hex - %d chunks written.  Verifying..." % numWrites)
 
     # to verify, put numWrites as a 32-bit unsigned int into the first two SEGMENT_DATA registers
     registerBytes[4] = numWrites & 0xff
