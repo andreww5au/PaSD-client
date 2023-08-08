@@ -619,6 +619,17 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False, nowrit
 
     #######################################
 
+    # a rom hex file consists of segments which are start/end marker of addresses of bytes to write
+    # PIC24 has 24-bit instructions but addressing is compatible with 16-bit data presumably so increments of
+    # 2 for addressed instructions.
+    #
+    # So, every 4th byte is zero in the hex file
+    logger.info("command_api.send_hex - Reading file %s" % filename)
+    ih = IntelHex(filename)
+
+    logger.info("command_api.send_hex - %d Segments found:" % len(ih.segments()))
+    logger.info(ih.segments())
+
     # start by erasing the EEPROM
     print("command_api.send_hex - Issuing erase command...")
     registerBytes[244] = ERASE_COMMAND  # least sig byte of COMMAND register
@@ -631,17 +642,6 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False, nowrit
     conn.writeReg(modbus_address=modbus_address, regnum=10125, value=ERASE_COMMAND)  # , timeout=10.0)
     logger.debug("command_api.send_hex - Erase return code: " + str(conn.readReg(modbus_address=modbus_address,
                                                                                  regnum=10126)[0][1]))  # least sig byte
-
-    # a rom hex file consists of segments which are start/end marker of addresses of bytes to write
-    # PIC24 has 24-bit instructions but addressing is compatible with 16-bit data presumably so increments of
-    # 2 for addressed instructions.
-    #
-    # So, every 4th byte is zero in the hex file
-    logger.info("command_api.send_hex - Reading file %s" % filename)
-    ih = IntelHex(filename)
-
-    logger.info("command_api.send_hex - Segments found:")
-    logger.info(ih.segments())
 
     numWrites = 0  # number of write chunks.  This is used for verifying
 
@@ -722,7 +722,7 @@ def send_hex(conn, filename, modbus_address, logger=logging, force=False, nowrit
                 address = address + 320
                 addressWords = addressWords + 160
 
-    logger.info(str(numWrites) + "command_api.send_hex - chunks written.  Verifying...")
+    logger.info(str(numWrites) + "command_api.send_hex - %d chunks written.  Verifying..." % numWrites)
 
     # to verify, put numWrites as a 32-bit unsigned int into the first two SEGMENT_DATA registers
     registerBytes[4] = numWrites & 0xff
