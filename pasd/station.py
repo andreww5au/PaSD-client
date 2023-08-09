@@ -168,7 +168,7 @@ class Station(object):
 
         self.fndh = self.fndh_class(conn=self.conn, modbus_address=FNDH_ADDRESS, logger=logging.getLogger('FNDH:%d' % FNDH_ADDRESS))
 
-    def fieldtest_startup(self):
+    def quick_startup(self):
         """
         Start the fieldtest node, skipping the smartbox/pdoc port mapping discovery process.
         :return:
@@ -331,6 +331,9 @@ class Station(object):
                 self.smartboxes[sadd].pdoc_number = portnum
                 self.fndh.ports[portnum].smartbox_address = sadd
                 self.logger.info('Assigned SMARTbox %d to PDoC port %d' % (sadd, portnum))
+            else:
+                self.fndh.ports[portnum].smartbox_address = None
+                self.logger.info('No SMARTbox assigned to PDoC port %d' % portnum)
 
         # Finish FNDH configuration, setting the default desired_state_online/offline flags (typically turning on all ports)
         ok = self.fndh.configure_final()
@@ -393,7 +396,7 @@ class Station(object):
                 if self.do_full_startup:
                     fndh_ok = self.full_startup()   # Turn off all the PDoC ports, then turn them back on with delays, to find the smartbox<->PDoC mapping
                 else:
-                    fndh_ok = self.fieldtest_startup()
+                    fndh_ok = self.quick_startup()
                 if fndh_ok:     # self.status is set inside self.startup() so we don't need to do it here
                     self.logger.info('FNDH configured, it is now online with all PDoC ports mapped.')
                 else:
@@ -455,13 +458,13 @@ class Station(object):
             self.fndh.write_portconfig(write_to=True)
 
         # If the FNDH has had a long button-press (indicating that a local technician wants that station
-        # to be powered down and restarted with a full smartbox address detection sequence), then it will set it's
+        # to be powered down and restarted with a full smartbox address detection sequence), then it will set its
         # status code and indicator LED code to the 'POWERUP' value.
         if self.fndh.statuscode == fndh.STATUS_POWERUP:
             if self.do_full_startup:
                 self.full_startup()  # Turn off all the PDoC ports, then turn them back on with delays, to find the smartbox<->PDoC mapping
             else:
-                self.fieldtest_startup()
+                self.quick_startup()
 
     def listen(self, maxtime=60.0):
         """

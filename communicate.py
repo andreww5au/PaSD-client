@@ -105,7 +105,7 @@ if __name__ == '__main__':
         slogger = logging.getLogger('ST')
         s = station.Station(conn=conn, station_id=1, logger=slogger)
         print('Starting up entire station as "s" - FNDH on address 101, SMARTboxes on addresses 1-24.')
-        s.fieldtest_startup()
+        s.quick_startup()
     elif args.task.upper() == 'MCCS':
         if args.address is None:
             args.address = 199
