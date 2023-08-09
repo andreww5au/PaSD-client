@@ -306,7 +306,7 @@ class Connection(object):
         :param message: A list of integers, each in the range 0-255
         :return: A list of integers, each in the range 0-255, or False if no valid reply was received
         """
-        # self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
+        self._flush()   # Get rid of any old data in the input queue, and close/re-open the socket if there's an error
         self.logger.debug('_send_as_master(): %s' % message)
         fullmessage = message + getlrc(message)
         self._write((':' + to_ascii(fullmessage) + '\r\n').encode('ascii'))
