@@ -708,14 +708,14 @@ class FNDH(transport.ModbusDevice):
             self.ports[portnum].desire_enabled_offline = False
             self.ports[portnum].locally_forced_off = False
             self.ports[portnum].locally_forced_on = False
-        ok = self.write_portconfig()
+        ok = self.write_portconfig(write_state=True, write_to=True)
         if not ok:
             self.logger.error('Could not write port configuration to the FNDH.')
             return False
 
-        # Write state register so the FNDH will transition to 'online'
+        # Write state register so the FNDH will transition to 'online' and clear any TO bit latches
         try:
-            self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=1)
+            self.conn.writeReg(modbus_address=self.modbus_address, regnum=self.register_map['POLL']['SYS_STATUS'][0], value=0)
         except:
             self.logger.exception('Exception in transport.writeReg() in configure_all_off:')
             return False
