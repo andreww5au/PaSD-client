@@ -8,7 +8,7 @@ import os
 import socket
 import sys
 
-LOGFILE = 'upload-%s.log' % (datetime.now().isoformat)
+LOGFILE = 'upload-%s.log' % (datetime.now().strftime('%Y-%m-%dT%H-%M-%S'))
 CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
 
