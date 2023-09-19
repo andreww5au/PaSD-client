@@ -291,6 +291,18 @@ class Connection(object):
                                                        data))
             PCLOG.flush()
 
+    def _send_reset_as_master(self, message):
+        """
+        Calculate the LRC and send a reset message (as a list of bytes) to the socket 'self.sock'.
+        We cannot expect a response to this, since the microprocessor we're talking to will execute a reset
+        killing any response before it gets out. We're therefore sending in the blind and assuming it worked!
+        """
+
+        fullmessage = message + getlrc(message)
+        modbusstring = ':' + to_ascii(fullmessage)
+        self.logger.debug('_send_reset_as_master(): %s' % modbusstring)
+        self._write((modbusstring + '\r\n').encode('ascii'))
+
     def _send_as_master(self, message):
         """
         Calculate the CRC and send it and the message (a list of bytes) to the socket 'self.sock'.
@@ -715,6 +727,34 @@ class Connection(object):
 
         self.logger.error('Too many errors in writeReg, giving up.')
         return False
+
+    def writeReset(self, modbus_address, regnum, value):
+        """
+        This is a special case of writeReg()
+        Have to handle this specially since nobody is going to reply
+        """
+
+        if type(value) == int:
+            valuelist = NtoBytes(value, 2)
+        elif (type(value) == list) and (len(value) == 2):
+            valuelist = value
+        else:
+            self.logger.error('Unexpected register value: %s' % value)
+            return
+
+        packet = [modbus_address, 0x06] + NtoBytes(regnum - 1, 2) + valuelist
+
+        try:
+            self._send_reset_as_master(packet)
+        except ValueError:
+            raise
+        except:
+            self.logger.debug('Communications error in send_reset_as_master, giving up.')
+            time.sleep(1)
+            self._flush()
+            return
+        
+        self.logger.debug('Reset command sent.')
 
     def writeMultReg(self, modbus_address, regnum, valuelist):
         """

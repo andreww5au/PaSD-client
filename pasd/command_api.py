@@ -160,7 +160,7 @@ def reset_microcontroller(conn, address, logger=logging):
     crc32 = zlib.crc32(registerBytes)
     regValues = [crc32 & 0xffff, crc32 >> 16]
     conn.writeMultReg(modbus_address=address, regnum=10001, valuelist=regValues)
-    conn.writeReg(modbus_address=address, regnum=10125, value=RESET_COMMAND)  # reset
+    conn.writeReset(modbus_address=address, regnum=10125, value=RESET_COMMAND)  # reset
 
 
 def start_sample(conn, address, interval, reglist, logger=logging):
