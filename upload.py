@@ -2,12 +2,13 @@
 
 import argparse
 from configparser import ConfigParser as conparser
+from datetime import datetime
 import logging
 import os
 import socket
 import sys
 
-LOGFILE = 'upload.log'
+LOGFILE = 'upload-%s.log' % (datetime.now().isoformat)
 CPPATH = ['/usr/local/etc/pasd.conf', '/usr/local/etc/pasd-local.conf',
           './pasd.conf', './pasd-local.conf']
 
