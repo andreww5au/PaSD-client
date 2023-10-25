@@ -583,6 +583,7 @@ if __name__ == '__main__':
 
     from pasd import transport
     from pasd import station
+    from pasd import fncc
 
     tlogger = logging.getLogger('T')
     if loglevel == logging.DEBUG:
@@ -591,6 +592,10 @@ if __name__ == '__main__':
 
     while True:
         conn = transport.Connection(hostname=args.host, devicename=args.device, multidrop=False, logger=tlogger)
+
+        fncc = fncc.FNCC(conn=conn, modbus_address=100, logger=tlogger)
+        fncc.poll_data()
+        print(fncc)
 
         fndhpc, sbpc = get_all_port_configs(db, station_number=args.station_id)
 

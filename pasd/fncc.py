@@ -70,6 +70,8 @@ FNCC_REGISTERS = {1: {'POLL':FNCC_POLL_REGS_1, 'CONF':FNCC_CONF_REGS_1},
 
 STATUS_STRING = """\
 FNDH at address: %(modbus_address)s:
+    Status: %(status)s (%(status_code)s)
+    Field Node Number: %(field_node_number)s
     ModBUS register revision: %(mbrv)s
     PCB revision: %(pcbrv)s
     CPU ID: %(cpuid)s
@@ -110,15 +112,18 @@ class FNCC(transport.ModbusDevice):
         """
         transport.ModbusDevice.__init__(self, conn=conn, modbus_address=modbus_address, logger=logger)
 
-        self.mbrv = None   # Modbus register-map revision number for this physical FNDH
-        self.pcbrv = None  # PCB revision number for this physical FNDH
+        self.mbrv = None   # Modbus register-map revision number for this physical FNCC
+        self.pcbrv = None  # PCB revision number for this physical FNCC
         self.register_map = {}  # A dictionary mapping register name to (register_number, number_of_registers, description, scaling_function) tuple
         self.cpuid = ''  # CPU identifier (integer)
-        self.chipid = ''  # Unique ID number (16 bytes as ASCII hex), different for every physical FNDH
-        self.firmware_version = 0  # Firmware revision mumber for this physical FNDH
+        self.chipid = ''  # Unique ID number (16 bytes as ASCII hex), different for every physical FNCC
+        self.firmware_version = 0  # Firmware revision mumber for this physical FNCC
         self.uptime = 0  # Time in seconds since this FNDH was powered up
         self.station_value = 0  # Modbus address read back from the SYS_ADDRESS register - should always equal modbus_address
-        self.readtime = 0    # Unix timestamp for the last successful polled data from this FNDH
+        self.statuscode = STATUS_UNKNOWN  # Status value, one of the STATUS_* globals, and used as a key for STATUS_CODES (eg 0 meaning 'OK')
+        self.status = 'UNKNOWN'  # Status string, obtained from STATUS_CODES global (eg 'OK')
+        self.field_node_number = 0   # Value set on FNDH 4-digit numeric switch
+        self.readtime = 0    # Unix timestamp for the last successful polled data from this FNCC
 
     def __str__(self):
         tmpdict = self.__dict__.copy()
@@ -185,6 +190,11 @@ class FNCC(transport.ModbusDevice):
                 self.uptime = raw_int
             elif regname == 'SYS_ADDRESS':
                 self.station_value = raw_int
+            elif regname == 'SYS_STATUS':
+                self.statuscode = raw_int
+                self.status = STATUS_CODES[self.statuscode]
+            elif regname == 'FIELD_NODE_NUMBER':
+                self.field_node_number = raw_int
 
         self.readtime = read_timestamp
         return True
