@@ -69,7 +69,7 @@ FNCC_REGISTERS = {1: {'POLL':FNCC_POLL_REGS_1, 'CONF':FNCC_CONF_REGS_1},
                   3: {'POLL':FNCC_POLL_REGS_1, 'CONF':FNCC_CONF_REGS_1}}    # Added to support a buggy firmware version
 
 STATUS_STRING = """\
-FNDH at address: %(modbus_address)s:
+FNCC at address: %(modbus_address)s:
     Status: %(status)s (%(statuscode)s)
     Field Node Number: %(field_node_number)s
     ModBUS register revision: %(mbrv)s
