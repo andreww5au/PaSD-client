@@ -70,7 +70,7 @@ FNCC_REGISTERS = {1: {'POLL':FNCC_POLL_REGS_1, 'CONF':FNCC_CONF_REGS_1},
 
 STATUS_STRING = """\
 FNDH at address: %(modbus_address)s:
-    Status: %(status)s (%(status_code)s)
+    Status: %(status)s (%(statuscode)s)
     Field Node Number: %(field_node_number)s
     ModBUS register revision: %(mbrv)s
     PCB revision: %(pcbrv)s
