@@ -15,7 +15,7 @@ time. The remainder are available as spares in case of faults.
 
 Each SMARTbox has an internal low-speed, low-power microcontroller to monitor temperatures, 
 currents and voltages, and to switch antennae on and off as required. Power comes from a 
-single &#39;Field Node Distribution Hub (FNDH) for the entire station. A low-speed (9600 bps) 
+single &#39;Field Node Distribution Hub (FNDH) for the entire station. A low-speed (19200 bps) 
 low-RFI communications link to the SMARTbox microcontroller is carried over the 48VDC power 
 line. Each SMARTbox might have an infra-red port for local control and diagnostics, either in 
 the lab for testing, or for a technician to use in the field.
@@ -57,7 +57,7 @@ diagnostics in the field. (Not implemented in hardware)
 ## Link layer
 
 As seen at the microcontroller in a SMARTbox or FNDH, the protocol is Modbus ASCII, at 
-9600 bps, (8 bit, no parity), handshaking TBD. For the prototype, the FNDH will have a 
+19200 bps, (8 bit, no parity), handshaking TBD. For the prototype, the FNDH will have a 
 media converter from fibre to 100baseT, and a commercial ethernet (100baseT) to serial 
 bridge, which accepts a TCP connection to port 5000 from any client (or UDP packets to 
 port 5000), and translates traffic on the serial port to/from the network. For the 
