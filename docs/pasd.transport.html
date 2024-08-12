@@ -1,14 +1,14 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html><head><title>Python: module transport</title>
+<html><head><title>Python: module pasd.transport</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head><body bgcolor="#f0f0f8">
 
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
 <tr bgcolor="#7799ee">
 <td valign=bottom>&nbsp;<br>
-<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>transport</strong></big></big></font></td
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="pasd.html"><font color="#ffffff">pasd</font></a>.transport</strong></big></big></font></td
 ><td align=right valign=bottom
-><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/tmphome/PaSD-Client/pasd/transport.py">/tmphome/PaSD-Client/pasd/transport.py</a></font></td></tr></table>
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/andrew/PyDevel/PaSD-client/pasd/transport.py">/home/andrew/PyDevel/PaSD-client/pasd/transport.py</a></font></td></tr></table>
     <p><tt>Classes&nbsp;to&nbsp;handle&nbsp;communications&nbsp;with&nbsp;remote&nbsp;devices&nbsp;using&nbsp;Modbus-RTU,&nbsp;either&nbsp;directly&nbsp;via&nbsp;serial&nbsp;port,&nbsp;over&nbsp;an<br>
 ethernet-serial&nbsp;bridge&nbsp;(found&nbsp;in&nbsp;every&nbsp;FNDH),&nbsp;or&nbsp;via&nbsp;a&nbsp;simulated&nbsp;multi-drop&nbsp;shared&nbsp;serial&nbsp;bus&nbsp;to&nbsp;other&nbsp;threads&nbsp;using<br>
 the&nbsp;same&nbsp;<a href="#Connection">Connection</a>&nbsp;instance.<br>
@@ -43,8 +43,8 @@ holding&nbsp;register&nbsp;set&nbsp;(40000-49999).</tt></p>
 <dt><font face="helvetica, arial"><a href="builtins.html#object">builtins.object</a>
 </font></dt><dd>
 <dl>
-<dt><font face="helvetica, arial"><a href="transport.html#Connection">Connection</a>
-</font></dt><dt><font face="helvetica, arial"><a href="transport.html#ModbusDevice">ModbusDevice</a>
+<dt><font face="helvetica, arial"><a href="pasd.transport.html#Connection">Connection</a>
+</font></dt><dt><font face="helvetica, arial"><a href="pasd.transport.html#ModbusDevice">ModbusDevice</a>
 </font></dt></dl>
 </dd>
 </dl>
@@ -55,7 +55,7 @@ holding&nbsp;register&nbsp;set&nbsp;(40000-49999).</tt></p>
 <font color="#000000" face="helvetica, arial"><a name="Connection">class <strong>Connection</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt><a href="#Connection">Connection</a>(hostname=None,&nbsp;devicename=None,&nbsp;port=5000,&nbsp;baudrate=9600,&nbsp;multidrop=False,&nbsp;logger=None)<br>
+<td colspan=2><tt><a href="#Connection">Connection</a>(hostname=None,&nbsp;devicename=None,&nbsp;port=5000,&nbsp;baudrate=19200,&nbsp;multidrop=False,&nbsp;logger=None)<br>
 &nbsp;<br>
 Class&nbsp;to&nbsp;handle&nbsp;Modbus&nbsp;communications&nbsp;between&nbsp;the&nbsp;MCCS&nbsp;and&nbsp;Modbus-RTU&nbsp;devices&nbsp;connected&nbsp;via&nbsp;an&nbsp;ethernet&nbsp;to&nbsp;serial<br>
 bridge,&nbsp;or&nbsp;directly&nbsp;via&nbsp;a&nbsp;serial&nbsp;port.&nbsp;One&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;handles&nbsp;all&nbsp;communications&nbsp;for&nbsp;an&nbsp;entire&nbsp;station.<br>
@@ -79,7 +79,7 @@ And&nbsp;for&nbsp;acting&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;slave,&nbsp;and&nbsp;li
 &nbsp;&nbsp;&nbsp;&nbsp;listen_for_packet<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%">Methods defined here:<br>
-<dl><dt><a name="Connection-__init__"><strong>__init__</strong></a>(self, hostname=None, devicename=None, port=5000, baudrate=9600, multidrop=False, logger=None)</dt><dd><tt>Create&nbsp;a&nbsp;new&nbsp;instance,&nbsp;using&nbsp;either&nbsp;a&nbsp;socket&nbsp;connection&nbsp;to&nbsp;a&nbsp;serial&nbsp;bridge&nbsp;hostname,&nbsp;or&nbsp;a&nbsp;physical&nbsp;serial&nbsp;port,<br>
+<dl><dt><a name="Connection-__init__"><strong>__init__</strong></a>(self, hostname=None, devicename=None, port=5000, baudrate=19200, multidrop=False, logger=None)</dt><dd><tt>Create&nbsp;a&nbsp;new&nbsp;instance,&nbsp;using&nbsp;either&nbsp;a&nbsp;socket&nbsp;connection&nbsp;to&nbsp;a&nbsp;serial&nbsp;bridge&nbsp;hostname,&nbsp;or&nbsp;a&nbsp;physical&nbsp;serial&nbsp;port,<br>
 or&nbsp;neither<br>
 &nbsp;<br>
 If&nbsp;'multidrop'&nbsp;is&nbsp;true,&nbsp;this&nbsp;class&nbsp;can&nbsp;be&nbsp;used&nbsp;for&nbsp;emulating&nbsp;serial&nbsp;traffic&nbsp;between&nbsp;multiple&nbsp;threads,&nbsp;with&nbsp;or<br>
@@ -97,7 +97,7 @@ the&nbsp;first&nbsp;'nbytes'&nbsp;of&nbsp;characters&nbsp;are&nbsp;removed&nbsp;
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;remote&nbsp;device,&nbsp;if&nbsp;specified.<br>
 :param&nbsp;logger:&nbsp;A&nbsp;logging.Logger&nbsp;<a href="builtins.html#object">object</a>&nbsp;to&nbsp;use&nbsp;for&nbsp;all&nbsp;log&nbsp;messages,&nbsp;or&nbsp;None&nbsp;(in&nbsp;which&nbsp;case&nbsp;one&nbsp;will&nbsp;be&nbsp;created)</tt></dd></dl>
 
-<dl><dt><a name="Connection-listen_for_packet"><strong>listen_for_packet</strong></a>(self, listen_address, slave_registers, maxtime=10.0, validation_function=&lt;function dummy_validate at 0x7fda700dda60&gt;)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;an&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packet&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;a&nbsp;technician<br>
+<dl><dt><a name="Connection-listen_for_packet"><strong>listen_for_packet</strong></a>(self, listen_address, slave_registers, maxtime=10.0, validation_function=&lt;function dummy_validate at 0x7ca04ca228c0&gt;)</dt><dd><tt>Listen&nbsp;on&nbsp;the&nbsp;socket&nbsp;for&nbsp;an&nbsp;incoming&nbsp;read/write&nbsp;register&nbsp;packet&nbsp;sent&nbsp;by&nbsp;an&nbsp;external&nbsp;bus&nbsp;master&nbsp;(eg,&nbsp;a&nbsp;technician<br>
 in&nbsp;the&nbsp;field).&nbsp;Handle&nbsp;one&nbsp;read/write&nbsp;register&nbsp;call&nbsp;by&nbsp;sending&nbsp;or&nbsp;modifying&nbsp;the&nbsp;contents&nbsp;of&nbsp;the&nbsp;registers&nbsp;passed<br>
 in&nbsp;the&nbsp;'slave_registers'&nbsp;dictionary.&nbsp;Exit&nbsp;after&nbsp;'maxtime'&nbsp;seconds,&nbsp;or&nbsp;after&nbsp;processing&nbsp;one&nbsp;valid&nbsp;packet,&nbsp;whichever<br>
 comes&nbsp;first.&nbsp;Note&nbsp;that&nbsp;if&nbsp;a&nbsp;packet&nbsp;results&nbsp;in&nbsp;an&nbsp;exception&nbsp;reply&nbsp;(invalid&nbsp;register&nbsp;number,&nbsp;invlaid&nbsp;data,&nbsp;etc),<br>
@@ -140,7 +140,7 @@ reply&nbsp;doesn't&nbsp;match&nbsp;the&nbsp;data&nbsp;written,&nbsp;and&nbsp;ret
 :param&nbsp;regnum:&nbsp;Register&nbsp;number&nbsp;to&nbsp;read<br>
 :param&nbsp;valuelist:&nbsp;A&nbsp;list&nbsp;of&nbsp;register&nbsp;values&nbsp;to&nbsp;write.&nbsp;To&nbsp;write&nbsp;to&nbsp;multiple&nbsp;consecutive&nbsp;registers,&nbsp;pass&nbsp;a&nbsp;list&nbsp;with<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;more&nbsp;than&nbsp;1&nbsp;value.&nbsp;Each&nbsp;value&nbsp;can&nbsp;be&nbsp;a&nbsp;single&nbsp;integer&nbsp;(passed&nbsp;as&nbsp;a&nbsp;16-bit&nbsp;value,&nbsp;MSB&nbsp;first),&nbsp;or<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;tuple&nbsp;of&nbsp;(MSB,&nbsp;LSB),&nbsp;where&nbsp;MSB&nbsp;and&nbsp;LSB&nbsp;are&nbsp;integers&nbsp;(each&nbsp;0-255).<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;tuple&nbsp;or&nbsp;list&nbsp;of&nbsp;(MSB,&nbsp;LSB),&nbsp;where&nbsp;MSB&nbsp;and&nbsp;LSB&nbsp;are&nbsp;integers&nbsp;(each&nbsp;0-255).<br>
 :return:&nbsp;True&nbsp;for&nbsp;success,&nbsp;False&nbsp;if&nbsp;there&nbsp;is&nbsp;an&nbsp;unexpected&nbsp;value&nbsp;in&nbsp;the&nbsp;reply,&nbsp;or&nbsp;None&nbsp;for&nbsp;any&nbsp;other&nbsp;error</tt></dd></dl>
 
 <dl><dt><a name="Connection-writeReg"><strong>writeReg</strong></a>(self, modbus_address, regnum, value)</dt><dd><tt>Given&nbsp;a&nbsp;register&nbsp;number&nbsp;and&nbsp;a&nbsp;value,&nbsp;write&nbsp;the&nbsp;data&nbsp;to&nbsp;the&nbsp;given&nbsp;register<br>
@@ -154,6 +154,9 @@ If&nbsp;value&nbsp;is&nbsp;a&nbsp;list&nbsp;of&nbsp;two&nbsp;integers,&nbsp;assu
 :param&nbsp;regnum:&nbsp;Register&nbsp;number&nbsp;to&nbsp;read<br>
 :param&nbsp;value:&nbsp;An&nbsp;integer&nbsp;value&nbsp;to&nbsp;write&nbsp;to&nbsp;the&nbsp;(2-byte)&nbsp;register,&nbsp;or&nbsp;a&nbsp;list&nbsp;of&nbsp;two&nbsp;(0-255)&nbsp;integers<br>
 :return:&nbsp;True&nbsp;for&nbsp;success,&nbsp;False&nbsp;if&nbsp;there&nbsp;is&nbsp;an&nbsp;unexpected&nbsp;value&nbsp;in&nbsp;the&nbsp;reply,&nbsp;or&nbsp;None&nbsp;for&nbsp;any&nbsp;other&nbsp;error</tt></dd></dl>
+
+<dl><dt><a name="Connection-writeReset"><strong>writeReset</strong></a>(self, modbus_address, regnum, value)</dt><dd><tt>This&nbsp;is&nbsp;a&nbsp;special&nbsp;case&nbsp;of&nbsp;<a href="#Connection-writeReg">writeReg</a>()<br>
+Have&nbsp;to&nbsp;handle&nbsp;this&nbsp;specially&nbsp;since&nbsp;nobody&nbsp;is&nbsp;going&nbsp;to&nbsp;reply</tt></dd></dl>
 
 <hr>
 Data descriptors defined here:<br>
@@ -228,7 +231,7 @@ as&nbsp;a&nbsp;string.<br>
 <tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
 <td width="100%"><strong>COMMS_TIMEOUT</strong> = 0.001<br>
 <strong>LCLOG</strong> = None<br>
-<strong>PACKET_WINDOW_TIME</strong> = 0.01<br>
 <strong>PCLOG</strong> = None<br>
-<strong>TIMEOUT</strong> = 1.0</td></tr></table>
+<strong>TIMEOUT</strong> = 1.3<br>
+<strong>VALID_BYTES</strong> = {10, 13, 48, 49, 50, 51, ...}</td></tr></table>
 </body></html>

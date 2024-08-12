@@ -1,14 +1,14 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html><head><title>Python: module mccs</title>
+<html><head><title>Python: module sid.mccs</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head><body bgcolor="#f0f0f8">
 
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
 <tr bgcolor="#7799ee">
 <td valign=bottom>&nbsp;<br>
-<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>mccs</strong></big></big></font></td
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="sid.html"><font color="#ffffff">sid</font></a>.mccs</strong></big></big></font></td
 ><td align=right valign=bottom
-><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/tmphome/PaSD-Client/sid/mccs.py">/tmphome/PaSD-Client/sid/mccs.py</a></font></td></tr></table>
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/andrew/PyDevel/PaSD-client/sid/mccs.py">/home/andrew/PyDevel/PaSD-client/sid/mccs.py</a></font></td></tr></table>
     <p><tt>Class&nbsp;to&nbsp;handle&nbsp;communication&nbsp;with&nbsp;the&nbsp;PaSD&nbsp;local&nbsp;<a href="#MCCS">MCCS</a>,&nbsp;when&nbsp;it&nbsp;is&nbsp;acting&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;slave.&nbsp;Used&nbsp;by&nbsp;SID&nbsp;device&nbsp;to<br>
 query&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>&nbsp;instead&nbsp;of&nbsp;the&nbsp;FNDH&nbsp;or&nbsp;a&nbsp;SMARTbox.</tt></p>
 <p>
@@ -31,7 +31,7 @@ query&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>&nbsp;instead&nbsp;of&nbsp;the&nbsp;
 <dt><font face="helvetica, arial"><a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a>(<a href="builtins.html#object">builtins.object</a>)
 </font></dt><dd>
 <dl>
-<dt><font face="helvetica, arial"><a href="mccs.html#MCCS">MCCS</a>
+<dt><font face="helvetica, arial"><a href="sid.mccs.html#MCCS">MCCS</a>
 </font></dt></dl>
 </dd>
 </dl>
@@ -42,18 +42,18 @@ query&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>&nbsp;instead&nbsp;of&nbsp;the&nbsp;
 <font color="#000000" face="helvetica, arial"><a name="MCCS">class <strong>MCCS</strong></a>(<a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a>)</font></td></tr>
     
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
-<td colspan=2><tt><a href="#MCCS">MCCS</a>(conn=None,&nbsp;modbus_address=63,&nbsp;logger=None)<br>
+<td colspan=2><tt><a href="#MCCS">MCCS</a>(conn=None,&nbsp;modbus_address=199,&nbsp;logger=None)<br>
 &nbsp;<br>
 <a href="#MCCS">MCCS</a>&nbsp;class,&nbsp;an&nbsp;instance&nbsp;of&nbsp;which&nbsp;represents&nbsp;the&nbsp;PaSD&nbsp;local&nbsp;<a href="#MCCS">MCCS</a>&nbsp;software<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%"><dl><dt>Method resolution order:</dt>
-<dd><a href="mccs.html#MCCS">MCCS</a></dd>
+<dd><a href="sid.mccs.html#MCCS">MCCS</a></dd>
 <dd><a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a></dd>
 <dd><a href="builtins.html#object">builtins.object</a></dd>
 </dl>
 <hr>
 Methods defined here:<br>
-<dl><dt><a name="MCCS-__init__"><strong>__init__</strong></a>(self, conn=None, modbus_address=63, logger=None)</dt><dd><tt>Instantiate&nbsp;an&nbsp;instance&nbsp;of&nbsp;<a href="#MCCS">MCCS</a>()&nbsp;using&nbsp;a&nbsp;connection&nbsp;object,&nbsp;and&nbsp;the&nbsp;modbus&nbsp;address&nbsp;for&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>&nbsp;process.<br>
+<dl><dt><a name="MCCS-__init__"><strong>__init__</strong></a>(self, conn=None, modbus_address=199, logger=None)</dt><dd><tt>Instantiate&nbsp;an&nbsp;instance&nbsp;of&nbsp;<a href="#MCCS">MCCS</a>()&nbsp;using&nbsp;a&nbsp;connection&nbsp;object,&nbsp;and&nbsp;the&nbsp;modbus&nbsp;address&nbsp;for&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>&nbsp;process.<br>
 &nbsp;<br>
 This&nbsp;initialisation&nbsp;function&nbsp;doesn't&nbsp;communicate&nbsp;with&nbsp;the&nbsp;<a href="#MCCS">MCCS</a>,&nbsp;it&nbsp;just&nbsp;sets&nbsp;up&nbsp;the<br>
 data&nbsp;structures.<br>
@@ -119,7 +119,7 @@ Data descriptors inherited from <a href="pasd.transport.html#ModbusDevice">pasd.
 <td width="100%"><strong>ANTNUM</strong> = 1001<br>
 <strong>CHIPID</strong> = 1002<br>
 <strong>LOGNUM</strong> = 1010<br>
-<strong>MCCS_ADDRESS</strong> = 63<br>
+<strong>MCCS_ADDRESS</strong> = 199<br>
 <strong>MESSAGE</strong> = 1011<br>
 <strong>MESSAGE_LEN</strong> = 125<br>
 <strong>PDOC_REGSTART</strong> = 1200<br>

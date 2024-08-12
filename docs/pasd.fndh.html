@@ -1,14 +1,14 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html><head><title>Python: module fndh</title>
+<html><head><title>Python: module pasd.fndh</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head><body bgcolor="#f0f0f8">
 
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
 <tr bgcolor="#7799ee">
 <td valign=bottom>&nbsp;<br>
-<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>fndh</strong></big></big></font></td
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="pasd.html"><font color="#ffffff">pasd</font></a>.fndh</strong></big></big></font></td
 ><td align=right valign=bottom
-><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/tmphome/PaSD-Client/pasd/fndh.py">/tmphome/PaSD-Client/pasd/fndh.py</a></font></td></tr></table>
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/andrew/PyDevel/PaSD-client/pasd/fndh.py">/home/andrew/PyDevel/PaSD-client/pasd/fndh.py</a></font></td></tr></table>
     <p><tt>Classes&nbsp;to&nbsp;handle&nbsp;communications&nbsp;with&nbsp;SKA-Low&nbsp;PaSD&nbsp;'SMARTbox'&nbsp;elements,&nbsp;24&nbsp;of&nbsp;which&nbsp;make<br>
 up&nbsp;an&nbsp;SKA-Low&nbsp;station.<br>
 &nbsp;<br>
@@ -20,13 +20,14 @@ This&nbsp;code&nbsp;runs&nbsp;on&nbsp;the&nbsp;MCCS&nbsp;side&nbsp;in&nbsp;the&n
 <font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
     
 <tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
-<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="pasd.conversion.html">pasd.conversion</a><br>
-<a href="json.html">json</a><br>
-</td><td width="25%" valign=top><a href="logging.html">logging</a><br>
-<a href="pasd.smartbox.html">pasd.smartbox</a><br>
-</td><td width="25%" valign=top><a href="time.html">time</a><br>
-<a href="pasd.transport.html">pasd.transport</a><br>
-</td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="pasd.command_api.html">pasd.command_api</a><br>
+<a href="pasd.conversion.html">pasd.conversion</a><br>
+</td><td width="25%" valign=top><a href="json.html">json</a><br>
+<a href="logging.html">logging</a><br>
+</td><td width="25%" valign=top><a href="pasd.smartbox.html">pasd.smartbox</a><br>
+<a href="time.html">time</a><br>
+</td><td width="25%" valign=top><a href="pasd.transport.html">pasd.transport</a><br>
+</td></tr></table></td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#ee77aa">
 <td colspan=3 valign=bottom>&nbsp;<br>
@@ -37,13 +38,13 @@ This&nbsp;code&nbsp;runs&nbsp;on&nbsp;the&nbsp;MCCS&nbsp;side&nbsp;in&nbsp;the&n
 <dt><font face="helvetica, arial"><a href="pasd.smartbox.html#PortStatus">pasd.smartbox.PortStatus</a>(<a href="builtins.html#object">builtins.object</a>)
 </font></dt><dd>
 <dl>
-<dt><font face="helvetica, arial"><a href="fndh.html#PdocStatus">PdocStatus</a>
+<dt><font face="helvetica, arial"><a href="pasd.fndh.html#PdocStatus">PdocStatus</a>
 </font></dt></dl>
 </dd>
 <dt><font face="helvetica, arial"><a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a>(<a href="builtins.html#object">builtins.object</a>)
 </font></dt><dd>
 <dl>
-<dt><font face="helvetica, arial"><a href="fndh.html#FNDH">FNDH</a>
+<dt><font face="helvetica, arial"><a href="pasd.fndh.html#FNDH">FNDH</a>
 </font></dt></dl>
 </dd>
 </dl>
@@ -65,18 +66,19 @@ mbrv:&nbsp;Modbus&nbsp;register-map&nbsp;revision&nbsp;number&nbsp;for&nbsp;this
 pcbrv:&nbsp;PCB&nbsp;revision&nbsp;number&nbsp;for&nbsp;this&nbsp;physical&nbsp;<a href="#FNDH">FNDH</a><br>
 register_map:&nbsp;A&nbsp;dictionary&nbsp;mapping&nbsp;register&nbsp;name&nbsp;to&nbsp;(register_number,&nbsp;number_of_registers,&nbsp;description,&nbsp;scaling_function)&nbsp;tuple<br>
 cpuid:&nbsp;CPU&nbsp;identifier&nbsp;(integer)<br>
-chipid:&nbsp;Unique&nbsp;ID&nbsp;number&nbsp;(16&nbsp;bytes),&nbsp;different&nbsp;for&nbsp;every&nbsp;physical&nbsp;<a href="#FNDH">FNDH</a><br>
+chipid:&nbsp;Unique&nbsp;ID&nbsp;number&nbsp;(16&nbsp;bytes&nbsp;stored&nbsp;as&nbsp;ASCII&nbsp;hex),&nbsp;different&nbsp;for&nbsp;every&nbsp;physical&nbsp;<a href="#FNDH">FNDH</a><br>
 firmware_version:&nbsp;Firmware&nbsp;revision&nbsp;mumber&nbsp;for&nbsp;this&nbsp;physical&nbsp;<a href="#FNDH">FNDH</a><br>
 uptime:&nbsp;Time&nbsp;in&nbsp;seconds&nbsp;since&nbsp;this&nbsp;<a href="#FNDH">FNDH</a>&nbsp;was&nbsp;powered&nbsp;up<br>
 station_value:&nbsp;Modbus&nbsp;address&nbsp;read&nbsp;back&nbsp;from&nbsp;the&nbsp;SYS_ADDRESS&nbsp;register&nbsp;-&nbsp;should&nbsp;always&nbsp;equal&nbsp;modbus_address<br>
 psu48v1_voltage:&nbsp;Voltage&nbsp;measured&nbsp;on&nbsp;the&nbsp;output&nbsp;of&nbsp;the&nbsp;first&nbsp;48VDC&nbsp;power&nbsp;supply&nbsp;(Volts)<br>
-psu48v2_voltage:&nbsp;Voltage&nbsp;measured&nbsp;on&nbsp;the&nbsp;output&nbsp;of&nbsp;the&nbsp;second&nbsp;48VDC&nbsp;power&nbsp;supply&nbsp;(Volts)<br>
-psu5v_voltage:&nbsp;Voltage&nbsp;measured&nbsp;on&nbsp;the&nbsp;output&nbsp;of&nbsp;the&nbsp;5VDC&nbsp;power&nbsp;supply&nbsp;(Volts)<br>
+psu48v2_voltage:&nbsp;Voltage&nbsp;measured&nbsp;on&nbsp;the&nbsp;output&nbsp;of&nbsp;the&nbsp;second&nbsp;48VDC&nbsp;power&nbsp;supply&nbsp;(Volts)&nbsp;-&nbsp;not&nbsp;implemented&nbsp;in&nbsp;hardware<br>
 psu48v_current:&nbsp;Total&nbsp;current&nbsp;on&nbsp;the&nbsp;48VDC&nbsp;bus&nbsp;(Amps)<br>
-psu48v_temp:&nbsp;Common&nbsp;temperature&nbsp;for&nbsp;both&nbsp;48VDC&nbsp;power&nbsp;supplies&nbsp;(deg&nbsp;C)<br>
-psu5v_temp:&nbsp;Temperature&nbsp;of&nbsp;the&nbsp;5VDC&nbsp;power&nbsp;supply&nbsp;(Volts)<br>
-pcb_temp:&nbsp;Temperature&nbsp;on&nbsp;the&nbsp;internal&nbsp;PCB&nbsp;(deg&nbsp;C)<br>
-outside_temp:&nbsp;Outside&nbsp;temperature&nbsp;(deg&nbsp;C)<br>
+psu48v1_temp:&nbsp;Temperature&nbsp;1&nbsp;for&nbsp;the&nbsp;48VDC&nbsp;power&nbsp;supply&nbsp;box&nbsp;(deg&nbsp;C)<br>
+psu48v2_temp:&nbsp;Temperature&nbsp;2&nbsp;for&nbsp;the&nbsp;48VDC&nbsp;power&nbsp;supply&nbsp;box&nbsp;(deg&nbsp;C)<br>
+panel_temp:&nbsp;Switch&nbsp;panel&nbsp;temperature&nbsp;(deg&nbsp;C)<br>
+fncb_temp:&nbsp;FNCB&nbsp;board&nbsp;temperature&nbsp;(deg&nbsp;C)<br>
+fncb_humidity:&nbsp;FNCB&nbsp;board&nbsp;humidity&nbsp;(%)<br>
+sensor_temps:&nbsp;A&nbsp;dictionary&nbsp;with&nbsp;sensor&nbsp;number&nbsp;(1-9)&nbsp;as&nbsp;key,&nbsp;and&nbsp;temperature&nbsp;as&nbsp;value<br>
 statuscode:&nbsp;Status&nbsp;value,&nbsp;one&nbsp;of&nbsp;the&nbsp;STATUS_*&nbsp;globals,&nbsp;and&nbsp;used&nbsp;as&nbsp;a&nbsp;key&nbsp;for&nbsp;STATUS_CODES&nbsp;(eg&nbsp;0&nbsp;meaning&nbsp;'OK')<br>
 status:&nbsp;Status&nbsp;string,&nbsp;obtained&nbsp;from&nbsp;STATUS_CODES&nbsp;global&nbsp;(eg&nbsp;'OK')<br>
 service_led:&nbsp;True&nbsp;if&nbsp;the&nbsp;blue&nbsp;service&nbsp;indicator&nbsp;LED&nbsp;is&nbsp;switched&nbsp;ON.<br>
@@ -89,7 +91,7 @@ portconfig:&nbsp;JSON&nbsp;structure&nbsp;containing&nbsp;the&nbsp;port&nbsp;con
 ports:&nbsp;A&nbsp;dictionary&nbsp;with&nbsp;port&nbsp;number&nbsp;(1-28)&nbsp;as&nbsp;the&nbsp;key,&nbsp;and&nbsp;instances&nbsp;of&nbsp;<a href="#PdocStatus">PdocStatus</a>()&nbsp;as&nbsp;values.<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%"><dl><dt>Method resolution order:</dt>
-<dd><a href="fndh.html#FNDH">FNDH</a></dd>
+<dd><a href="pasd.fndh.html#FNDH">FNDH</a></dd>
 <dd><a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a></dd>
 <dd><a href="builtins.html#object">builtins.object</a></dd>
 </dl>
@@ -129,11 +131,41 @@ flags,&nbsp;and&nbsp;write&nbsp;the&nbsp;full&nbsp;set&nbsp;of&nbsp;port&nbsp;da
 This&nbsp;is&nbsp;called&nbsp;after&nbsp;the&nbsp;power-on&nbsp;procedure,&nbsp;which&nbsp;turns&nbsp;on&nbsp;all&nbsp;of&nbsp;the&nbsp;ports,&nbsp;one&nbsp;by&nbsp;one,&nbsp;to&nbsp;determine<br>
 which&nbsp;SMARTbox&nbsp;is&nbsp;connected&nbsp;to&nbsp;which&nbsp;PDoC&nbsp;port.</tt></dd></dl>
 
+<dl><dt><a name="FNDH-get_sample"><strong>get_sample</strong></a>(self, interval, reglist)</dt><dd><tt>Return&nbsp;the&nbsp;sensor&nbsp;data&nbsp;for&nbsp;the&nbsp;registers&nbsp;in&nbsp;reglist,&nbsp;sampled&nbsp;every&nbsp;'interval'&nbsp;milliseconds,&nbsp;for&nbsp;as&nbsp;long&nbsp;as&nbsp;it<br>
+takes&nbsp;to&nbsp;record&nbsp;10000&nbsp;values&nbsp;(5000&nbsp;samples&nbsp;of&nbsp;2&nbsp;registers,&nbsp;2500&nbsp;samples&nbsp;of&nbsp;4&nbsp;registers,&nbsp;etc).<br>
+&nbsp;<br>
+:param&nbsp;interval:&nbsp;How&nbsp;often&nbsp;(in&nbsp;milliseconds)&nbsp;to&nbsp;sample&nbsp;the&nbsp;data<br>
+:param&nbsp;reglist:&nbsp;&nbsp;Which&nbsp;register&nbsp;numbers&nbsp;to&nbsp;sample<br>
+:return:&nbsp;A&nbsp;dictionary&nbsp;with&nbsp;register&nbsp;number&nbsp;as&nbsp;key,&nbsp;and&nbsp;lists&nbsp;of&nbsp;register&nbsp;samples&nbsp;as&nbsp;values.</tt></dd></dl>
+
 <dl><dt><a name="FNDH-poll_data"><strong>poll_data</strong></a>(self)</dt><dd><tt>Get&nbsp;all&nbsp;the&nbsp;polled&nbsp;registers&nbsp;from&nbsp;the&nbsp;device,&nbsp;and&nbsp;use&nbsp;the&nbsp;contents&nbsp;to&nbsp;fill&nbsp;in&nbsp;the&nbsp;instance&nbsp;data&nbsp;for&nbsp;this&nbsp;instance.<br>
 &nbsp;<br>
 :return:True&nbsp;for&nbsp;success,&nbsp;None&nbsp;if&nbsp;there&nbsp;were&nbsp;any&nbsp;errors.</tt></dd></dl>
 
-<dl><dt><a name="FNDH-write_portconfig"><strong>write_portconfig</strong></a>(self, write_state=True, write_to=False, write_breaker=False)</dt><dd><tt>Write&nbsp;the&nbsp;current&nbsp;instance&nbsp;data&nbsp;for&nbsp;all&nbsp;of&nbsp;the&nbsp;ports&nbsp;to&nbsp;the&nbsp;<a href="#FNDH">FNDH</a>.<br>
+<dl><dt><a name="FNDH-reset"><strong>reset</strong></a>(self)</dt><dd><tt>Sends&nbsp;a&nbsp;command&nbsp;to&nbsp;reset&nbsp;the&nbsp;microcontroller.<br>
+&nbsp;<br>
+:return:&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="FNDH-save_sample"><strong>save_sample</strong></a>(self, interval, reglist, filename)</dt><dd><tt>Call&nbsp;<a href="#FNDH-get_sample">get_sample</a>(),&nbsp;then&nbsp;save&nbsp;the&nbsp;results&nbsp;in&nbsp;CSV&nbsp;format&nbsp;in&nbsp;the&nbsp;given&nbsp;filename.<br>
+&nbsp;<br>
+:param&nbsp;interval:&nbsp;How&nbsp;often&nbsp;(in&nbsp;milliseconds)&nbsp;to&nbsp;sample&nbsp;the&nbsp;data<br>
+:param&nbsp;reglist:&nbsp;&nbsp;Which&nbsp;register&nbsp;numbers&nbsp;to&nbsp;sample<br>
+:param&nbsp;filename:&nbsp;Filename&nbsp;to&nbsp;save&nbsp;the&nbsp;sample&nbsp;data&nbsp;in<br>
+:return:&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="FNDH-set_service_led"><strong>set_service_led</strong></a>(self, newstate)</dt><dd><tt>Set&nbsp;the&nbsp;service&nbsp;LED&nbsp;on&nbsp;or&nbsp;off.<br>
+&nbsp;<br>
+You&nbsp;can&nbsp;either&nbsp;pass&nbsp;a&nbsp;Boolean&nbsp;(on=True),&nbsp;or&nbsp;an&nbsp;integer,&nbsp;where&nbsp;0=off,&nbsp;1=On,&nbsp;2=fast-flash,&nbsp;3=medium-flash,<br>
+4=slow-flash,&nbsp;5=very-slow-flash.</tt></dd></dl>
+
+<dl><dt><a name="FNDH-set_smoothing"><strong>set_smoothing</strong></a>(self, freq=0.5, reglist=None)</dt><dd><tt>Apply&nbsp;the&nbsp;given&nbsp;low-pass&nbsp;frequency&nbsp;cutoff&nbsp;to&nbsp;a&nbsp;list&nbsp;of&nbsp;registers.&nbsp;All&nbsp;of&nbsp;the<br>
+registers&nbsp;must&nbsp;be&nbsp;ones&nbsp;containing&nbsp;sensor&nbsp;values&nbsp;(temperatures,&nbsp;voltages,&nbsp;currents).<br>
+&nbsp;<br>
+:param&nbsp;freq:&nbsp;Low-pass&nbsp;cut&nbsp;off&nbsp;frequency,&nbsp;in&nbsp;Hz,&nbsp;or&nbsp;None&nbsp;to&nbsp;disable&nbsp;filtering<br>
+:param&nbsp;reglist:&nbsp;List&nbsp;of&nbsp;sensor&nbsp;register&nbsp;numbers&nbsp;to&nbsp;apply&nbsp;that&nbsp;filter&nbsp;constant&nbsp;to<br>
+:return:</tt></dd></dl>
+
+<dl><dt><a name="FNDH-write_portconfig"><strong>write_portconfig</strong></a>(self, write_state=True, write_to=False, write_breaker=False)</dt><dd><tt>Write&nbsp;the&nbsp;current&nbsp;instance&nbsp;data&nbsp;for&nbsp;all&nbsp;the&nbsp;ports&nbsp;to&nbsp;the&nbsp;<a href="#FNDH">FNDH</a>.<br>
 &nbsp;<br>
 If&nbsp;'write_state'&nbsp;is&nbsp;True,&nbsp;then&nbsp;the&nbsp;'desired_state_online'&nbsp;and&nbsp;'desired_state_offline'&nbsp;will&nbsp;have&nbsp;bitfields<br>
 corresponding&nbsp;to&nbsp;the&nbsp;current&nbsp;instance&nbsp;data,&nbsp;otherwise&nbsp;they&nbsp;will&nbsp;contain&nbsp;'00'&nbsp;(meaning&nbsp;'do&nbsp;not&nbsp;overwrite').<br>
@@ -188,6 +220,8 @@ desire_enabled_online:&nbsp;Does&nbsp;the&nbsp;MCCS&nbsp;want&nbsp;this&nbsp;PDo
 desire_enabled_offline:Does&nbsp;the&nbsp;MCCS&nbsp;want&nbsp;this&nbsp;PDoC&nbsp;port&nbsp;enabled&nbsp;when&nbsp;the&nbsp;device&nbsp;is&nbsp;offline&nbsp;(Boolean)<br>
 locally_forced_on:&nbsp;Has&nbsp;this&nbsp;PDoC&nbsp;port&nbsp;been&nbsp;locally&nbsp;forced&nbsp;ON&nbsp;by&nbsp;a&nbsp;technician&nbsp;overide&nbsp;(Boolean)<br>
 locally_forced_off:&nbsp;Has&nbsp;this&nbsp;PDoC&nbsp;port&nbsp;been&nbsp;locally&nbsp;forced&nbsp;OFF&nbsp;by&nbsp;a&nbsp;technician&nbsp;overide&nbsp;(Boolean)<br>
+needs_status_write:&nbsp;Set&nbsp;to&nbsp;True&nbsp;if&nbsp;the&nbsp;technician&nbsp;has&nbsp;cleared&nbsp;TO&nbsp;override&nbsp;bits&nbsp;with&nbsp;the&nbsp;button,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;but&nbsp;the&nbsp;firmware&nbsp;needs&nbsp;0&nbsp;written&nbsp;to&nbsp;the&nbsp;SYS_STATUS&nbsp;register&nbsp;to&nbsp;acknowledge.<br>
 breaker_tripped:&nbsp;Unused<br>
 power_state:&nbsp;Is&nbsp;this&nbsp;port&nbsp;switched&nbsp;ON&nbsp;(Boolean)<br>
 power_sense:&nbsp;True&nbsp;if&nbsp;48V&nbsp;power&nbsp;is&nbsp;detected&nbsp;on&nbsp;the&nbsp;output&nbsp;of&nbsp;this&nbsp;port<br>
@@ -196,7 +230,7 @@ antenna_number:&nbsp;Unused<br>
 Note&nbsp;that&nbsp;modbus_address,&nbsp;system_level_enabled&nbsp;and&nbsp;system_online&nbsp;have&nbsp;the&nbsp;the&nbsp;same&nbsp;values&nbsp;for&nbsp;all&nbsp;ports.<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%"><dl><dt>Method resolution order:</dt>
-<dd><a href="fndh.html#PdocStatus">PdocStatus</a></dd>
+<dd><a href="pasd.fndh.html#PdocStatus">PdocStatus</a></dd>
 <dd><a href="pasd.smartbox.html#PortStatus">pasd.smartbox.PortStatus</a></dd>
 <dd><a href="builtins.html#object">builtins.object</a></dd>
 </dl>
@@ -262,9 +296,11 @@ Data descriptors inherited from <a href="pasd.smartbox.html#PortStatus">pasd.sma
 <font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
     
 <tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
-<td width="100%"><strong>FNDH_CONF_REGS_1</strong> = {'SYS_48V1_V_TH': (1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V2_V_TH': (1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V_I_TH': (1013, 4, '48V PSU output current AH, WH, WL, AL', &lt;function scale_48vcurrent&gt;), 'SYS_48V_TEMP_TH': (1017, 4, '48V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_TEMP_TH': (1021, 4, '5V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_V_TH': (1009, 4, '5V PSU output voltage AH, WH, WL, AL', &lt;function scale_5v&gt;), 'SYS_OUTTEMP_TH': (1029, 4, 'Outside temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_PCBTEMP_TH': (1025, 4, 'PCB temperature AH, WH, WL, AL', &lt;function scale_temp&gt;)}<br>
-<strong>FNDH_POLL_REGS_1</strong> = {'P01_STATE': (27, 1, 'Port 01 state bitmap (r/w)', None), 'P02_STATE': (28, 1, 'Port 02 state bitmap (r/w)', None), 'P03_STATE': (29, 1, 'Port 03 state bitmap (r/w)', None), 'P04_STATE': (30, 1, 'Port 04 state bitmap (r/w)', None), 'P05_STATE': (31, 1, 'Port 05 state bitmap (r/w)', None), 'P06_STATE': (32, 1, 'Port 06 state bitmap (r/w)', None), 'P07_STATE': (33, 1, 'Port 07 state bitmap (r/w)', None), 'P08_STATE': (34, 1, 'Port 08 state bitmap (r/w)', None), 'P09_STATE': (35, 1, 'Port 09 state bitmap (r/w)', None), 'P10_STATE': (36, 1, 'Port 10 state bitmap (r/w)', None), ...}<br>
-<strong>FNDH_REGISTERS</strong> = {1: {'CONF': {'SYS_48V1_V_TH': (1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V2_V_TH': (1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V_I_TH': (1013, 4, '48V PSU output current AH, WH, WL, AL', &lt;function scale_48vcurrent&gt;), 'SYS_48V_TEMP_TH': (1017, 4, '48V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_TEMP_TH': (1021, 4, '5V PSU temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_5V_V_TH': (1009, 4, '5V PSU output voltage AH, WH, WL, AL', &lt;function scale_5v&gt;), 'SYS_OUTTEMP_TH': (1029, 4, 'Outside temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_PCBTEMP_TH': (1025, 4, 'PCB temperature AH, WH, WL, AL', &lt;function scale_temp&gt;)}, 'POLL': {'P01_STATE': (27, 1, 'Port 01 state bitmap (r/w)', None), 'P02_STATE': (28, 1, 'Port 02 state bitmap (r/w)', None), 'P03_STATE': (29, 1, 'Port 03 state bitmap (r/w)', None), 'P04_STATE': (30, 1, 'Port 04 state bitmap (r/w)', None), 'P05_STATE': (31, 1, 'Port 05 state bitmap (r/w)', None), 'P06_STATE': (32, 1, 'Port 06 state bitmap (r/w)', None), 'P07_STATE': (33, 1, 'Port 07 state bitmap (r/w)', None), 'P08_STATE': (34, 1, 'Port 08 state bitmap (r/w)', None), 'P09_STATE': (35, 1, 'Port 09 state bitmap (r/w)', None), 'P10_STATE': (36, 1, 'Port 10 state bitmap (r/w)', None), ...}}}<br>
+<td width="100%"><strong>FILT_FREQ</strong> = 0.5<br>
+<strong>FLAG_BITS</strong> = {0: 'SYS_48V1_V', 1: 'SYS_48V2_V', 2: 'SYS_48V_I', 3: 'SYS_48V1_TEMP', 4: 'SYS_48V2_TEMP', 5: 'SYS_PANELTEMP', 6: 'SYS_FNCBTEMP', 7: 'SYS_HUMIDITY', 8: 'SYS_SENSE01', 9: 'SYS_SENSE02', ...}<br>
+<strong>FNDH_CONF_REGS_1</strong> = {'SYS_48V1_TEMP_TH': (1013, 4, '48V PSU 1 temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_48V1_V_TH': (1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V2_TEMP_TH': (1017, 4, '48V PSU 2 temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_48V2_V_TH': (1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V_I_TH': (1009, 4, '48V PSU output current AH, WH, WL, AL', &lt;function scale_48vcurrent&gt;), 'SYS_FNCBTEMP_TH': (1025, 4, 'FNCB board temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_HUMIDITY_TH': (1029, 4, 'FNCB board humidity AH, WH, WL, AL', &lt;function scale_humidity&gt;), 'SYS_PANELTEMP_TH': (1021, 4, 'Switch panel PCB temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_SENSE01_TH': (1033, 4, 'Sensor 1 AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_SENSE02_TH': (1037, 4, 'Sensor 1 AH, WH, WL, AL', &lt;function scale_temp&gt;), ...}<br>
+<strong>FNDH_POLL_REGS_1</strong> = {'P01_STATE': (36, 1, 'Port 01 state bitmap (r/w)', None), 'P02_STATE': (37, 1, 'Port 02 state bitmap (r/w)', None), 'P03_STATE': (38, 1, 'Port 03 state bitmap (r/w)', None), 'P04_STATE': (39, 1, 'Port 04 state bitmap (r/w)', None), 'P05_STATE': (40, 1, 'Port 05 state bitmap (r/w)', None), 'P06_STATE': (41, 1, 'Port 06 state bitmap (r/w)', None), 'P07_STATE': (42, 1, 'Port 07 state bitmap (r/w)', None), 'P08_STATE': (43, 1, 'Port 08 state bitmap (r/w)', None), 'P09_STATE': (44, 1, 'Port 09 state bitmap (r/w)', None), 'P10_STATE': (45, 1, 'Port 10 state bitmap (r/w)', None), ...}<br>
+<strong>FNDH_REGISTERS</strong> = {1: {'CONF': {'SYS_48V1_TEMP_TH': (1013, 4, '48V PSU 1 temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_48V1_V_TH': (1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V2_TEMP_TH': (1017, 4, '48V PSU 2 temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_48V2_V_TH': (1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V_I_TH': (1009, 4, '48V PSU output current AH, WH, WL, AL', &lt;function scale_48vcurrent&gt;), 'SYS_FNCBTEMP_TH': (1025, 4, 'FNCB board temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_HUMIDITY_TH': (1029, 4, 'FNCB board humidity AH, WH, WL, AL', &lt;function scale_humidity&gt;), 'SYS_PANELTEMP_TH': (1021, 4, 'Switch panel PCB temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_SENSE01_TH': (1033, 4, 'Sensor 1 AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_SENSE02_TH': (1037, 4, 'Sensor 1 AH, WH, WL, AL', &lt;function scale_temp&gt;), ...}, 'POLL': {'P01_STATE': (36, 1, 'Port 01 state bitmap (r/w)', None), 'P02_STATE': (37, 1, 'Port 02 state bitmap (r/w)', None), 'P03_STATE': (38, 1, 'Port 03 state bitmap (r/w)', None), 'P04_STATE': (39, 1, 'Port 04 state bitmap (r/w)', None), 'P05_STATE': (40, 1, 'Port 05 state bitmap (r/w)', None), 'P06_STATE': (41, 1, 'Port 06 state bitmap (r/w)', None), 'P07_STATE': (42, 1, 'Port 07 state bitmap (r/w)', None), 'P08_STATE': (43, 1, 'Port 08 state bitmap (r/w)', None), 'P09_STATE': (44, 1, 'Port 09 state bitmap (r/w)', None), 'P10_STATE': (45, 1, 'Port 10 state bitmap (r/w)', None), ...}}, 2: {'CONF': {'SYS_48V1_TEMP_TH': (1013, 4, '48V PSU 1 temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_48V1_V_TH': (1001, 4, '48V PSU 1, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V2_TEMP_TH': (1017, 4, '48V PSU 2 temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_48V2_V_TH': (1005, 4, '48V PSU 2, 48VDC voltage AH, WH, WL, AL', &lt;function scale_48v&gt;), 'SYS_48V_I_TH': (1009, 4, '48V PSU output current AH, WH, WL, AL', &lt;function scale_48vcurrent&gt;), 'SYS_FNCBTEMP_TH': (1025, 4, 'FNCB board temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_HUMIDITY_TH': (1029, 4, 'FNCB board humidity AH, WH, WL, AL', &lt;function scale_humidity&gt;), 'SYS_PANELTEMP_TH': (1021, 4, 'Switch panel PCB temperature AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_SENSE01_TH': (1033, 4, 'Sensor 1 AH, WH, WL, AL', &lt;function scale_temp&gt;), 'SYS_SENSE02_TH': (1037, 4, 'Sensor 1 AH, WH, WL, AL', &lt;function scale_temp&gt;), ...}, 'POLL': {'P01_STATE': (36, 1, 'Port 01 state bitmap (r/w)', None), 'P02_STATE': (37, 1, 'Port 02 state bitmap (r/w)', None), 'P03_STATE': (38, 1, 'Port 03 state bitmap (r/w)', None), 'P04_STATE': (39, 1, 'Port 04 state bitmap (r/w)', None), 'P05_STATE': (40, 1, 'Port 05 state bitmap (r/w)', None), 'P06_STATE': (41, 1, 'Port 06 state bitmap (r/w)', None), 'P07_STATE': (42, 1, 'Port 07 state bitmap (r/w)', None), 'P08_STATE': (43, 1, 'Port 08 state bitmap (r/w)', None), 'P09_STATE': (44, 1, 'Port 09 state bitmap (r/w)', None), 'P10_STATE': (45, 1, 'Port 10 state bitmap (r/w)', None), ...}}}<br>
 <strong>LED_CODES</strong> = {-1: 'UKNOWN', 0: 'OFF', 10: 'GREEN', 11: 'GREENSLOW', 12: 'GREENFAST', 13: 'GREENVFAST', 14: 'GREENDOTDASH', 20: 'YELLOW', 21: 'YELLOWSLOW', 22: 'YELLOWFAST', ...}<br>
 <strong>LED_GREEN</strong> = 10<br>
 <strong>LED_GREENDOTDASH</strong> = 14<br>
@@ -287,6 +323,14 @@ Data descriptors inherited from <a href="pasd.smartbox.html#PortStatus">pasd.sma
 <strong>LED_YELLOWSLOW</strong> = 21<br>
 <strong>LED_YELLOWVFAST</strong> = 23<br>
 <strong>PORTCONFIG_FILENAME</strong> = 'pasd/fndh_ports.json'<br>
+<strong>SERVICE_FAST</strong> = 3<br>
+<strong>SERVICE_LED_CODES</strong> = {-1: 'SERVICE_UKNOWN', 0: 'SERVICE_OFF', 1: 'SERVICE_ON', 2: 'SERVICE_VFAST', 3: 'SERVICE_FAST', 4: 'SERVICE_SLOW', 5: 'SERVICE_VSLOW'}<br>
+<strong>SERVICE_OFF</strong> = 0<br>
+<strong>SERVICE_ON</strong> = 1<br>
+<strong>SERVICE_SLOW</strong> = 4<br>
+<strong>SERVICE_VFAST</strong> = 2<br>
+<strong>SERVICE_VSLOW</strong> = 5<br>
+<strong>SMOOTHED_REGLIST</strong> = [17, 18, 19, 20, 21, 22, 23, 24]<br>
 <strong>STATUS_ALARM</strong> = 2<br>
 <strong>STATUS_CODES</strong> = {-1: 'STATUS_UNKNOWN', 0: 'STATUS_OK', 1: 'STATUS_WARNING', 2: 'STATUS_ALARM', 3: 'STATUS_RECOVERY', 4: 'STATUS_UNINITIALISED', 5: 'STATUS_POWERUP'}<br>
 <strong>STATUS_OK</strong> = 0<br>

@@ -1,14 +1,14 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html><head><title>Python: module smartbox</title>
+<html><head><title>Python: module pasd.smartbox</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head><body bgcolor="#f0f0f8">
 
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
 <tr bgcolor="#7799ee">
 <td valign=bottom>&nbsp;<br>
-<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>smartbox</strong></big></big></font></td
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="pasd.html"><font color="#ffffff">pasd</font></a>.smartbox</strong></big></big></font></td
 ><td align=right valign=bottom
-><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/tmphome/PaSD-Client/pasd/smartbox.py">/tmphome/PaSD-Client/pasd/smartbox.py</a></font></td></tr></table>
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/andrew/PyDevel/PaSD-client/pasd/smartbox.py">/home/andrew/PyDevel/PaSD-client/pasd/smartbox.py</a></font></td></tr></table>
     <p><tt>Classes&nbsp;to&nbsp;handle&nbsp;communications&nbsp;with&nbsp;an&nbsp;SKA-Low&nbsp;PaSD&nbsp;'<a href="#SMARTbox">SMARTbox</a>',&nbsp;24&nbsp;of&nbsp;which&nbsp;make<br>
 up&nbsp;an&nbsp;SKA-Low&nbsp;station.<br>
 &nbsp;<br>
@@ -20,11 +20,12 @@ This&nbsp;code&nbsp;runs&nbsp;on&nbsp;the&nbsp;MCCS&nbsp;side&nbsp;in&nbsp;the&n
 <font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
     
 <tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
-<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="pasd.conversion.html">pasd.conversion</a><br>
-<a href="json.html">json</a><br>
-</td><td width="25%" valign=top><a href="logging.html">logging</a><br>
-<a href="time.html">time</a><br>
-</td><td width="25%" valign=top><a href="pasd.transport.html">pasd.transport</a><br>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="pasd.command_api.html">pasd.command_api</a><br>
+<a href="pasd.conversion.html">pasd.conversion</a><br>
+</td><td width="25%" valign=top><a href="json.html">json</a><br>
+<a href="logging.html">logging</a><br>
+</td><td width="25%" valign=top><a href="time.html">time</a><br>
+<a href="pasd.transport.html">pasd.transport</a><br>
 </td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
 <tr bgcolor="#ee77aa">
@@ -36,13 +37,13 @@ This&nbsp;code&nbsp;runs&nbsp;on&nbsp;the&nbsp;MCCS&nbsp;side&nbsp;in&nbsp;the&n
 <dt><font face="helvetica, arial"><a href="builtins.html#object">builtins.object</a>
 </font></dt><dd>
 <dl>
-<dt><font face="helvetica, arial"><a href="smartbox.html#PortStatus">PortStatus</a>
+<dt><font face="helvetica, arial"><a href="pasd.smartbox.html#PortStatus">PortStatus</a>
 </font></dt></dl>
 </dd>
 <dt><font face="helvetica, arial"><a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a>(<a href="builtins.html#object">builtins.object</a>)
 </font></dt><dd>
 <dl>
-<dt><font face="helvetica, arial"><a href="smartbox.html#SMARTbox">SMARTbox</a>
+<dt><font face="helvetica, arial"><a href="pasd.smartbox.html#SMARTbox">SMARTbox</a>
 </font></dt></dl>
 </dd>
 </dl>
@@ -72,6 +73,8 @@ desire_enabled_online:&nbsp;Does&nbsp;the&nbsp;MCCS&nbsp;want&nbsp;this&nbsp;por
 desire_enabled_offline:Does&nbsp;the&nbsp;MCCS&nbsp;want&nbsp;this&nbsp;port&nbsp;enabled&nbsp;when&nbsp;the&nbsp;device&nbsp;is&nbsp;offline&nbsp;(Boolean)<br>
 locally_forced_on:&nbsp;Has&nbsp;this&nbsp;port&nbsp;been&nbsp;locally&nbsp;forced&nbsp;ON&nbsp;by&nbsp;a&nbsp;technician&nbsp;overide&nbsp;(Boolean)<br>
 locally_forced_off:&nbsp;Has&nbsp;this&nbsp;port&nbsp;been&nbsp;locally&nbsp;forced&nbsp;OFF&nbsp;by&nbsp;a&nbsp;technician&nbsp;overide&nbsp;(Boolean)<br>
+needs_status_write:&nbsp;Set&nbsp;to&nbsp;True&nbsp;if&nbsp;the&nbsp;technician&nbsp;has&nbsp;cleared&nbsp;TO&nbsp;override&nbsp;bits&nbsp;with&nbsp;the&nbsp;button,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;but&nbsp;the&nbsp;firmware&nbsp;needs&nbsp;0&nbsp;written&nbsp;to&nbsp;the&nbsp;SYS_STATUS&nbsp;register&nbsp;to&nbsp;acknowledge.<br>
 breaker_tripped:&nbsp;Has&nbsp;the&nbsp;over-current&nbsp;breaker&nbsp;tripped&nbsp;on&nbsp;this&nbsp;port&nbsp;(Boolean)<br>
 power_state:&nbsp;Is&nbsp;this&nbsp;port&nbsp;switched&nbsp;ON&nbsp;(Boolean)<br>
 antenna_number:&nbsp;Physical&nbsp;station&nbsp;antenna&nbsp;number.&nbsp;Only&nbsp;set&nbsp;externally,&nbsp;at&nbsp;the&nbsp;station&nbsp;level.&nbsp;(1-256)<br>
@@ -154,7 +157,7 @@ pcbrv:&nbsp;PCB&nbsp;revision&nbsp;number&nbsp;for&nbsp;this&nbsp;physical&nbsp;
 register_map:&nbsp;A&nbsp;dictionary&nbsp;mapping&nbsp;register&nbsp;name&nbsp;to&nbsp;(register_number,&nbsp;number_of_registers,&nbsp;description,&nbsp;scaling_function)&nbsp;tuple<br>
 sensor_temps:&nbsp;A&nbsp;dictionary&nbsp;with&nbsp;sensor&nbsp;number&nbsp;(1-12)&nbsp;as&nbsp;key,&nbsp;and&nbsp;temperature&nbsp;as&nbsp;value<br>
 cpuid:&nbsp;CPU&nbsp;identifier&nbsp;(integer)<br>
-chipid:&nbsp;Unique&nbsp;ID&nbsp;number&nbsp;(16&nbsp;bytes),&nbsp;different&nbsp;for&nbsp;every&nbsp;physical&nbsp;<a href="#SMARTbox">SMARTbox</a><br>
+chipid:&nbsp;Unique&nbsp;ID&nbsp;number&nbsp;(16&nbsp;bytes&nbsp;as&nbsp;ASCII&nbsp;hex),&nbsp;different&nbsp;for&nbsp;every&nbsp;physical&nbsp;<a href="#SMARTbox">SMARTbox</a><br>
 firmware_version:&nbsp;Firmware&nbsp;revision&nbsp;mumber&nbsp;for&nbsp;this&nbsp;physical&nbsp;<a href="#SMARTbox">SMARTbox</a><br>
 uptime:&nbsp;Time&nbsp;in&nbsp;seconds&nbsp;since&nbsp;this&nbsp;<a href="#SMARTbox">SMARTbox</a>&nbsp;was&nbsp;powered&nbsp;up<br>
 station_value:&nbsp;Modbus&nbsp;address&nbsp;read&nbsp;back&nbsp;from&nbsp;the&nbsp;SYS_ADDRESS&nbsp;register&nbsp;-&nbsp;should&nbsp;always&nbsp;equal&nbsp;modbus_address<br>
@@ -162,7 +165,7 @@ incoming_voltage:&nbsp;Measured&nbsp;voltage&nbsp;for&nbsp;the&nbsp;(nominal)&nb
 psu_voltage:&nbsp;Measured&nbsp;output&nbsp;voltage&nbsp;for&nbsp;the&nbsp;internal&nbsp;(nominal)&nbsp;5V&nbsp;power&nbsp;supply<br>
 psu_temp:&nbsp;Temperature&nbsp;of&nbsp;the&nbsp;internal&nbsp;5V&nbsp;power&nbsp;supply&nbsp;(deg&nbsp;C)<br>
 pcb_temp:&nbsp;Temperature&nbsp;on&nbsp;the&nbsp;internal&nbsp;PCB&nbsp;(deg&nbsp;C)<br>
-outside_temp:&nbsp;Outside&nbsp;temperature&nbsp;(deg&nbsp;C)<br>
+ambient_temp:&nbsp;Ambient&nbsp;temperature&nbsp;inside&nbsp;FEM&nbsp;enclosure&nbsp;(deg&nbsp;C)<br>
 statuscode:&nbsp;Status&nbsp;value,&nbsp;one&nbsp;of&nbsp;the&nbsp;STATUS_*&nbsp;globals,&nbsp;and&nbsp;used&nbsp;as&nbsp;a&nbsp;key&nbsp;for&nbsp;STATUS_CODES&nbsp;(eg&nbsp;0&nbsp;meaning&nbsp;'OK')<br>
 status:&nbsp;Status&nbsp;string,&nbsp;obtained&nbsp;from&nbsp;STATUS_CODES&nbsp;global&nbsp;(eg&nbsp;'OK')<br>
 service_led:&nbsp;True&nbsp;if&nbsp;the&nbsp;blue&nbsp;service&nbsp;indicator&nbsp;LED&nbsp;is&nbsp;switched&nbsp;ON.<br>
@@ -176,7 +179,7 @@ portconfig:&nbsp;JSON&nbsp;structure&nbsp;containing&nbsp;the&nbsp;port&nbsp;con
 ports:&nbsp;A&nbsp;dictionary&nbsp;with&nbsp;port&nbsp;number&nbsp;(1-12)&nbsp;as&nbsp;the&nbsp;key,&nbsp;and&nbsp;instances&nbsp;of&nbsp;<a href="#PortStatus">PortStatus</a>()&nbsp;as&nbsp;values.<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%"><dl><dt>Method resolution order:</dt>
-<dd><a href="smartbox.html#SMARTbox">SMARTbox</a></dd>
+<dd><a href="pasd.smartbox.html#SMARTbox">SMARTbox</a></dd>
 <dd><a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a></dd>
 <dd><a href="builtins.html#object">builtins.object</a></dd>
 </dl>
@@ -210,6 +213,13 @@ transition&nbsp;out&nbsp;of&nbsp;the&nbsp;'UNINITIALISED'&nbsp;state.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;defaults&nbsp;from&nbsp;the&nbsp;JSON&nbsp;file&nbsp;specified&nbsp;in&nbsp;PORTCONFIG_FILENAME&nbsp;loaded&nbsp;on&nbsp;initialistion&nbsp;into&nbsp;self.<strong>portconfig</strong><br>
 :return:&nbsp;True&nbsp;for&nbsp;sucess</tt></dd></dl>
 
+<dl><dt><a name="SMARTbox-get_sample"><strong>get_sample</strong></a>(self, interval, reglist)</dt><dd><tt>Return&nbsp;the&nbsp;sensor&nbsp;data&nbsp;for&nbsp;the&nbsp;registers&nbsp;in&nbsp;reglist,&nbsp;sampled&nbsp;every&nbsp;'interval'&nbsp;milliseconds,&nbsp;for&nbsp;as&nbsp;long&nbsp;as&nbsp;it<br>
+takes&nbsp;to&nbsp;record&nbsp;10000&nbsp;values&nbsp;(5000&nbsp;samples&nbsp;of&nbsp;2&nbsp;registers,&nbsp;2500&nbsp;samples&nbsp;of&nbsp;4&nbsp;registers,&nbsp;etc).<br>
+&nbsp;<br>
+:param&nbsp;interval:&nbsp;How&nbsp;often&nbsp;(in&nbsp;milliseconds)&nbsp;to&nbsp;sample&nbsp;the&nbsp;data<br>
+:param&nbsp;reglist:&nbsp;&nbsp;Which&nbsp;register&nbsp;numbers&nbsp;to&nbsp;sample<br>
+:return:&nbsp;A&nbsp;dictionary&nbsp;with&nbsp;register&nbsp;number&nbsp;as&nbsp;key,&nbsp;and&nbsp;lists&nbsp;of&nbsp;register&nbsp;samples&nbsp;as&nbsp;values.</tt></dd></dl>
+
 <dl><dt><a name="SMARTbox-poll_data"><strong>poll_data</strong></a>(self)</dt><dd><tt>Get&nbsp;all&nbsp;the&nbsp;polled&nbsp;registers&nbsp;from&nbsp;the&nbsp;device,&nbsp;and&nbsp;use&nbsp;the&nbsp;contents&nbsp;to&nbsp;fill&nbsp;in&nbsp;the&nbsp;instance&nbsp;data&nbsp;for&nbsp;this&nbsp;instance.<br>
 &nbsp;<br>
 :return:&nbsp;True&nbsp;for&nbsp;success,&nbsp;None&nbsp;if&nbsp;there&nbsp;were&nbsp;any&nbsp;errors.</tt></dd></dl>
@@ -218,7 +228,30 @@ transition&nbsp;out&nbsp;of&nbsp;the&nbsp;'UNINITIALISED'&nbsp;state.<br>
 &nbsp;<br>
 :return:&nbsp;uptime&nbsp;in&nbsp;seconds,&nbsp;or&nbsp;None&nbsp;if&nbsp;there&nbsp;was&nbsp;an&nbsp;error.</tt></dd></dl>
 
-<dl><dt><a name="SMARTbox-write_portconfig"><strong>write_portconfig</strong></a>(self)</dt><dd><tt>Write&nbsp;the&nbsp;current&nbsp;instance&nbsp;data&nbsp;for&nbsp;'desired&nbsp;port&nbsp;state&nbsp;online'&nbsp;and&nbsp;'desired&nbsp;port&nbsp;state&nbsp;offline'&nbsp;in&nbsp;each&nbsp;of<br>
+<dl><dt><a name="SMARTbox-reset"><strong>reset</strong></a>(self)</dt><dd><tt>Sends&nbsp;a&nbsp;command&nbsp;to&nbsp;reset&nbsp;the&nbsp;microcontroller.<br>
+&nbsp;<br>
+:return:&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="SMARTbox-save_sample"><strong>save_sample</strong></a>(self, interval, reglist, filename)</dt><dd><tt>Call&nbsp;<a href="#SMARTbox-get_sample">get_sample</a>(),&nbsp;then&nbsp;save&nbsp;the&nbsp;results&nbsp;in&nbsp;CSV&nbsp;format&nbsp;in&nbsp;the&nbsp;given&nbsp;filename.<br>
+&nbsp;<br>
+:param&nbsp;interval:&nbsp;How&nbsp;often&nbsp;(in&nbsp;milliseconds)&nbsp;to&nbsp;sample&nbsp;the&nbsp;data<br>
+:param&nbsp;reglist:&nbsp;&nbsp;Which&nbsp;register&nbsp;numbers&nbsp;to&nbsp;sample<br>
+:param&nbsp;filename:&nbsp;Filename&nbsp;to&nbsp;save&nbsp;the&nbsp;sample&nbsp;data&nbsp;in<br>
+:return:&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="SMARTbox-set_service_led"><strong>set_service_led</strong></a>(self, newstate)</dt><dd><tt>Set&nbsp;the&nbsp;service&nbsp;LED&nbsp;on&nbsp;or&nbsp;off.<br>
+&nbsp;<br>
+You&nbsp;can&nbsp;either&nbsp;pass&nbsp;a&nbsp;Boolean&nbsp;(on=True),&nbsp;or&nbsp;an&nbsp;integer,&nbsp;where&nbsp;0=off,&nbsp;1=On,&nbsp;2=fast-flash,&nbsp;3=medium-flash,<br>
+4=slow-flash,&nbsp;5=very-slow-flash.</tt></dd></dl>
+
+<dl><dt><a name="SMARTbox-set_smoothing"><strong>set_smoothing</strong></a>(self, freq=0.5, reglist=None)</dt><dd><tt>Apply&nbsp;the&nbsp;given&nbsp;low-pass&nbsp;frequency&nbsp;cutoff&nbsp;to&nbsp;a&nbsp;list&nbsp;of&nbsp;registers.&nbsp;All&nbsp;of&nbsp;the<br>
+registers&nbsp;must&nbsp;be&nbsp;ones&nbsp;containing&nbsp;sensor&nbsp;values&nbsp;(temperatures,&nbsp;voltages,&nbsp;currents).<br>
+&nbsp;<br>
+:param&nbsp;freq:&nbsp;Low-pass&nbsp;cut&nbsp;off&nbsp;frequency,&nbsp;in&nbsp;Hz,&nbsp;or&nbsp;None&nbsp;to&nbsp;disable&nbsp;filtering<br>
+:param&nbsp;reglist:&nbsp;List&nbsp;of&nbsp;sensor&nbsp;register&nbsp;numbers&nbsp;to&nbsp;apply&nbsp;that&nbsp;filter&nbsp;constant&nbsp;to<br>
+:return:</tt></dd></dl>
+
+<dl><dt><a name="SMARTbox-write_portconfig"><strong>write_portconfig</strong></a>(self, write_breaker=False)</dt><dd><tt>Write&nbsp;the&nbsp;current&nbsp;instance&nbsp;data&nbsp;for&nbsp;'desired&nbsp;port&nbsp;state&nbsp;online'&nbsp;and&nbsp;'desired&nbsp;port&nbsp;state&nbsp;offline'&nbsp;in&nbsp;each&nbsp;of<br>
 the&nbsp;port&nbsp;status&nbsp;objects,&nbsp;to&nbsp;the&nbsp;<a href="#SMARTbox">SMARTbox</a>.<br>
 &nbsp;<br>
 :return:&nbsp;True&nbsp;if&nbsp;successful,&nbsp;False&nbsp;on&nbsp;failure</tt></dd></dl>
@@ -242,7 +275,9 @@ Data descriptors inherited from <a href="pasd.transport.html#ModbusDevice">pasd.
 <font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
     
 <tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
-<td width="100%"><strong>LED_CODES</strong> = {-1: 'UKNOWN', 0: 'OFF', 10: 'GREEN', 11: 'GREENSLOW', 12: 'GREENFAST', 13: 'GREENVFAST', 14: 'GREENDOTDASH', 20: 'YELLOW', 21: 'YELLOWSLOW', 22: 'YELLOWFAST', ...}<br>
+<td width="100%"><strong>FILT_FREQ</strong> = 0.5<br>
+<strong>FLAG_BITS</strong> = {0: 'SYS_48V_V', 1: 'SYS_PSU_V', 2: 'SYS_PSU_TEMP', 3: 'SYS_PCBTEMP', 4: 'SYS_AMBTEMP', 5: 'SYS_SENSE01', 6: 'SYS_SENSE02', 7: 'SYS_SENSE03', 8: 'SYS_SENSE04', 9: 'SYS_SENSE05', ...}<br>
+<strong>LED_CODES</strong> = {-1: 'UKNOWN', 0: 'OFF', 10: 'GREEN', 11: 'GREENSLOW', 12: 'GREENFAST', 13: 'GREENVFAST', 14: 'GREENDOTDASH', 20: 'YELLOW', 21: 'YELLOWSLOW', 22: 'YELLOWFAST', ...}<br>
 <strong>LED_GREEN</strong> = 10<br>
 <strong>LED_GREENDOTDASH</strong> = 14<br>
 <strong>LED_GREENFAST</strong> = 12<br>
@@ -264,9 +299,17 @@ Data descriptors inherited from <a href="pasd.transport.html#ModbusDevice">pasd.
 <strong>LED_YELLOWSLOW</strong> = 21<br>
 <strong>LED_YELLOWVFAST</strong> = 23<br>
 <strong>PORTCONFIG_FILENAME</strong> = 'pasd/smartbox_ports.json'<br>
+<strong>SERVICE_FAST</strong> = 3<br>
+<strong>SERVICE_LED_CODES</strong> = {-1: 'SERVICE_UKNOWN', 0: 'SERVICE_OFF', 1: 'SERVICE_ON', 2: 'SERVICE_VFAST', 3: 'SERVICE_FAST', 4: 'SERVICE_SLOW', 5: 'SERVICE_VSLOW'}<br>
+<strong>SERVICE_OFF</strong> = 0<br>
+<strong>SERVICE_ON</strong> = 1<br>
+<strong>SERVICE_SLOW</strong> = 4<br>
+<strong>SERVICE_VFAST</strong> = 2<br>
+<strong>SERVICE_VSLOW</strong> = 5<br>
 <strong>SMARTBOX_CONF_REGS_1</strong> = {'P01_CURRENT_TH': (1069, 1, 'Port 01 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P02_CURRENT_TH': (1070, 1, 'Port 02 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P03_CURRENT_TH': (1071, 1, 'Port 03 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P04_CURRENT_TH': (1072, 1, 'Port 04 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P05_CURRENT_TH': (1073, 1, 'Port 05 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P06_CURRENT_TH': (1074, 1, 'Port 06 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P07_CURRENT_TH': (1075, 1, 'Port 07 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P08_CURRENT_TH': (1076, 1, 'Port 08 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P09_CURRENT_TH': (1077, 1, 'Port 09 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P10_CURRENT_TH': (1078, 1, 'Port 10 current trip threshold', &lt;function scale_FEMcurrent&gt;), ...}<br>
 <strong>SMARTBOX_POLL_REGS_1</strong> = {'P01_CURRENT': (48, 1, 'Port 01 current', &lt;function scale_FEMcurrent&gt;), 'P01_STATE': (36, 1, 'Port 01 state bitmap', None), 'P02_CURRENT': (49, 1, 'Port 02 current', &lt;function scale_FEMcurrent&gt;), 'P02_STATE': (37, 1, 'Port 02 state bitmap', None), 'P03_CURRENT': (50, 1, 'Port 03 current', &lt;function scale_FEMcurrent&gt;), 'P03_STATE': (38, 1, 'Port 03 state bitmap', None), 'P04_CURRENT': (51, 1, 'Port 04 current', &lt;function scale_FEMcurrent&gt;), 'P04_STATE': (39, 1, 'Port 04 state bitmap', None), 'P05_CURRENT': (52, 1, 'Port 05 current', &lt;function scale_FEMcurrent&gt;), 'P05_STATE': (40, 1, 'Port 05 state bitmap', None), ...}<br>
 <strong>SMARTBOX_REGISTERS</strong> = {1: {'CONF': {'P01_CURRENT_TH': (1069, 1, 'Port 01 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P02_CURRENT_TH': (1070, 1, 'Port 02 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P03_CURRENT_TH': (1071, 1, 'Port 03 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P04_CURRENT_TH': (1072, 1, 'Port 04 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P05_CURRENT_TH': (1073, 1, 'Port 05 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P06_CURRENT_TH': (1074, 1, 'Port 06 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P07_CURRENT_TH': (1075, 1, 'Port 07 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P08_CURRENT_TH': (1076, 1, 'Port 08 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P09_CURRENT_TH': (1077, 1, 'Port 09 current trip threshold', &lt;function scale_FEMcurrent&gt;), 'P10_CURRENT_TH': (1078, 1, 'Port 10 current trip threshold', &lt;function scale_FEMcurrent&gt;), ...}, 'POLL': {'P01_CURRENT': (48, 1, 'Port 01 current', &lt;function scale_FEMcurrent&gt;), 'P01_STATE': (36, 1, 'Port 01 state bitmap', None), 'P02_CURRENT': (49, 1, 'Port 02 current', &lt;function scale_FEMcurrent&gt;), 'P02_STATE': (37, 1, 'Port 02 state bitmap', None), 'P03_CURRENT': (50, 1, 'Port 03 current', &lt;function scale_FEMcurrent&gt;), 'P03_STATE': (38, 1, 'Port 03 state bitmap', None), 'P04_CURRENT': (51, 1, 'Port 04 current', &lt;function scale_FEMcurrent&gt;), 'P04_STATE': (39, 1, 'Port 04 state bitmap', None), 'P05_CURRENT': (52, 1, 'Port 05 current', &lt;function scale_FEMcurrent&gt;), 'P05_STATE': (40, 1, 'Port 05 state bitmap', None), ...}}}<br>
+<strong>SMOOTHED_REGLIST</strong> = [17, 18, 19, 21, 24, 25, 26, 27, 28, 29, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, ...]<br>
 <strong>STATUS_ALARM</strong> = 2<br>
 <strong>STATUS_CODES</strong> = {-1: 'UNKNOWN', 0: 'OK', 1: 'WARNING', 2: 'ALARM', 3: 'RECOVERY', 4: 'UNINITIALISED', 5: 'POWERDOWN'}<br>
 <strong>STATUS_OK</strong> = 0<br>

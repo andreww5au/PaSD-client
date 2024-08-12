@@ -1,14 +1,14 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html><head><title>Python: module sim_station</title>
+<html><head><title>Python: module simulate.sim_station</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 </head><body bgcolor="#f0f0f8">
 
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
 <tr bgcolor="#7799ee">
 <td valign=bottom>&nbsp;<br>
-<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>sim_station</strong></big></big></font></td
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="simulate.html"><font color="#ffffff">simulate</font></a>.sim_station</strong></big></big></font></td
 ><td align=right valign=bottom
-><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/tmphome/PaSD-Client/simulate/sim_station.py">/tmphome/PaSD-Client/simulate/sim_station.py</a></font></td></tr></table>
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/andrew/PyDevel/PaSD-client/simulate/sim_station.py">/home/andrew/PyDevel/PaSD-client/simulate/sim_station.py</a></font></td></tr></table>
     <p><tt>Simulates&nbsp;a&nbsp;full&nbsp;PaSD&nbsp;station,&nbsp;including&nbsp;an&nbsp;FNDH&nbsp;and&nbsp;24&nbsp;SMARTboxes.&nbsp;Used&nbsp;for&nbsp;testing&nbsp;MCCS&nbsp;code.</tt></p>
 <p>
 <table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
@@ -32,7 +32,7 @@
 <dt><font face="helvetica, arial"><a href="simulate.sim_fndh.html#SimFNDH">simulate.sim_fndh.SimFNDH</a>(<a href="pasd.fndh.html#FNDH">pasd.fndh.FNDH</a>)
 </font></dt><dd>
 <dl>
-<dt><font face="helvetica, arial"><a href="sim_station.html#Sim_Station">Sim_Station</a>
+<dt><font face="helvetica, arial"><a href="simulate.sim_station.html#Sim_Station">Sim_Station</a>
 </font></dt></dl>
 </dd>
 </dl>
@@ -45,11 +45,10 @@
 <tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
 <td colspan=2><tt><a href="#Sim_Station">Sim_Station</a>(conn=None,&nbsp;modbus_address=None,&nbsp;logger=None)<br>
 &nbsp;<br>
-An&nbsp;instance&nbsp;of&nbsp;this&nbsp;class&nbsp;simulates&nbsp;a&nbsp;single&nbsp;FNDH,&nbsp;acting&nbsp;as&nbsp;a&nbsp;Modbus&nbsp;slave&nbsp;and&nbsp;responding&nbsp;to&nbsp;0x03,&nbsp;0x06&nbsp;and<br>
-0x10&nbsp;Modbus&nbsp;commands&nbsp;to&nbsp;read&nbsp;and&nbsp;write&nbsp;registers.<br>&nbsp;</tt></td></tr>
+<br>&nbsp;</tt></td></tr>
 <tr><td>&nbsp;</td>
 <td width="100%"><dl><dt>Method resolution order:</dt>
-<dd><a href="sim_station.html#Sim_Station">Sim_Station</a></dd>
+<dd><a href="simulate.sim_station.html#Sim_Station">Sim_Station</a></dd>
 <dd><a href="simulate.sim_fndh.html#SimFNDH">simulate.sim_fndh.SimFNDH</a></dd>
 <dd><a href="pasd.fndh.html#FNDH">pasd.fndh.FNDH</a></dd>
 <dd><a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a></dd>
@@ -145,6 +144,36 @@ flags,&nbsp;and&nbsp;write&nbsp;the&nbsp;full&nbsp;set&nbsp;of&nbsp;port&nbsp;da
 &nbsp;<br>
 This&nbsp;is&nbsp;called&nbsp;after&nbsp;the&nbsp;power-on&nbsp;procedure,&nbsp;which&nbsp;turns&nbsp;on&nbsp;all&nbsp;of&nbsp;the&nbsp;ports,&nbsp;one&nbsp;by&nbsp;one,&nbsp;to&nbsp;determine<br>
 which&nbsp;SMARTbox&nbsp;is&nbsp;connected&nbsp;to&nbsp;which&nbsp;PDoC&nbsp;port.</tt></dd></dl>
+
+<dl><dt><a name="Sim_Station-get_sample"><strong>get_sample</strong></a>(self, interval, reglist)</dt><dd><tt>Return&nbsp;the&nbsp;sensor&nbsp;data&nbsp;for&nbsp;the&nbsp;registers&nbsp;in&nbsp;reglist,&nbsp;sampled&nbsp;every&nbsp;'interval'&nbsp;milliseconds,&nbsp;for&nbsp;as&nbsp;long&nbsp;as&nbsp;it<br>
+takes&nbsp;to&nbsp;record&nbsp;10000&nbsp;values&nbsp;(5000&nbsp;samples&nbsp;of&nbsp;2&nbsp;registers,&nbsp;2500&nbsp;samples&nbsp;of&nbsp;4&nbsp;registers,&nbsp;etc).<br>
+&nbsp;<br>
+:param&nbsp;interval:&nbsp;How&nbsp;often&nbsp;(in&nbsp;milliseconds)&nbsp;to&nbsp;sample&nbsp;the&nbsp;data<br>
+:param&nbsp;reglist:&nbsp;&nbsp;Which&nbsp;register&nbsp;numbers&nbsp;to&nbsp;sample<br>
+:return:&nbsp;A&nbsp;dictionary&nbsp;with&nbsp;register&nbsp;number&nbsp;as&nbsp;key,&nbsp;and&nbsp;lists&nbsp;of&nbsp;register&nbsp;samples&nbsp;as&nbsp;values.</tt></dd></dl>
+
+<dl><dt><a name="Sim_Station-reset"><strong>reset</strong></a>(self)</dt><dd><tt>Sends&nbsp;a&nbsp;command&nbsp;to&nbsp;reset&nbsp;the&nbsp;microcontroller.<br>
+&nbsp;<br>
+:return:&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="Sim_Station-save_sample"><strong>save_sample</strong></a>(self, interval, reglist, filename)</dt><dd><tt>Call&nbsp;<a href="#Sim_Station-get_sample">get_sample</a>(),&nbsp;then&nbsp;save&nbsp;the&nbsp;results&nbsp;in&nbsp;CSV&nbsp;format&nbsp;in&nbsp;the&nbsp;given&nbsp;filename.<br>
+&nbsp;<br>
+:param&nbsp;interval:&nbsp;How&nbsp;often&nbsp;(in&nbsp;milliseconds)&nbsp;to&nbsp;sample&nbsp;the&nbsp;data<br>
+:param&nbsp;reglist:&nbsp;&nbsp;Which&nbsp;register&nbsp;numbers&nbsp;to&nbsp;sample<br>
+:param&nbsp;filename:&nbsp;Filename&nbsp;to&nbsp;save&nbsp;the&nbsp;sample&nbsp;data&nbsp;in<br>
+:return:&nbsp;None</tt></dd></dl>
+
+<dl><dt><a name="Sim_Station-set_service_led"><strong>set_service_led</strong></a>(self, newstate)</dt><dd><tt>Set&nbsp;the&nbsp;service&nbsp;LED&nbsp;on&nbsp;or&nbsp;off.<br>
+&nbsp;<br>
+You&nbsp;can&nbsp;either&nbsp;pass&nbsp;a&nbsp;Boolean&nbsp;(on=True),&nbsp;or&nbsp;an&nbsp;integer,&nbsp;where&nbsp;0=off,&nbsp;1=On,&nbsp;2=fast-flash,&nbsp;3=medium-flash,<br>
+4=slow-flash,&nbsp;5=very-slow-flash.</tt></dd></dl>
+
+<dl><dt><a name="Sim_Station-set_smoothing"><strong>set_smoothing</strong></a>(self, freq=0.5, reglist=None)</dt><dd><tt>Apply&nbsp;the&nbsp;given&nbsp;low-pass&nbsp;frequency&nbsp;cutoff&nbsp;to&nbsp;a&nbsp;list&nbsp;of&nbsp;registers.&nbsp;All&nbsp;of&nbsp;the<br>
+registers&nbsp;must&nbsp;be&nbsp;ones&nbsp;containing&nbsp;sensor&nbsp;values&nbsp;(temperatures,&nbsp;voltages,&nbsp;currents).<br>
+&nbsp;<br>
+:param&nbsp;freq:&nbsp;Low-pass&nbsp;cut&nbsp;off&nbsp;frequency,&nbsp;in&nbsp;Hz,&nbsp;or&nbsp;None&nbsp;to&nbsp;disable&nbsp;filtering<br>
+:param&nbsp;reglist:&nbsp;List&nbsp;of&nbsp;sensor&nbsp;register&nbsp;numbers&nbsp;to&nbsp;apply&nbsp;that&nbsp;filter&nbsp;constant&nbsp;to<br>
+:return:</tt></dd></dl>
 
 <hr>
 Data descriptors inherited from <a href="pasd.transport.html#ModbusDevice">pasd.transport.ModbusDevice</a>:<br>
